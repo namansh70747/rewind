@@ -130,3 +130,4 @@ blobs/
 *.parquet
 lancedb/
 models/
+*.cassette.json

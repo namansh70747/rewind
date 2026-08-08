@@ -58,6 +58,10 @@ docs = [
     "mkdocs>=1.6",
     "mkdocs-material>=9.5",
 ]
+# Throwaway de-risking spikes under spikes/ (Week 1). Not needed by the shipped package.
+spike = [
+    "httpx>=0.27",
+]
 
 [project.urls]
 Homepage = "https://github.com/namansh70747/rewind"
@@ -106,7 +110,7 @@ known-first-party = ["flightrecorder"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-files = ["src", "tests"]
+files = ["src", "tests", "spikes"]
 warn_unused_ignores = true
 warn_redundant_casts = true
 warn_unused_configs = true
@@ -117,6 +121,7 @@ show_error_codes = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-q --strict-markers --strict-config"
 
 [tool.coverage.run]
