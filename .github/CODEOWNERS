@@ -1,14 +1,38 @@
-# CODEOWNERS for rewind
-# Order matters: the LAST matching pattern for a path takes precedence.
-# These owners are requested for review automatically on matching changes.
+# CODEOWNERS for Rewind
+#
+# The LAST matching pattern for a path wins. Listed owners are auto-requested for
+# review on matching changes and — with branch protection's "require review from
+# Code Owners" — must approve before merge. Only one listed owner needs to approve.
+#
+# Ownership follows the role split in docs/plan/team-and-cadence.md:
+#   E1 Capture & Replay Core .. @namansh70747
+#   E2 Developer Experience ... @aasthaaa25
+#   E3 ML / Data / Evaluation . @kartikdua24
+#
+# The maintainer (@namansh70747) is co-owner of every area so there is always a
+# valid reviewer. Collaborator entries take effect once they accept the repo invite.
 # See: https://docs.github.com/articles/about-code-owners
 
-# Default owner for everything in the repo.
-*                   @namansh70747
+# Default: the maintainer reviews anything not owned more specifically below.
+*                                    @namansh70747
 
-# Documentation.
-/docs/              @namansh70747 @aasthaaa25
+# ── E1 · Capture & Replay Core (the moat) ──────────────────────────────────
+/src/                                @namansh70747
+/pyproject.toml                      @namansh70747
+/uv.lock                             @namansh70747
 
-# CI, automation, and packaging.
-/.github/           @namansh70747 @kdua24
-/pyproject.toml     @namansh70747 @kdua24
+# ── E2 · Developer Experience: docs, site, CI, packaging, CLI/UI ───────────
+/docs/                               @aasthaaa25 @namansh70747
+/mkdocs.yml                          @aasthaaa25 @namansh70747
+/.github/                            @aasthaaa25 @namansh70747
+/README.md                           @aasthaaa25 @namansh70747
+/src/flightrecorder/cli.py           @aasthaaa25 @namansh70747
+/src/flightrecorder/web/             @aasthaaa25 @namansh70747
+/src/flightrecorder/integrations/    @aasthaaa25 @namansh70747
+
+# ── E3 · ML / Data / Evaluation ────────────────────────────────────────────
+/src/flightrecorder/ml/              @kartikdua24 @namansh70747
+/tests/                              @kartikdua24 @namansh70747
+
+# Load-bearing decisions always get a maintainer review.
+/docs/adr/                           @namansh70747 @aasthaaa25

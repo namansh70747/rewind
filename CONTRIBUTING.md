@@ -22,6 +22,8 @@ All participation is governed by our [Code of Conduct](./CODE_OF_CONDUCT.md).
 - [Commit messages](#commit-messages)
 - [The ADR process](#the-adr-process)
 - [Pull request checklist](#pull-request-checklist)
+- [Reviewing pull requests](#reviewing-pull-requests)
+- [Merge requirements](#merge-requirements)
 - [How design decisions are made](#how-design-decisions-are-made)
 
 ## Ways to contribute
@@ -137,6 +139,59 @@ Before requesting review, confirm:
 - [ ] `CHANGELOG.md` updated under `## [Unreleased]` if user-facing.
 - [ ] Commits follow Conventional Commits.
 - [ ] For design-shaping changes, a corresponding ADR exists or is linked.
+
+## Reviewing pull requests
+
+Every change to `main` goes through a pull request and **at least one approving
+review from a Code Owner** ([`.github/CODEOWNERS`](./.github/CODEOWNERS) routes the
+request to the right area owner automatically). Reviewing well is a first-class
+contribution — a good review is specific, kind, and focused on what actually matters.
+
+**As an author:** keep PRs small and single-purpose, write a clear description of
+*what* and *why* (link the issue/ADR), and make sure CI is green before requesting
+review. Respond to every comment; resolve a thread only when it's actually addressed.
+
+**As a reviewer**, work down this checklist:
+
+- [ ] **Correctness** — does it do what the PR says, including edge cases (loops,
+      retries, streaming, async, errors)?
+- [ ] **Faithfulness first** — could this change let replay diverge *silently*? Any
+      new nondeterministic boundary (clock, RNG, uuid, network, tool I/O, global
+      state) **must** be captured, and the divergence oracle must still fail loud.
+      This is the project's #1 invariant — treat a silent-divergence risk as blocking.
+- [ ] **Respects the ADRs** — playback ≠ re-execution ([ADR-0006](./docs/adr/0006-replay-is-playback-not-re-execution.md)),
+      capture at the transport layer ([ADR-0007](./docs/adr/0007-capture-at-http-transport-layer.md)),
+      our own schema with OTel at the edges ([ADR-0008](./docs/adr/0008-internal-recording-schema-otel-as-export.md)).
+      A change that contradicts an accepted ADR needs a *superseding* ADR, not a quiet override.
+- [ ] **Definition of Done** — does the change round-trip (record → replay bit-exact →
+      timeline → test)? Are there tests, and is the record→replay→`verify` canary still green?
+- [ ] **Scope & simplicity** — one concern per PR; no unrelated churn; the simplest
+      thing that works.
+- [ ] **Security/PII** — no secrets in code, fixtures, or recordings; redaction still
+      runs before storage.
+- [ ] **Docs & changelog** — user-facing changes update docs and `CHANGELOG.md`.
+
+**Review etiquette:** review within ~1 business day so nobody is blocked. Distinguish
+**blocking** comments (correctness, faithfulness, security, ADR conflicts) from
+**non-blocking** suggestions (prefix those with `nit:`). Approve once the DoD is met —
+don't hold a PR hostage over style. If you open a PR, you don't review/approve your own;
+the third teammate stays unblocked on their own work.
+
+## Merge requirements
+
+A PR can be merged into `main` when **all** of these are true (enforced by branch
+protection):
+
+- **≥ 1 approving review from a Code Owner**, and all review threads resolved.
+- **All required status checks pass** — `lint` and `test (3.11 / 3.12 / 3.13)` — and the
+  branch is up to date with `main`.
+- **Re-approval after new pushes** — pushing new commits dismisses stale approvals, so a
+  fresh review is required (no sneaking changes in after approval).
+- **Linear history** — merge via **squash** or **rebase** (no merge commits); keep the
+  squash subject a clean Conventional Commit.
+
+The PR author merges once these are green. Direct pushes to `main` are reserved for
+maintainer setup/emergencies (admins can bypass) — normal work always goes through a PR.
 
 ## How design decisions are made
 
