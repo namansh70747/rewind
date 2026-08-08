@@ -1,0 +1,14 @@
+# CODEOWNERS for rewind
+# Order matters: the LAST matching pattern for a path takes precedence.
+# These owners are requested for review automatically on matching changes.
+# See: https://docs.github.com/articles/about-code-owners
+
+# Default owner for everything in the repo.
+*                   @namansh70747
+
+# Documentation.
+/docs/              @namansh70747 @aasthaaa25
+
+# CI, automation, and packaging.
+/.github/           @namansh70747 @kdua24
+/pyproject.toml     @namansh70747 @kdua24

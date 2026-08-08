@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "Rewind: A Flight Recorder & Time-Travel Debugger for AI Agents"
+abstract: >-
+  Rewind is an open-source flight recorder and time-travel debugger for AI
+  agents. It records every nondeterministic input (LLM sampling, tool I/O,
+  wall-clock, RNG, external APIs) of an agent run into a single Boundary Log,
+  then replays the run bit-exact and fully offline with zero API calls, enables
+  time-travel scrubbing and counterfactual forks, auto-bisects passing versus
+  failing runs to the first diverging decision, and clusters and root-causes
+  failures across a fleet.
+type: software
+authors:
+  - family-names: "Sharma"
+    given-names: "Naman"
+    email: "nsharma_be24@thapar.edu"
+    alias: "namansh70747"
+version: "0.0.0"
+date-released: "2026-01-01"
+license: Apache-2.0
+repository-code: "https://github.com/namansh70747/rewind"
+url: "https://github.com/namansh70747/rewind"
+keywords:
+  - "ai-agents"
+  - "debugging"
+  - "record-replay"
+  - "time-travel-debugging"
+  - "observability"
+  - "reproducibility"
+  - "llm"
+  - "opentelemetry"

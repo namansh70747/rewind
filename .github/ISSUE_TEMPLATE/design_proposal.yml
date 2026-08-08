@@ -1,0 +1,65 @@
+name: Design proposal
+description: Propose a design decision or architecture change (may become an ADR).
+title: "[design]: "
+labels: ["design", "adr"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Rewind is design-heavy and pre-alpha. Use this template to propose a
+        significant design decision. Non-trivial decisions should end up as an
+        Architecture Decision Record (ADR) under `docs/adr/`.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / problem
+      description: What is the problem or decision at hand? What constraints matter?
+    validations:
+      required: true
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed approach
+      description: Describe the design you are proposing.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you weigh, and why not those?
+    validations:
+      required: true
+
+  - type: textarea
+    id: replay-impact
+    attributes:
+      label: Impact on the Boundary Log / replay faithfulness
+      description: >
+        How does this affect what gets captured in the Boundary Log, and the
+        ability to deterministically replay a recording? Note any risks to
+        replay faithfulness or backward compatibility of recordings.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: needs-adr
+    attributes:
+      label: Does this need an ADR?
+      options:
+        - "Yes — I will add an ADR under docs/adr/"
+        - "Maybe — needs discussion"
+        - "No — small enough to decide in this issue"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Links, prior art, references, or anything else relevant.
+    validations:
+      required: false

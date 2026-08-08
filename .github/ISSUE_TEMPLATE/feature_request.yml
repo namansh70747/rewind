@@ -1,0 +1,59 @@
+name: Feature request
+description: Suggest a new capability or improvement for Rewind.
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement! Please describe the problem you
+        are trying to solve before jumping to a specific solution.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What problem does this solve? What are you trying to do that is hard today?
+      placeholder: When debugging a nondeterministic agent, I can't ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe the change or feature you would like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any alternative approaches or workarounds you have tried or thought about.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: roadmap-phase
+    attributes:
+      label: Related roadmap phase
+      description: Which roadmap phase does this relate to, if known?
+      options:
+        - "Unsure / not applicable"
+        - "P0 — Record & replay core"
+        - "P1 — Time-travel debugging"
+        - "P2 — Counterfactual fork"
+        - "P3 — Auto-bisect"
+        - "P4 — ML failure clustering"
+        - "P5 — Ecosystem & integrations"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Anything else that would help us understand the request.
+    validations:
+      required: false

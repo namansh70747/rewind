@@ -1,0 +1,45 @@
+# Path-based auto-labeling config for actions/labeler@v5.
+# Schema: each label maps to a match block using `changed-files`.
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "docs/**"
+          - "mkdocs.yml"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+
+packaging:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "pyproject.toml"
+          - "uv.lock"
+          - "MANIFEST.in"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tests/**"
+
+"area:capture":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/flightrecorder/interceptors/**"
+
+"area:replay":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/flightrecorder/replay.py"
+
+"area:storage":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/flightrecorder/store.py"
+
+"area:ml":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "src/flightrecorder/ml/**"

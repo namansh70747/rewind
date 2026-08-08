@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & Discussions (Q&A)
+    url: https://github.com/namansh70747/rewind/discussions/categories/q-a
+    about: Ask questions, share ideas, and get help from the community.
+  - name: Report a security vulnerability
+    url: https://github.com/namansh70747/rewind/blob/main/SECURITY.md
+    about: Please do NOT open a public issue for security reports. Follow the process in SECURITY.md instead.

@@ -1,0 +1,78 @@
+name: Bug report
+description: Report a problem with Rewind so we can fix it.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report! Please fill out the
+        sections below. A minimal reproduction (ideally a Rewind recording)
+        helps us fix things much faster.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: When I run `fr replay ...`, the process exits with ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: >
+        Exact steps, commands, or code to reproduce the behavior. If you can
+        attach a Rewind recording that reproduces the issue, that is ideal.
+      placeholder: |
+        1. Record an agent run with `fr record ...`
+        2. Run `fr replay <recording>`
+        3. See error
+    validations:
+      required: true
+
+  - type: dropdown
+    id: recording-attached
+    attributes:
+      label: Is a Rewind recording attached?
+      description: A recording that reproduces the issue dramatically speeds up debugging.
+      options:
+        - "Yes — attached below"
+        - "No — cannot share a recording"
+        - "Not applicable"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Fill in the details of your setup.
+      value: |
+        - OS:
+        - Python version:
+        - Rewind (`rewind` / `fr`) version:
+        - Install method (uv / pip / from source):
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / output
+      description: >
+        Paste any relevant log output or tracebacks. This will be
+        automatically formatted as code, so no need for backticks.
+      render: shell
+    validations:
+      required: false
