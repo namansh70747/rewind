@@ -16,6 +16,11 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
+    # Code scanning upload requires GitHub Advanced Security, which is unavailable on
+    # free PRIVATE repos. Skip on private (the job shows as skipped, not failed) and
+    # auto-activate when the repository is made public. Remove this guard once GHAS is
+    # enabled or the repo is public.
+    if: ${{ github.event.repository.visibility == 'public' }}
     permissions:
       security-events: write
       actions: read
