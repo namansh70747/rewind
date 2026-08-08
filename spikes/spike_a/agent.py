@@ -44,7 +44,15 @@ ANTHROPIC = Provider(
     default_model="claude-haiku-4-5-20251001",
     key_env="ANTHROPIC_API_KEY",
 )
-PROVIDERS = {p.name: p for p in (OPENAI, ANTHROPIC)}
+# NVIDIA's API catalog is OpenAI-compatible (same chat/completions shape + Bearer auth),
+# so it reuses the OpenAI request/response path below.
+NVIDIA = Provider(
+    name="nvidia",
+    url="https://integrate.api.nvidia.com/v1/chat/completions",
+    default_model="meta/llama-3.1-8b-instruct",
+    key_env="NVIDIA_API_KEY",
+)
+PROVIDERS = {p.name: p for p in (OPENAI, ANTHROPIC, NVIDIA)}
 
 
 def _headers(provider: Provider, api_key: str) -> dict[str, str]:
@@ -138,7 +146,9 @@ def make_run(provider: Provider = OPENAI, model: str | None = None, api_key: str
     resolved = model or provider.default_model
 
     def run(session: Session, inner: httpx.BaseTransport | None) -> str:
-        with httpx.Client(transport=RecordingTransport(session, inner)) as client:
+        with httpx.Client(
+            transport=RecordingTransport(session, inner), timeout=httpx.Timeout(30.0)
+        ) as client:
             return run_agent(session, client, provider, resolved, api_key)
 
     return run
