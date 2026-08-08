@@ -43,6 +43,9 @@ follows the same sections, defined by the [template](0000-template.md):
 | [0003](0003-embedded-local-first-storage.md) | Embedded, local-first storage | Accepted | 2026-08-08 |
 | [0004](0004-python-primary-stack.md) | Python 3.11+ as the primary stack | Accepted | 2026-08-08 |
 | [0005](0005-ml-classifier-now-lora-later.md) | ML classifier now, LoRA explainer later | Accepted | 2026-08-08 |
+| [0006](0006-replay-is-playback-not-re-execution.md) | Replay is playback, not model re-execution | Accepted | 2026-08-08 |
+| [0007](0007-capture-at-http-transport-layer.md) | Capture at the HTTP transport layer | Accepted | 2026-08-08 |
+| [0008](0008-internal-recording-schema-otel-as-export.md) | Own the recording schema; OTel as export | Accepted | 2026-08-08 |
 
 New ADRs should copy [`0000-template.md`](0000-template.md), take the next number in
 sequence, and be linked into the table above.

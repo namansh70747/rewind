@@ -55,6 +55,9 @@ nav:
       - "ADR-0003: Embedded, local-first storage": adr/0003-embedded-local-first-storage.md
       - "ADR-0004: Python primary stack": adr/0004-python-primary-stack.md
       - "ADR-0005: ML classifier now, LoRA later": adr/0005-ml-classifier-now-lora-later.md
+      - "ADR-0006: Replay is playback, not re-execution": adr/0006-replay-is-playback-not-re-execution.md
+      - "ADR-0007: Capture at the HTTP transport layer": adr/0007-capture-at-http-transport-layer.md
+      - "ADR-0008: Own the recording schema; OTel as export": adr/0008-internal-recording-schema-otel-as-export.md
 
 markdown_extensions:
   - admonition
