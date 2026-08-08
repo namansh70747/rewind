@@ -15,5 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Repository scaffolding, governance, CI, and complete design documentation.
+- **Phase-0 walking skeleton**: the `flightrecorder` core (Session/boundary hash-chain,
+  httpx transport capture, deterministic replay with a network kill-switch),
+  content-addressed SQLite run storage, and the `fr` CLI (`record`, `show`, `verify`,
+  `runs`). Provider-neutral across OpenAI, NVIDIA, and Anthropic. Verified end-to-end:
+  a real run replays bit-for-bit offline with zero API calls.
 
 [Unreleased]: https://github.com/namansh70747/rewind/commits/main
