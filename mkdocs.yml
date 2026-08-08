@@ -36,6 +36,15 @@ nav:
   - Design: design.md
   - Architecture: architecture.md
   - Roadmap: roadmap.md
+  - 6-Month Plan:
+      - Overview: plan/README.md
+      - Team & Cadence: plan/team-and-cadence.md
+      - Roadmap (week by week): plan/roadmap-6-months.md
+      - Milestones & Exit Criteria: plan/milestones-and-exit-criteria.md
+      - Risks & Spikes: plan/risks-and-spikes.md
+      - Tech Stack & OSS Map: plan/tech-stack-and-oss-map.md
+      - Algorithms & Math: plan/algorithms-and-math.md
+      - Competitive Landscape: plan/competitive-landscape.md
   - Glossary: glossary.md
   - FAQ: faq.md
   - Decisions:

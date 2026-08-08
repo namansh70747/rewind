@@ -1,8 +1,14 @@
 # Roadmap
 
-> 📌 **A detailed, data-driven 6-month execution plan will be added here next — this
-> page currently captures the phase structure.** (The owner will add the 6-month plan
-> in a follow-up.)
+> 📘 **The detailed, research-backed 6-month execution plan now lives in
+> [`plan/`](plan/README.md)** — week-by-week targets for a 3-person team, a risk
+> register with kill/pivot criteria, the OSS building-block map, the algorithms & math,
+> and the competitive landscape. Start at [`plan/README.md`](plan/README.md) and the
+> [26-week roadmap](plan/roadmap-6-months.md).
+>
+> This page keeps the **high-level phase structure** the plan is organized around. The
+> six phases below map to the six monthly milestones (M1→P0/P1, and so on); the plan is
+> the authoritative, dated version.
 
 Rewind is built in six phases, **P0 through P5**. Each phase is defined by a single
 rule: it ends with a **working end-to-end capability**, expressed as a concrete
