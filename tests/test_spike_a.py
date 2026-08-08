@@ -15,7 +15,7 @@ The *live* go/no-go against the real provider is run separately via
 from __future__ import annotations
 
 import httpx
-from spikes.spike_a.agent import make_run, record, verify
+from spikes.spike_a.agent import ANTHROPIC, make_run, record, verify
 from spikes.spike_a.engine import Cassette
 
 RESPONSES = ["The number is 7.", "OK", "Confirmed doubled=14."]
@@ -30,6 +30,19 @@ def _mock_transport() -> httpx.MockTransport:
         state["n"] += 1
         content = RESPONSES[i] if i < len(RESPONSES) else f"extra-{i}"
         return httpx.Response(200, json={"choices": [{"message": {"content": content}}]})
+
+    return httpx.MockTransport(handler)
+
+
+def _anthropic_mock() -> httpx.MockTransport:
+    """Same fake provider, but shaped like the Anthropic Messages API."""
+    state = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        i = state["n"]
+        state["n"] += 1
+        text = RESPONSES[i] if i < len(RESPONSES) else f"extra-{i}"
+        return httpx.Response(200, json={"content": [{"type": "text", "text": text}]})
 
     return httpx.MockTransport(handler)
 
@@ -51,6 +64,19 @@ def test_playback_is_bit_exact_50x() -> None:
     assert result.passed, result.detail
     assert result.unique_outputs == 1
     assert result.unique_fingerprints == 1
+
+
+def test_playback_is_bit_exact_anthropic_shape() -> None:
+    # Provider-neutrality: the same engine records/replays Claude bit-exact too.
+    run = make_run(provider=ANTHROPIC, api_key="test-key")
+    cassette = record(run, _anthropic_mock())
+
+    assert [b.kind for b in cassette.boundaries] == ["uuid", "clock", "rng", "http", "http", "http"]
+    assert cassette.boundaries[3].key == "/v1/messages"  # hit the Anthropic endpoint
+
+    result = verify(cassette, run, n=50)
+    assert result.passed, result.detail
+    assert result.unique_outputs == 1
 
 
 def test_oracle_catches_tampered_recording() -> None:

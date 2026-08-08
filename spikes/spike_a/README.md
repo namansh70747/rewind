@@ -27,10 +27,18 @@ run's fingerprint.
 
 ### The live go/no-go (needs an API key)
 
+Capture is at the transport layer, so the spike is **provider-neutral** — run it against
+Claude or OpenAI. Put your key in a git-ignored `.env` (copy `.env.example`); the CLI
+loads it automatically, so the secret never lands in your shell history or the repo:
+
 ```console
-$ export OPENAI_API_KEY=sk-...
+$ cp .env.example .env      # then set ANTHROPIC_API_KEY=... (or OPENAI_API_KEY=...)
 $ uv sync --extra spike
-$ uv run python -m spikes.spike_a record --n 50
+
+# Claude:
+$ uv run python -m spikes.spike_a record --provider anthropic --n 50
+# OpenAI:
+$ uv run python -m spikes.spike_a record --provider openai --n 50
 ```
 
 This records **one** real run, then replays it **50×** offline. **PASS = 50/50 replays
@@ -41,6 +49,9 @@ can re-verify it offline later:
 ```console
 $ uv run python -m spikes.spike_a verify spikes/spike_a/last_run.cassette.json --n 50
 ```
+
+Override the model with `--model` if the default isn't available on your account
+(e.g. `--provider anthropic --model claude-3-5-haiku-latest`).
 
 ### The offline proof (no key — this is what CI runs)
 
