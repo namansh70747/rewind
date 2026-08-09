@@ -18,16 +18,22 @@ import re
 from typing import Any
 
 # Order matters: more specific patterns first (e.g. sk-ant- before the generic sk-).
+# Leading lookbehind avoids matching mid-token noise (e.g. random base64 containing "sk-").
 _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    ("anthropic-key", re.compile(r"sk-ant-[A-Za-z0-9_\-]{20,}")),
-    ("openai-key", re.compile(r"sk-(?:proj-)?[A-Za-z0-9_\-]{20,}")),
-    ("nvidia-key", re.compile(r"nvapi-[A-Za-z0-9_\-]{20,}")),
-    ("google-key", re.compile(r"AIza[A-Za-z0-9_\-]{30,}")),
-    ("aws-key", re.compile(r"AKIA[0-9A-Z]{16}")),
-    ("github-token", re.compile(r"gh[posru]_[A-Za-z0-9]{20,}")),
-    ("slack-token", re.compile(r"xox[baprs]-[A-Za-z0-9\-]{10,}")),
-    ("jwt", re.compile(r"eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}")),
-    ("bearer", re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-]{20,}")),
+    ("anthropic-key", re.compile(r"(?<![A-Za-z0-9_\-])sk-ant-[A-Za-z0-9_\-]{20,}")),
+    ("openai-key", re.compile(r"(?<![A-Za-z0-9_\-])sk-(?:proj-)?[A-Za-z0-9_\-]{20,}")),
+    ("nvidia-key", re.compile(r"(?<![A-Za-z0-9_\-])nvapi-[A-Za-z0-9_\-]{20,}")),
+    ("google-key", re.compile(r"(?<![A-Za-z0-9_\-])AIza[A-Za-z0-9_\-]{30,}")),
+    ("aws-key", re.compile(r"(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}")),
+    ("github-token", re.compile(r"(?<![A-Za-z0-9_\-])gh[posru]_[A-Za-z0-9]{20,}")),
+    ("slack-token", re.compile(r"(?<![A-Za-z0-9_\-])xox[baprs]-[A-Za-z0-9\-]{10,}")),
+    (
+        "jwt",
+        re.compile(
+            r"(?<![A-Za-z0-9_\-])eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}"
+        ),
+    ),
+    ("bearer", re.compile(r"(?i)(?<![A-Za-z0-9_\-])bearer\s+[A-Za-z0-9._\-]{20,}")),
     ("email", re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")),
 ]
 
@@ -47,4 +53,6 @@ def redact(obj: Any) -> Any:
         return {key: redact(value) for key, value in obj.items()}
     if isinstance(obj, list):
         return [redact(value) for value in obj]
+    if isinstance(obj, tuple):
+        return tuple(redact(value) for value in obj)
     return obj
