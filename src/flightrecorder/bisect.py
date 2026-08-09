@@ -6,8 +6,9 @@ whose recorded content differs, classifying it:
 
 * **same input → different output** — the *decision* diverged here (e.g. sampling, a model
   change): the request was identical but the response differed.
-* **different input → different output** — an *upstream* value diverged; the real cause is
-  earlier, so keep walking back.
+* **different input → different output** — the request itself already differs here, so the
+  agent-logic cause is *upstream* of this boundary (this index is the first symptom, not
+  necessarily the root).
 
 This is the step-aligned bisect from ``docs/plan/algorithms-and-math.md`` (§1/§3). It
 assumes the two runs share a prefix; sequence alignment for insert/delete cases
@@ -59,7 +60,7 @@ def first_divergence(a: Cassette, b: Cassette) -> BisectResult:
             reason = (
                 "same input → different output (the decision/response diverged here)"
                 if same_input
-                else "different input → different output (an upstream value diverged; look earlier)"
+                else "different input → different output (the request already differs; the cause is upstream)"
             )
             return BisectResult(True, i, reason, ba, bb)
 
