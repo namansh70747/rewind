@@ -20,6 +20,8 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
+from ..redaction import redact
+
 if TYPE_CHECKING:
     from ..boundary import Session
 
@@ -42,18 +44,26 @@ class RecordingTransport(httpx.BaseTransport):
         self._inner = inner
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
-        req_repr: dict[str, Any] = {
-            "method": request.method,
-            "url": str(request.url),
-            "body": _encode_body(request.content),
-        }
+        # Redact at capture: secrets in the URL/body never reach the boundary log or store.
+        # Redaction is deterministic, so replay redacts the live request the same way and
+        # still matches the recording.
+        req_repr: dict[str, Any] = redact(
+            {
+                "method": request.method,
+                "url": str(request.url),
+                "body": _encode_body(request.content),
+            }
+        )
 
         def produce() -> dict[str, Any]:
             if self._inner is None:  # pragma: no cover - defensive; replay never calls this
                 raise RuntimeError("record mode requires an inner transport")
             resp = self._inner.handle_request(request)
             resp.read()
-            return {"status": resp.status_code, "body": _encode_body(resp.content)}
+            recorded: dict[str, Any] = redact(
+                {"status": resp.status_code, "body": _encode_body(resp.content)}
+            )
+            return recorded
 
         rec = self._session.mediate("http", request.url.path, req_repr, produce)
         return _rebuild_response(rec, request)

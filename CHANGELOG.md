@@ -26,5 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     than the ADR-0003 / roadmap target of BLAKE3 + zstd, to keep the skeleton
     dependency-free. The on-disk format is frozen later (~Week 8); early recordings may
     need migration on the switch.
+- **Redaction-on-write** (`flightrecorder.redaction`): secrets/PII (API keys, tokens,
+  JWTs, emails) are scrubbed from request URLs/bodies and responses **at capture time**,
+  so the raw values never reach the boundary log or the store. Redaction is deterministic,
+  so replay stays bit-exact on the redacted recording. Request headers are still not
+  captured (so `Authorization` never lands there). Fulfills a `SECURITY.md` commitment
+  and mitigates risk R6.
 
 [Unreleased]: https://github.com/namansh70747/rewind/commits/main
