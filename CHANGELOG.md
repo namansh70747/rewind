@@ -47,5 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so replay stays bit-exact on the redacted recording. Request headers are still not
   captured (so `Authorization` never lands there). Fulfills a `SECURITY.md` commitment
   and mitigates risk R6.
+- **Auto-bisect v1** (`flightrecorder.bisect`, `fr bisect <run_a> <run_b>`): finds the first
+  diverging decision between two recordings and classifies it — *same input → different
+  output* (the decision diverged) vs *different input → different output* (upstream cause).
+  Step-aligned (assumes a shared prefix); sequence alignment for insert/delete is a later
+  phase. Advances the auto-bisect pillar (roadmap M4).
 
 [Unreleased]: https://github.com/namansh70747/rewind/commits/main

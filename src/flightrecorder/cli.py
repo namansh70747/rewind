@@ -182,5 +182,45 @@ def runs(db: Annotated[str, typer.Option(help="path to the run store")] = DEFAUL
     console.print(table)
 
 
+@app.command()
+def bisect(
+    run_a: str,
+    run_b: str,
+    db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+) -> None:
+    """Find the first diverging decision between two recorded runs (e.g. a good vs bad run)."""
+    from .bisect import first_divergence
+
+    store = RunStore(db)
+    try:
+        cassette_a = store.load(run_a)
+        cassette_b = store.load(run_b)
+    except KeyError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from None
+    finally:
+        store.close()
+
+    result = first_divergence(cassette_a, cassette_b)
+    if not result.diverged:
+        console.print("[green]no divergence — the two runs are identical[/]")
+        return
+
+    console.print(f"[bold red]first divergence at boundary #{result.index}[/]  {result.reason}")
+    if result.a is not None and result.b is not None:
+        table = Table(show_header=True)
+        table.add_column("run", style="bold")
+        table.add_column("boundary", style="cyan")
+        table.add_column("value")
+        table.add_row(
+            run_a, f"{result.a.kind}:{result.a.key}", _summarize(result.a.kind, result.a.response)
+        )
+        table.add_row(
+            run_b, f"{result.b.kind}:{result.b.key}", _summarize(result.b.kind, result.b.response)
+        )
+        console.print(table)
+    raise typer.Exit(1)  # diverged -> non-zero, useful as a CI gate
+
+
 if __name__ == "__main__":
     app()
