@@ -103,3 +103,58 @@ def test_async_sse_capture_and_replay(tmp_path: Path, monkeypatch: pytest.Monkey
     result = verify_run(cap.cassette, lambda: asyncio.run(_async_sse_agent()), n=20)
     assert result.passed, result.detail
     store.close()
+
+
+def test_sse_secret_in_frame_is_redacted(monkeypatch: pytest.MonkeyPatch) -> None:
+    secret = "sk-ant-" + "A" * 40
+    frames = [
+        f'data: {{"choices": [{{"delta": {{"content": "{secret}"}}}}]}}\n\n'.encode(),
+        b"data: [DONE]\n\n",
+    ]
+
+    def fake_handle(self: httpx.HTTPTransport, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=iter(list(frames)),
+            request=request,
+        )
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", fake_handle)
+    with capture(provider="openai", model="m") as cap:
+        _sse_agent()
+    assert cap.cassette is not None
+    dumped = "\n".join(cap.cassette.boundaries[-1].response["chunks"])
+    assert secret not in dumped
+    assert "<redacted:anthropic-key>" in dumped
+
+
+def test_sse_secret_spanning_chunks_does_not_leak(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A key split across chunk boundaries must not survive in the stored frames."""
+    secret = "sk-ant-" + "B" * 40
+    # Split so neither chunk alone matches the pattern, but the join does.
+    frames = [secret[:10].encode(), (secret[10:] + "\n\n").encode()]
+
+    def fake_handle(self: httpx.HTTPTransport, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=iter(list(frames)),
+            request=request,
+        )
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", fake_handle)
+    with (
+        capture(provider="openai", model="m") as cap,
+        httpx.Client() as client,
+        client.stream("POST", _URL, json={"model": "m", "stream": True}) as resp,
+    ):
+        list(resp.iter_bytes())
+
+    assert cap.cassette is not None
+    http = cap.cassette.boundaries[-1].response
+    dumped = "".join(http["chunks"])
+    assert secret not in dumped
+    assert "<redacted:anthropic-key>" in dumped
+    # Spanning case collapses to a single safe frame rather than leaking via parts.
+    assert len(http["chunks"]) == 1

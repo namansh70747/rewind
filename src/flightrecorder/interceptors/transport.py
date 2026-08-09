@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
-from ..redaction import redact
+from ..redaction import redact, redact_text
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -41,10 +41,21 @@ def _encode_body(raw: bytes | None) -> dict[str, Any] | None:
 
 
 def _encode_response(chunks: list[bytes], content_type: str | None) -> dict[str, Any]:
-    """Build the recorded response value from its decoded chunk sequence."""
-    rec: dict[str, Any] = {"body": _encode_body(b"".join(chunks))}
-    if len(chunks) > 1:  # streamed — preserve the chunk (e.g. SSE frame) boundaries
-        rec["chunks"] = [chunk.decode("utf-8", errors="replace") for chunk in chunks]
+    """Build the recorded response value from its decoded chunk sequence.
+
+    Secrets are scrubbed on the *assembled* text first. Per-chunk redaction is used for
+    streamed replay only when it matches the assembled result — if a secret spans a chunk
+    boundary, we collapse to a single redacted frame so nothing leaks via ``chunks``.
+    """
+    texts = [chunk.decode("utf-8", errors="replace") for chunk in chunks]
+    safe_full = redact_text("".join(texts))
+    rec: dict[str, Any] = {"body": _encode_body(safe_full.encode("utf-8"))}
+    if len(chunks) > 1:  # streamed — preserve frame boundaries when safe
+        safe_chunks = [redact_text(text) for text in texts]
+        if "".join(safe_chunks) != safe_full:
+            # Spanning secret: per-chunk redaction would miss it and leak on replay.
+            safe_chunks = [safe_full]
+        rec["chunks"] = safe_chunks
         if content_type:
             rec["content_type"] = content_type
     return rec
@@ -59,6 +70,8 @@ class RecordingTransport(httpx.BaseTransport):
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         # Redact at capture: secrets in the URL/body never reach the boundary log or store.
+        # Redaction is deterministic, so replay redacts the live request the same way and
+        # still matches the recording.
         req_repr: dict[str, Any] = redact(
             {
                 "method": request.method,
