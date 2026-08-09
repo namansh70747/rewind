@@ -15,12 +15,19 @@ transport is wrapped with a :class:`RecordingTransport` bound to the active sess
 approach borrowed from VCR.py). Replay serves recorded responses with the network
 kill-switch on.
 
-**Scope (this increment):** synchronous ``httpx.Client`` only, and only the **HTTP**
-boundary is captured globally. Non-HTTP nondeterminism in an unmodified agent (wall-clock,
-``uuid``, RNG) is *not* auto-captured yet — if it affects the run, the divergence oracle
-will flag it loudly on replay rather than lie. (Agents that need those captured can use the
-``Session`` shims, as the bundled example agent does.) Global clock/uuid/rng shims, async,
-and a ``fr record -- python agent.py`` subprocess wrapper are follow-ups.
+Both ``httpx.Client`` and ``httpx.AsyncClient`` are captured (base transport + proxy
+``_mounts``). To record an async agent, drive it inside the block with
+``asyncio.run(agent())``; to replay it, wrap the same call:
+``verify_run(cassette, lambda: asyncio.run(agent()))``.
+
+**Scope (this increment):** only the **HTTP** boundary is captured globally, and capture is
+**serialized** — concurrent boundaries (e.g. ``asyncio.gather`` of HTTP calls) are detected
+and **fail loud** rather than corrupt the single hash-chain; concurrent replay is a later
+phase. Non-HTTP nondeterminism (wall-clock, ``uuid``, RNG) in an unmodified agent is *not*
+auto-captured yet — if it affects the run, the divergence oracle flags it loudly on replay
+rather than lie. (Agents that need those captured can use the ``Session`` shims, as the
+bundled example agent does.) Global clock/uuid/rng shims and a
+``fr record -- python agent.py`` subprocess wrapper are follow-ups.
 """
 
 from __future__ import annotations
@@ -33,7 +40,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 
 from .boundary import Cassette, Divergence, Session
-from .interceptors.transport import RecordingTransport
+from .interceptors.transport import AsyncRecordingTransport, RecordingTransport
 from .replay import VerifyResult
 
 if TYPE_CHECKING:
@@ -43,19 +50,29 @@ if TYPE_CHECKING:
 
 _active_session: ContextVar[Session | None] = ContextVar("flightrecorder_session", default=None)
 _orig_client_init = httpx.Client.__init__
-#: Nesting depth for the process-global ``Client.__init__`` patch. ContextVar correctly
-#: stacks sessions, but restoring ``__init__`` on the first nested exit would unpatch the
-#: outer ``capture()`` / ``replay_run()`` still in flight.
+_orig_async_client_init = httpx.AsyncClient.__init__
+#: Nesting depth for the process-global ``__init__`` patches (sync + async are patched and
+#: restored together). ContextVar correctly stacks sessions, but restoring ``__init__`` on
+#: the first nested exit would unpatch an outer ``capture()`` / ``replay_run()`` in flight.
 _patch_depth = 0
 
 
 def _wrap_transport(
     session: Session, transport: httpx.BaseTransport | None
 ) -> httpx.BaseTransport | None:
-    """Wrap a transport (or mount entry) with ``RecordingTransport`` if needed."""
+    """Wrap a sync transport (or mount entry) with ``RecordingTransport`` if needed."""
     if transport is None or isinstance(transport, RecordingTransport):
         return transport
     return RecordingTransport(session, inner=transport)
+
+
+def _wrap_async_transport(
+    session: Session, transport: httpx.AsyncBaseTransport | None
+) -> httpx.AsyncBaseTransport | None:
+    """Wrap an async transport (or mount entry) with ``AsyncRecordingTransport`` if needed."""
+    if transport is None or isinstance(transport, AsyncRecordingTransport):
+        return transport
+    return AsyncRecordingTransport(session, inner=transport)
 
 
 def _patched_client_init(self: httpx.Client, *args: Any, **kwargs: Any) -> None:
@@ -72,13 +89,28 @@ def _patched_client_init(self: httpx.Client, *args: Any, **kwargs: Any) -> None:
     }
 
 
+def _patched_async_client_init(self: httpx.AsyncClient, *args: Any, **kwargs: Any) -> None:
+    _orig_async_client_init(self, *args, **kwargs)
+    session = _active_session.get()
+    if session is None:
+        return
+    wrapped = _wrap_async_transport(session, self._transport)
+    if wrapped is not None:
+        self._transport = wrapped
+    self._mounts = {
+        pattern: _wrap_async_transport(session, transport)
+        for pattern, transport in self._mounts.items()
+    }
+
+
 @contextlib.contextmanager
 def _patched(session: Session) -> Iterator[None]:
-    """Install the httpx patch + bind the active session for the duration of the block."""
+    """Install the httpx (sync + async) patches + bind the active session for the block."""
     global _patch_depth
     token = _active_session.set(session)
     if _patch_depth == 0:
         httpx.Client.__init__ = _patched_client_init  # type: ignore[method-assign]
+        httpx.AsyncClient.__init__ = _patched_async_client_init  # type: ignore[method-assign]
     _patch_depth += 1
     try:
         yield
@@ -86,6 +118,7 @@ def _patched(session: Session) -> Iterator[None]:
         _patch_depth -= 1
         if _patch_depth == 0:
             httpx.Client.__init__ = _orig_client_init  # type: ignore[method-assign]
+            httpx.AsyncClient.__init__ = _orig_async_client_init  # type: ignore[method-assign]
         _active_session.reset(token)
 
 

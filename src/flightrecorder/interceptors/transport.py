@@ -69,6 +69,36 @@ class RecordingTransport(httpx.BaseTransport):
         return _rebuild_response(rec, request)
 
 
+class AsyncRecordingTransport(httpx.AsyncBaseTransport):
+    """Async twin of :class:`RecordingTransport` for ``httpx.AsyncClient``."""
+
+    def __init__(self, session: Session, inner: httpx.AsyncBaseTransport | None = None) -> None:
+        self._session = session
+        self._inner = inner
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        req_repr: dict[str, Any] = redact(
+            {
+                "method": request.method,
+                "url": str(request.url),
+                "body": _encode_body(request.content),
+            }
+        )
+
+        async def produce() -> dict[str, Any]:
+            if self._inner is None:  # pragma: no cover - defensive; replay never calls this
+                raise RuntimeError("record mode requires an inner transport")
+            resp = await self._inner.handle_async_request(request)
+            await resp.aread()
+            recorded: dict[str, Any] = redact(
+                {"status": resp.status_code, "body": _encode_body(resp.content)}
+            )
+            return recorded
+
+        rec = await self._session.mediate_async("http", request.url.path, req_repr, produce)
+        return _rebuild_response(rec, request)
+
+
 def _rebuild_response(rec: dict[str, Any], request: httpx.Request) -> httpx.Response:
     status = int(rec["status"])
     body = rec.get("body")

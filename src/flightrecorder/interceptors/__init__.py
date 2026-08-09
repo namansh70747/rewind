@@ -7,6 +7,6 @@ an OpenTelemetry span processor.
 
 from __future__ import annotations
 
-from .transport import RecordingTransport
+from .transport import AsyncRecordingTransport, RecordingTransport
 
-__all__ = ["RecordingTransport"]
+__all__ = ["AsyncRecordingTransport", "RecordingTransport"]
