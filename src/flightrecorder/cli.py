@@ -10,6 +10,7 @@ The API key is read from the environment or a git-ignored ``.env`` file.
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import Annotated, Any
@@ -19,7 +20,7 @@ from rich.console import Console
 from rich.table import Table
 
 from .example_agent import make_example_run
-from .providers import OPENAI, PROVIDERS
+from .providers import PROVIDERS
 from .store import DEFAULT_DB, RunStore
 
 app = typer.Typer(add_completion=False, help="Rewind — flight recorder for AI agents.")
@@ -39,18 +40,23 @@ def _load_dotenv(path: Path = Path(".env")) -> None:
 
 
 def _summarize(kind: str, response: Any) -> str:
-    if kind == "http" and isinstance(response, dict):
-        body = response.get("body", {})
+    if kind != "http" or not isinstance(response, dict):
+        return str(response)
+    status = response.get("status", "?")
+    body = response.get("body")
+    if not isinstance(body, dict):
+        return f"[{status}] (empty)"
+    if "text" in body:
+        return f"[{status}] {' '.join(str(body['text']).split())[:70]}"
+    data = body.get("json", {})
+    try:
+        text = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
         try:
-            text = body["choices"][0]["message"]["content"]
+            text = data["content"][0]["text"]
         except (KeyError, IndexError, TypeError):
-            try:
-                text = body["content"][0]["text"]
-            except (KeyError, IndexError, TypeError):
-                text = str(body)
-        text = " ".join(str(text).split())
-        return f"[{response.get('status', '?')}] {text[:70]}"
-    return str(response)
+            text = json.dumps(data)
+    return f"[{status}] {' '.join(str(text).split())[:70]}"
 
 
 @app.command()
@@ -142,7 +148,13 @@ def verify(
     finally:
         store.close()
 
-    prov = PROVIDERS.get(cassette.provider, OPENAI)
+    if cassette.provider not in PROVIDERS:
+        console.print(
+            f"[red]run {run_id} was recorded with unknown provider "
+            f"'{cassette.provider}' — cannot rebuild the agent to replay it.[/]"
+        )
+        raise typer.Exit(2)
+    prov = PROVIDERS[cassette.provider]
     run = make_example_run(prov, cassette.model or None, api_key="replay-needs-no-key")
     console.print(f"replaying run [bold]{run_id}[/] {n}x offline (network kill-switch on) ...")
     result = do_verify(cassette, run, n=n)

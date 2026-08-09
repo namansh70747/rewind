@@ -24,6 +24,8 @@ from flightrecorder.providers import OPENAI
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import pytest
+
 RESPONSES = ["The number is 7.", "OK", "Confirmed doubled=14."]
 
 
@@ -72,7 +74,7 @@ def test_content_addressed_dedup(tmp_path: Path) -> None:
 def test_tamper_is_caught_and_localized(tmp_path: Path) -> None:
     store, run_id, run = _record_example(tmp_path)
     loaded = store.load(run_id)
-    loaded.boundaries[3].response["body"]["choices"][0]["message"]["content"] = "TAMPERED"
+    loaded.boundaries[3].response["body"]["json"]["choices"][0]["message"]["content"] = "TAMPERED"
 
     result = verify(loaded, run, n=1)
     assert not result.passed
@@ -96,3 +98,20 @@ def test_cli_show_verify_runs(tmp_path: Path) -> None:
 
     r_runs = runner.invoke(app, ["runs", "--db", db])
     assert r_runs.exit_code == 0, r_runs.output
+
+
+def test_cli_record_wiring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Lock the `fr record` entrypoint (console script + wiring) without a key or network:
+    # stub the CLI's live transport with the mock and provide a dummy key.
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(httpx, "HTTPTransport", lambda *a, **k: _mock_transport())
+    db = str(tmp_path / "runs.db")
+
+    result = CliRunner().invoke(app, ["record", "--provider", "openai", "--db", db])
+    assert result.exit_code == 0, result.output
+
+    store = RunStore(db)
+    runs = store.list_runs()
+    store.close()
+    assert len(runs) == 1
+    assert runs[0].provider == "openai"

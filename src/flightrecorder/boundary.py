@@ -9,6 +9,12 @@ localized — at the first mismatch.
 See ADR-0006 (replay is playback, not re-execution) and ADR-0008 (our own recording
 schema). HTTP capture lives in :mod:`flightrecorder.interceptors.transport` (ADR-0007);
 clock/uuid/rng are shimmed here.
+
+**Phase-0 provisional format (not frozen).** The hash-chain uses stdlib ``blake2b`` to keep
+the walking skeleton dependency-free; the ADR-frozen algorithm will be **BLAKE3**
+(``docs/plan/algorithms-and-math.md`` §1). Because the chain algorithm is part of the
+recording identity, recordings made now are not guaranteed to survive the switch — the
+on-disk recording format is not yet frozen (that happens ~Week 8, per the plan).
 """
 
 from __future__ import annotations

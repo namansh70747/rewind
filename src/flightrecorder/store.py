@@ -4,6 +4,11 @@ A recording is persisted to SQLite as run metadata + an ordered boundary index, 
 request/response payload written to a **content-addressed** blob table (BLAKE2b hash,
 zlib-compressed). Identical payloads — the same system prompt across many steps, repeated
 tool schemas — are stored once. Zero servers; it's just a file.
+
+**Phase-0 provisional format (not frozen).** ADR-0003 / the roadmap specify BLAKE3 + zstd;
+this skeleton uses stdlib ``blake2b`` + ``zlib`` (allowed as the fallback in
+``tech-stack-and-oss-map.md``) to stay dependency-free. The on-disk format is not yet
+frozen (that happens ~Week 8), so recordings made now may need migration on the switch.
 """
 
 from __future__ import annotations

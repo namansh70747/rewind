@@ -20,5 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   content-addressed SQLite run storage, and the `fr` CLI (`record`, `show`, `verify`,
   `runs`). Provider-neutral across OpenAI, NVIDIA, and Anthropic. Verified end-to-end:
   a real run replays bit-for-bit offline with zero API calls.
+  - Scope: records the **bundled example agent** (`fr record --provider …`); capturing an
+    arbitrary, unmodified agent (`fr record -- python agent.py`) is Phase 1.
+  - **Provisional recording format (not frozen).** Uses stdlib `blake2b` + `zlib` rather
+    than the ADR-0003 / roadmap target of BLAKE3 + zstd, to keep the skeleton
+    dependency-free. The on-disk format is frozen later (~Week 8); early recordings may
+    need migration on the switch.
 
 [Unreleased]: https://github.com/namansh70747/rewind/commits/main
