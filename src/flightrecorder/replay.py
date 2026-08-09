@@ -64,7 +64,7 @@ def verify(cassette: Cassette, run: Run, n: int = 50) -> VerifyResult:
         try:
             output, fingerprint = replay_once(cassette, run)
         except Divergence as exc:
-            return VerifyResult(False, n, len(outputs), len(fingerprints), f"replay {i}: {exc}")
+            return VerifyResult(False, i + 1, len(outputs), len(fingerprints), f"replay {i}: {exc}")
         outputs.add(output)
         fingerprints.add(fingerprint)
 
