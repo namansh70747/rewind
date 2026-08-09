@@ -89,3 +89,43 @@ def test_replay_diverges_loudly_if_agent_changes(
 
     result = verify_run(cap.cassette, _changed_agent, n=1)
     assert not result.passed
+    assert result.runs == 1
+    assert "boundary #" in result.detail
+
+
+def test_nested_capture_keeps_outer_patch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Inner capture() must not unpatch httpx while the outer block is still active."""
+    _stub_provider(monkeypatch)
+    store = RunStore(tmp_path / "runs.db")
+
+    with capture(store, provider="openai", model="m") as outer:
+        with capture(provider="openai", model="inner") as inner:
+            _unmodified_agent()
+        assert inner.cassette is not None
+        assert [b.kind for b in inner.cassette.boundaries] == ["http", "http"]
+        # Outer is still active — a new Client here must still be recorded on outer.
+        _unmodified_agent()
+
+    assert outer.cassette is not None
+    assert [b.kind for b in outer.cassette.boundaries] == ["http", "http"]
+    store.close()
+
+
+def test_proxy_mount_transport_is_wrapped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clients with proxy mounts must record via the mount transport, not only _transport."""
+    _stub_provider(monkeypatch)
+
+    def _proxied_agent() -> str:
+        with httpx.Client(proxy="http://proxy.invalid:8080") as client:
+            resp = client.post(
+                _URL, json={"model": "m", "messages": [{"role": "user", "content": "hi"}]}
+            )
+            return str(resp.json()["choices"][0]["message"]["content"])
+
+    with capture(provider="openai", model="m") as cap:
+        assert _proxied_agent() == "seven"
+
+    assert cap.cassette is not None
+    assert [b.kind for b in cap.cassette.boundaries] == ["http"]
+    result = verify_run(cap.cassette, _proxied_agent, n=5)
+    assert result.passed, result.detail

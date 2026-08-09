@@ -43,6 +43,19 @@ if TYPE_CHECKING:
 
 _active_session: ContextVar[Session | None] = ContextVar("flightrecorder_session", default=None)
 _orig_client_init = httpx.Client.__init__
+#: Nesting depth for the process-global ``Client.__init__`` patch. ContextVar correctly
+#: stacks sessions, but restoring ``__init__`` on the first nested exit would unpatch the
+#: outer ``capture()`` / ``replay_run()`` still in flight.
+_patch_depth = 0
+
+
+def _wrap_transport(
+    session: Session, transport: httpx.BaseTransport | None
+) -> httpx.BaseTransport | None:
+    """Wrap a transport (or mount entry) with ``RecordingTransport`` if needed."""
+    if transport is None or isinstance(transport, RecordingTransport):
+        return transport
+    return RecordingTransport(session, inner=transport)
 
 
 def _patched_client_init(self: httpx.Client, *args: Any, **kwargs: Any) -> None:
@@ -50,20 +63,29 @@ def _patched_client_init(self: httpx.Client, *args: Any, **kwargs: Any) -> None:
     session = _active_session.get()
     if session is None:
         return
-    transport = self._transport
-    if not isinstance(transport, RecordingTransport):
-        self._transport = RecordingTransport(session, inner=transport)
+    # httpx routes via mounts first (proxies); wrapping only ``_transport`` misses those.
+    wrapped = _wrap_transport(session, self._transport)
+    if wrapped is not None:
+        self._transport = wrapped
+    self._mounts = {
+        pattern: _wrap_transport(session, transport) for pattern, transport in self._mounts.items()
+    }
 
 
 @contextlib.contextmanager
 def _patched(session: Session) -> Iterator[None]:
     """Install the httpx patch + bind the active session for the duration of the block."""
+    global _patch_depth
     token = _active_session.set(session)
-    httpx.Client.__init__ = _patched_client_init  # type: ignore[method-assign]
+    if _patch_depth == 0:
+        httpx.Client.__init__ = _patched_client_init  # type: ignore[method-assign]
+    _patch_depth += 1
     try:
         yield
     finally:
-        httpx.Client.__init__ = _orig_client_init  # type: ignore[method-assign]
+        _patch_depth -= 1
+        if _patch_depth == 0:
+            httpx.Client.__init__ = _orig_client_init  # type: ignore[method-assign]
         _active_session.reset(token)
 
 
@@ -112,7 +134,7 @@ def verify_run(cassette: Cassette, fn: Callable[[], Any], n: int = 50) -> Verify
         try:
             fingerprints.add(replay_run(cassette, fn))
         except Divergence as exc:
-            return VerifyResult(False, n, 0, len(fingerprints), f"replay {i}: {exc}")
+            return VerifyResult(False, i + 1, 0, len(fingerprints), f"replay {i}: {exc}")
     passed = fingerprints == {cassette.fingerprint}
     detail = (
         "all replays match the recorded fingerprint (bit-exact)"
