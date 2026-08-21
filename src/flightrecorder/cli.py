@@ -13,15 +13,20 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
 from .example_agent import make_example_run
 from .providers import PROVIDERS
 from .store import DEFAULT_DB, RunStore
+
+if TYPE_CHECKING:
+    from .boundary import Cassette
+    from .replay import VerifyResult
 
 app = typer.Typer(add_completion=False, help="Rewind — flight recorder for AI agents.")
 console = Console()
@@ -76,12 +81,24 @@ def _summarize_request(request: Any) -> str:
 
 @app.command()
 def record(
+    command: Annotated[
+        list[str] | None,
+        typer.Argument(
+            metavar="[-- python your_agent.py [ARGS]]",
+            help="record an unmodified agent (its LLM + tool HTTP calls); "
+            "omit to run the bundled example",
+        ),
+    ] = None,
     provider: Annotated[str, typer.Option(help="openai | nvidia | anthropic")] = "openai",
     model: Annotated[str | None, typer.Option(help="override the provider's default model")] = None,
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
 ) -> None:
-    """Record one live run of the bundled example agent."""
+    """Record a live run — an unmodified agent (``-- python agent.py``) or the bundled example."""
     _load_dotenv()
+    if command:
+        _record_command(command, provider=provider, model=model or "", db=db)
+        return
+
     if provider not in PROVIDERS:
         console.print(f"[red]unknown provider '{provider}'. choose from: {', '.join(PROVIDERS)}[/]")
         raise typer.Exit(2)
@@ -109,11 +126,50 @@ def record(
     store = RunStore(db)
     run_id = store.save(cassette)
     store.close()
+    _print_recorded(run_id, cassette)
+
+
+def _record_command(argv: list[str], *, provider: str, model: str, db: str) -> None:
+    """Record an unmodified agent given as ``python agent.py [args]`` — captured at the httpx layer."""
+    import httpx
+
+    from .capture import capture
+    from .runner import encode_command, make_runner
+
+    try:
+        run = make_runner(argv)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(2) from exc
+
+    console.print(
+        f"recording [bold]{' '.join(argv)}[/] — capturing every LLM + tool HTTP call it makes …\n"
+    )
+    store = RunStore(db)
+    try:
+        with capture(store, provider=provider, model=model, command=encode_command(argv)) as cap:
+            run()
+    except httpx.HTTPError as exc:
+        console.print(f"\n[red]the agent's HTTP call failed while recording: {exc}[/]")
+        raise typer.Exit(1) from exc
+    finally:
+        store.close()
+
+    if cap.cassette is None or cap.run_id is None:  # pragma: no cover - defensive
+        console.print("[red]nothing was recorded.[/]")
+        raise typer.Exit(1)
+    if not cap.cassette.boundaries:
+        console.print("[yellow]recorded 0 boundaries — the agent made no httpx calls.[/]")
+    console.print()
+    _print_recorded(cap.run_id, cap.cassette)
+
+
+def _print_recorded(run_id: str, cassette: Cassette) -> None:
+    """Shared 'recorded' summary for both the bundled agent and a captured command."""
     console.print(
         f"[green]recorded[/] {len(cassette.boundaries)} boundaries → run [bold]{run_id}[/]"
     )
     console.print(f"fingerprint : {cassette.fingerprint[:16]}…")
-    console.print(f"output      : {cassette.final_output}")
     console.print(f"\nnext: [bold]fr show {run_id}[/]  ·  [bold]fr verify {run_id} --n 50[/]")
 
 
@@ -152,8 +208,6 @@ def verify(
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
 ) -> None:
     """Replay a recorded run N times and prove it is bit-exact (zero API calls)."""
-    from .replay import verify as do_verify
-
     store = RunStore(db)
     try:
         cassette = store.load(run_id)
@@ -163,19 +217,53 @@ def verify(
     finally:
         store.close()
 
-    if cassette.provider not in PROVIDERS:
-        console.print(
-            f"[red]run {run_id} was recorded with unknown provider "
-            f"'{cassette.provider}' — cannot rebuild the agent to replay it.[/]"
-        )
-        raise typer.Exit(2)
-    prov = PROVIDERS[cassette.provider]
-    run = make_example_run(prov, cassette.model or None, api_key="replay-needs-no-key")
-    console.print(f"replaying run [bold]{run_id}[/] {n}x offline (network kill-switch on) ...")
-    result = do_verify(cassette, run, n=n)
-    style = "green" if result.passed else "red"
-    console.print(f"[{style}]{result}[/]")
+    console.print(
+        f"replaying run [bold]{run_id}[/] {n}x offline — "
+        "[bold]network kill-switch ON[/], zero API calls …\n"
+    )
+    if cassette.command:
+        # An arbitrary agent captured via `fr record -- …`: re-run its own code in replay mode.
+        # Silence the agent's own stdout across the N replays so only the verdict shows.
+        import contextlib
+        import io
+
+        from .capture import verify_run
+        from .runner import decode_command, make_runner
+
+        run = make_runner(decode_command(cassette.command))
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = verify_run(cassette, run, n=n)
+    else:
+        # The bundled example agent: rebuild it from the recorded provider/model.
+        from .replay import verify as do_verify
+
+        if cassette.provider not in PROVIDERS:
+            console.print(
+                f"[red]run {run_id} was recorded with unknown provider "
+                f"'{cassette.provider}' — cannot rebuild the agent to replay it.[/]"
+            )
+            raise typer.Exit(2)
+        prov = PROVIDERS[cassette.provider]
+        example = make_example_run(prov, cassette.model or None, api_key="replay-needs-no-key")
+        result = do_verify(cassette, example, n=n)
+
+    _print_verdict(result, run_id, len(cassette.boundaries))
     raise typer.Exit(0 if result.passed else 1)
+
+
+def _print_verdict(result: VerifyResult, run_id: str, n_boundaries: int) -> None:
+    """A projector-friendly PASS/FAIL banner — the moment that lands the demo."""
+    if result.passed:
+        body = (
+            f"[bold green]✓ BIT-EXACT[/]   {result.runs}/{result.runs} replays identical\n"
+            "[green]🔌 network kill-switch ON — 0 outbound calls[/]\n"
+            f"[dim]{n_boundaries} boundaries · distinct fingerprints: "
+            f"{result.unique_fingerprints} (expected 1)[/]"
+        )
+        console.print(Panel(body, title=f"run {run_id}", border_style="green", expand=False))
+    else:
+        body = f"[bold red]✗ DIVERGED[/]\n{result.detail}"
+        console.print(Panel(body, title=f"run {run_id}", border_style="red", expand=False))
 
 
 @app.command()
