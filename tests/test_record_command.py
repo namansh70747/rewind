@@ -9,7 +9,7 @@ replays bit-exact offline — the stub is never touched again on replay (kill-sw
 from __future__ import annotations
 
 import textwrap
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import pytest
@@ -52,7 +52,9 @@ def _stub_network(monkeypatch: pytest.MonkeyPatch) -> None:
     def handle(self: httpx.HTTPTransport, request: httpx.Request) -> httpx.Response:
         url = str(request.url)
         if "geo" in url:
-            body: dict = {"results": [{"latitude": 28.6, "longitude": 77.2, "name": "Delhi"}]}
+            body: dict[str, Any] = {
+                "results": [{"latitude": 28.6, "longitude": 77.2, "name": "Delhi"}]
+            }
         elif "wx" in url:
             body = {"current": {"temperature_2m": 31.4, "precipitation": 0.0}}
         else:
