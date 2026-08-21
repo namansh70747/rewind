@@ -6,6 +6,7 @@ with zero API calls. This is the Phase-0 walking skeleton; the public surface wi
 
 from __future__ import annotations
 
+from .bisect import BisectResult, first_divergence
 from .boundary import Boundary, Cassette, Divergence, Session
 from .capture import Capture, capture, replay_run, verify_run
 from .redaction import redact, redact_text
@@ -14,6 +15,7 @@ from .store import RunStore, RunSummary
 
 __version__ = "0.0.0"
 __all__ = [
+    "BisectResult",
     "Boundary",
     "Capture",
     "Cassette",
@@ -24,6 +26,7 @@ __all__ = [
     "VerifyResult",
     "__version__",
     "capture",
+    "first_divergence",
     "record",
     "redact",
     "redact_text",

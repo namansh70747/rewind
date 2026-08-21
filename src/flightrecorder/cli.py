@@ -59,6 +59,21 @@ def _summarize(kind: str, response: Any) -> str:
     return f"[{status}] {' '.join(str(text).split())[:70]}"
 
 
+def _summarize_request(request: Any) -> str:
+    """One-line summary of a boundary's request (the last user message for an LLM call)."""
+    if not isinstance(request, dict):
+        return "" if request is None else str(request)[:70]
+    body = request.get("body")
+    data = body.get("json") if isinstance(body, dict) else None
+    if isinstance(data, dict):
+        messages = data.get("messages")
+        if isinstance(messages, list) and messages:
+            last = messages[-1]
+            if isinstance(last, dict) and "content" in last:
+                return " ".join(str(last["content"]).split())[:70]
+    return " ".join(str(request.get("url", request)).split())[:70]
+
+
 @app.command()
 def record(
     provider: Annotated[str, typer.Option(help="openai | nvidia | anthropic")] = "openai",
@@ -180,6 +195,53 @@ def runs(db: Annotated[str, typer.Option(help="path to the run store")] = DEFAUL
     for s in summaries:
         table.add_row(s.id, f"{s.provider}/{s.model}", str(s.n_boundaries), s.created_at)
     console.print(table)
+
+
+@app.command()
+def bisect(
+    run_a: str,
+    run_b: str,
+    db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+) -> None:
+    """Find the first diverging decision between two recorded runs (e.g. a good vs bad run)."""
+    from .bisect import first_divergence
+
+    store = RunStore(db)
+    try:
+        cassette_a = store.load(run_a)
+        cassette_b = store.load(run_b)
+    except KeyError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from None
+    finally:
+        store.close()
+
+    result = first_divergence(cassette_a, cassette_b)
+    if not result.diverged:
+        console.print("[green]no divergence — the two runs are identical[/]")
+        return
+
+    console.print(f"[bold red]first divergence at boundary #{result.index}[/]  {result.reason}")
+    if result.a is not None or result.b is not None:
+        table = Table(show_header=True)
+        table.add_column("run", style="bold")
+        table.add_column("boundary", style="cyan")
+        table.add_column("request")
+        table.add_column("response")
+        # Render each side independently so a length divergence (only one side has the extra
+        # boundary) still shows the lone step, and the request side makes an input diff obvious.
+        for name, boundary in ((run_a, result.a), (run_b, result.b)):
+            if boundary is None:
+                table.add_row(name, "[dim](no boundary — run ended here)[/]", "", "")
+            else:
+                table.add_row(
+                    name,
+                    f"{boundary.kind}:{boundary.key}",
+                    _summarize_request(boundary.request),
+                    _summarize(boundary.kind, boundary.response),
+                )
+        console.print(table)
+    raise typer.Exit(1)  # diverged -> non-zero, useful as a CI gate
 
 
 if __name__ == "__main__":
