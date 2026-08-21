@@ -72,6 +72,27 @@ class Boundary:
     request: Any
     response: Any
     chain_hash: str = ""
+    #: 0-based count of prior boundaries sharing this ``(kind, key)`` — the *occurrence index*
+    #: (algorithms-and-math §2). It is what makes loops and retries (repeated calls to the same
+    #: endpoint) replay in the right order: call #0, then #1, … Derived from position, so it is
+    #: recomputed on load rather than stored, and is not part of the hash-chain.
+    occurrence: int = 0
+
+
+def _occurrence_key(kind: str, key: str) -> str:
+    """The identity a boundary's occurrence index counts against (NUL-joined to avoid collisions)."""
+    return f"{kind}\x00{key}"
+
+
+def occurrences(boundaries: list[Boundary]) -> list[int]:
+    """The occurrence index of each boundary in order — the Nth time its ``(kind, key)`` appears."""
+    counts: dict[str, int] = {}
+    result: list[int] = []
+    for b in boundaries:
+        k = _occurrence_key(b.kind, b.key)
+        result.append(counts.get(k, 0))
+        counts[k] = counts.get(k, 0) + 1
+    return result
 
 
 @dataclass
@@ -95,16 +116,21 @@ class Session:
         self._cursor = 0
         self.chain = GENESIS
         self._in_flight = False  # guards against concurrent (asyncio.gather) boundaries
+        self._live_counts: dict[str, int] = {}  # occurrence index of each (kind, key) so far
+        self._rec_occurrences = occurrences(self._recorded)  # expected index at each position
 
     def mediate(self, kind: str, key: str, request: Any, produce: Callable[[], Any]) -> Any:
         """The one method every boundary goes through."""
         req_bytes = canon([kind, key, request])
+        occ_key = _occurrence_key(kind, key)
+        occurrence = self._live_counts.get(occ_key, 0)
         if self.mode == "record":
             response = produce()
             self.chain = chain_link(self.chain, req_bytes, canon(response))
             self.boundaries.append(
-                Boundary(len(self.boundaries), kind, key, request, response, self.chain)
+                Boundary(len(self.boundaries), kind, key, request, response, self.chain, occurrence)
             )
+            self._live_counts[occ_key] = occurrence + 1
             return response
 
         seq = self._cursor
@@ -121,9 +147,17 @@ class Session:
                 f"input diverged — live {kind}/{key} does not match recorded "
                 f"{rec.kind}/{rec.key} (uncaptured nondeterminism or a code change)",
             )
+        if occurrence != self._rec_occurrences[seq]:
+            raise Divergence(
+                seq,
+                f"occurrence mismatch — live {kind}/{key} is call #{occurrence}, but the "
+                f"recording expected call #{self._rec_occurrences[seq]} here "
+                "(a loop or retry ran a different number of times)",
+            )
         self.chain = chain_link(self.chain, req_bytes, canon(rec.response))
         if self.chain != rec.chain_hash:
             raise Divergence(seq, "hash-chain mismatch — the recording was tampered or corrupted")
+        self._live_counts[occ_key] = occurrence + 1
         self._cursor += 1
         return rec.response
 

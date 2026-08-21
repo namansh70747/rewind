@@ -52,5 +52,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   output* (the decision diverged) vs *different input → different output* (upstream cause).
   Step-aligned (assumes a shared prefix); sequence alignment for insert/delete is a later
   phase. Advances the auto-bisect pillar (roadmap M4).
+- **Multi-provider + loops/retries (occurrence index)** — toward the M2 gate:
+  - **Anthropic** records & replays bit-exact through the same httpx transport as OpenAI
+    (only request shaping / response parsing differ, in `providers.py`); proven for both
+    dialects (`Bearer` + `choices[].message` vs `x-api-key` + `content[].text`).
+  - **Occurrence index** (`Boundary.occurrence`, algorithms-and-math §2): each boundary
+    records the Nth time its `(kind, key)` appeared, so **loops and retries** — repeated
+    calls to the same endpoint — replay in the exact recorded order. A retry that fails then
+    succeeds replays its recorded failures **in order**; a run that reaches an endpoint a
+    different number of times now fails loud with an occurrence-mismatch divergence. Derived
+    from position (recomputed on load, not stored, not in the hash-chain), and surfaced in
+    `fr show` as `·#1`, `·#2` on repeats. Env/config capture is deferred to a later slice.
 
 [Unreleased]: https://github.com/namansh70747/rewind/commits/main
