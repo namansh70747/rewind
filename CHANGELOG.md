@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     than the ADR-0003 / roadmap target of BLAKE3 + zstd, to keep the skeleton
     dependency-free. The on-disk format is frozen later (~Week 8); early recordings may
     need migration on the switch.
+- **Global capture of an unmodified agent** (`flightrecorder.capture`): `with capture(store)
+  as cap: …` records any code that uses plain `httpx` — no `flightrecorder` imports in the
+  agent — by wrapping `httpx.Client`'s transport for the duration of the block; `verify_run`
+  replays it bit-exact offline. Scope: synchronous `httpx.Client`, HTTP boundary only for
+  now (non-HTTP nondeterminism is flagged by the oracle rather than silently mis-replayed);
+  global clock/uuid/rng shims, async, and a `fr record -- python agent.py` wrapper follow.
+  Advances #16.
 - **Redaction-on-write** (`flightrecorder.redaction`): secrets/PII (API keys, tokens,
   JWTs, emails) are scrubbed from request URLs/bodies and responses **at capture time**,
   so the raw values never reach the boundary log or the store. Redaction is deterministic,
