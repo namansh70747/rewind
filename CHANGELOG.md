@@ -29,10 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Global capture of an unmodified agent** (`flightrecorder.capture`): `with capture(store)
   as cap: …` records any code that uses plain `httpx` — no `flightrecorder` imports in the
   agent — by wrapping `httpx.Client`'s transport for the duration of the block; `verify_run`
-  replays it bit-exact offline. Scope: synchronous `httpx.Client`, HTTP boundary only for
-  now (non-HTTP nondeterminism is flagged by the oracle rather than silently mis-replayed);
-  global clock/uuid/rng shims, async, and a `fr record -- python agent.py` wrapper follow.
-  Advances #16.
+  replays it bit-exact offline. Covers `httpx.Client` **and** `httpx.AsyncClient` (base
+  transport + proxy `_mounts`); async agents are driven/replayed with `asyncio.run(...)`.
+  Scope: HTTP boundary only for now, and **serialized** — concurrent boundaries
+  (`asyncio.gather` of HTTP calls) are detected and fail loud rather than corrupt the
+  hash-chain. Non-HTTP nondeterminism is flagged by the oracle rather than silently
+  mis-replayed; global clock/uuid/rng shims, concurrent replay, and a
+  `fr record -- python agent.py` wrapper follow. Advances #16.
 - **Redaction-on-write** (`flightrecorder.redaction`): secrets/PII (API keys, tokens,
   JWTs, emails) are scrubbed from request URLs/bodies and responses **at capture time**,
   so the raw values never reach the boundary log or the store. Redaction is deterministic,

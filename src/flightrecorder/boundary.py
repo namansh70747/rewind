@@ -28,12 +28,16 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
 
 Mode = Literal["record", "replay"]
 
 #: 32 zero bytes, hex-encoded — the genesis link of every run's hash-chain.
 GENESIS = "00" * 32
+
+
+def _unreachable() -> Any:  # pragma: no cover - only wired into the replay path, never called
+    raise RuntimeError("boundary producer must not run during replay")
 
 
 class Divergence(Exception):
@@ -90,6 +94,7 @@ class Session:
         self._recorded: list[Boundary] = cassette.boundaries if cassette else []
         self._cursor = 0
         self.chain = GENESIS
+        self._in_flight = False  # guards against concurrent (asyncio.gather) boundaries
 
     def mediate(self, kind: str, key: str, request: Any, produce: Callable[[], Any]) -> Any:
         """The one method every boundary goes through."""
@@ -121,6 +126,34 @@ class Session:
             raise Divergence(seq, "hash-chain mismatch — the recording was tampered or corrupted")
         self._cursor += 1
         return rec.response
+
+    async def mediate_async(
+        self, kind: str, key: str, request: Any, aproduce: Callable[[], Awaitable[Any]]
+    ) -> Any:
+        """Async variant of :meth:`mediate` — awaits the producer, but only in record mode.
+
+        In replay mode the producer is never awaited (network kill-switch); the recorded
+        value is served exactly as in the synchronous path.
+
+        Concurrency (v1 = serialized): a ``Session`` mutates a single hash-chain and cursor,
+        so two boundaries in flight at once (e.g. ``asyncio.gather`` of HTTP calls) would
+        corrupt the recording. We detect that and **fail loud** rather than silently
+        mis-record. Serialize such agents, or await calls one at a time, for now.
+        """
+        if self.mode != "record":
+            return self.mediate(kind, key, request, _unreachable)
+        if self._in_flight:
+            raise Divergence(
+                len(self.boundaries),
+                "concurrent boundary detected — v1 capture is serialized-only; "
+                "avoid asyncio.gather of HTTP calls (concurrent replay is a later phase)",
+            )
+        self._in_flight = True
+        try:
+            value = await aproduce()
+        finally:
+            self._in_flight = False
+        return self.mediate(kind, key, request, lambda: value)
 
     def assert_fully_consumed(self) -> None:
         """After replay, unread recorded boundaries mean the run ended early (a divergence)."""
