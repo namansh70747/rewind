@@ -139,7 +139,9 @@ def show(
     table.add_column("value")
     table.add_column("chain", style="dim")
     for b in cassette.boundaries:
-        table.add_row(str(b.seq), b.kind, b.key, _summarize(b.kind, b.response), b.chain_hash[:8])
+        # Show the occurrence index on repeats so loops/retries are visible in the timeline.
+        key = b.key if b.occurrence == 0 else f"{b.key} [dim]·#{b.occurrence}[/]"
+        table.add_row(str(b.seq), b.kind, key, _summarize(b.kind, b.response), b.chain_hash[:8])
     console.print(table)
     console.print(f"fingerprint: [bold]{cassette.fingerprint[:16]}…[/]")
     console.print(f"output: {cassette.final_output}")

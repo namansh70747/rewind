@@ -23,7 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .boundary import Boundary, Cassette, canon
+from .boundary import Boundary, Cassette, canon, occurrences
 
 DEFAULT_DB = ".rewind/runs.db"
 
@@ -129,6 +129,9 @@ class RunStore:
             Boundary(seq, kind, key, self._get_blob(rq), self._get_blob(rs), ch)
             for (seq, kind, key, rq, rs, ch) in rows
         ]
+        # Occurrence index is derived from order, not stored — recompute it for display/replay.
+        for boundary, occ in zip(boundaries, occurrences(boundaries), strict=True):
+            boundary.occurrence = occ
         return Cassette(
             boundaries=boundaries,
             fingerprint=meta[0],
