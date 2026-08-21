@@ -36,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   hash-chain. Non-HTTP nondeterminism is flagged by the oracle rather than silently
   mis-replayed; global clock/uuid/rng shims, concurrent replay, and a
   `fr record -- python agent.py` wrapper follow. Advances #16.
+- **Streaming (SSE) capture & replay**: streamed responses are recorded as their decoded
+  chunk sequence (plus `content-type`), so a `client.stream(...)` agent that parses
+  Server-Sent Events reproduces bit-exact on replay — sync and async. The chunk fields are
+  additive (single-chunk responses are unchanged). Response headers beyond `content-type`
+  are still not captured.
 - **Redaction-on-write** (`flightrecorder.redaction`): secrets/PII (API keys, tokens,
   JWTs, emails) are scrubbed from request URLs/bodies and responses **at capture time**,
   so the raw values never reach the boundary log or the store. Redaction is deterministic,
