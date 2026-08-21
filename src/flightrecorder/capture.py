@@ -133,7 +133,7 @@ class Capture:
 
 @contextlib.contextmanager
 def capture(
-    store: RunStore | None = None, *, provider: str = "", model: str = ""
+    store: RunStore | None = None, *, provider: str = "", model: str = "", command: str = ""
 ) -> Iterator[Capture]:
     """Record every ``httpx`` call made by unmodified code inside the block."""
     session = Session("record")
@@ -146,6 +146,7 @@ def capture(
         final_output="",
         provider=provider,
         model=model,
+        command=command,
     )
     if store is not None:
         handle.run_id = store.save(handle.cassette)

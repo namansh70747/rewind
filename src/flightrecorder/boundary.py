@@ -83,6 +83,9 @@ class Cassette:
     final_output: str = ""
     provider: str = ""
     model: str = ""
+    #: argv of an agent captured via ``fr record -- <cmd>``, so ``verify`` can re-run it
+    #: (JSON list); empty for the bundled example agent, which ``verify`` rebuilds directly.
+    command: str = ""
 
 
 class Session:

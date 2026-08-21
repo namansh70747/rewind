@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS run (
     provider      TEXT NOT NULL,
     model         TEXT NOT NULL,
     created_at    TEXT NOT NULL,
-    n_boundaries  INTEGER NOT NULL
+    n_boundaries  INTEGER NOT NULL,
+    command       TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS boundary (
     run_id      TEXT NOT NULL,
@@ -73,6 +74,14 @@ class RunStore:
         self.conn = sqlite3.connect(self.path)
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.executescript(_SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Additive migrations for DBs created before a column existed (format not yet frozen)."""
+        columns = {row[1] for row in self.conn.execute("PRAGMA table_info(run)")}
+        if "command" not in columns:
+            self.conn.execute("ALTER TABLE run ADD COLUMN command TEXT NOT NULL DEFAULT ''")
+            self.conn.commit()
 
     def _put_blob(self, obj: Any) -> str:
         raw = canon(obj)
@@ -100,7 +109,7 @@ class RunStore:
                 (run_id, b.seq, b.kind, b.key, req_hash, resp_hash, b.chain_hash),
             )
         self.conn.execute(
-            "INSERT INTO run VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO run VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 run_id,
                 cassette.fingerprint,
@@ -109,6 +118,7 @@ class RunStore:
                 cassette.model,
                 created_at,
                 len(cassette.boundaries),
+                cassette.command,
             ),
         )
         self.conn.commit()
@@ -116,7 +126,8 @@ class RunStore:
 
     def load(self, run_id: str) -> Cassette:
         meta = self.conn.execute(
-            "SELECT fingerprint, final_output, provider, model FROM run WHERE id = ?", (run_id,)
+            "SELECT fingerprint, final_output, provider, model, command FROM run WHERE id = ?",
+            (run_id,),
         ).fetchone()
         if meta is None:
             raise KeyError(f"run {run_id} not found")
@@ -135,6 +146,7 @@ class RunStore:
             final_output=meta[1],
             provider=meta[2],
             model=meta[3],
+            command=meta[4],
         )
 
     def list_runs(self) -> list[RunSummary]:

@@ -94,7 +94,7 @@ def test_cli_show_verify_runs(tmp_path: Path) -> None:
 
     r_verify = runner.invoke(app, ["verify", run_id, "--n", "10", "--db", db])
     assert r_verify.exit_code == 0, r_verify.output
-    assert "PASS" in r_verify.output
+    assert "BIT-EXACT" in r_verify.output
 
     r_runs = runner.invoke(app, ["runs", "--db", db])
     assert r_runs.exit_code == 0, r_runs.output

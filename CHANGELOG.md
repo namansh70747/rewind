@@ -52,5 +52,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   output* (the decision diverged) vs *different input → different output* (upstream cause).
   Step-aligned (assumes a shared prefix); sequence alignment for insert/delete is a later
   phase. Advances the auto-bisect pillar (roadmap M4).
+- **`fr record -- python your_agent.py [args]`**: record an *unmodified* agent — one that
+  uses plain `httpx` and knows nothing about Rewind — with zero code changes. The agent runs
+  in-process (via `runpy`) so its LLM **and** tool HTTP calls are captured; the command is
+  stored on the cassette so `fr verify` re-runs the same agent bit-exact, offline. Ships a
+  real multi-tool example (`examples/weather_agent.py`: geocode → forecast → LLM) and a
+  projector-friendly `verify` verdict. Advances the Phase-1 "capture any agent" line; a
+  general (non-Python) subprocess wrapper is a later phase.
 
 [Unreleased]: https://github.com/namansh70747/rewind/commits/main
