@@ -130,3 +130,6 @@ blobs/
 *.parquet
 lancedb/
 models/
+
+# Spike/run artifacts (recordings may contain data; never commit)
+*.cassette.json
