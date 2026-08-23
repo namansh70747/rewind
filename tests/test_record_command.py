@@ -9,16 +9,20 @@ replays bit-exact offline — the stub is never touched again on replay (kill-sw
 from __future__ import annotations
 
 import textwrap
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
 
 from flightrecorder import RunStore, capture, verify_run
-from flightrecorder.runner import decode_command, encode_command, make_runner, parse_command
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from flightrecorder.runner import (
+    canonicalize_command,
+    decode_command,
+    encode_command,
+    make_runner,
+    parse_command,
+)
 
 _AGENT_SRC = """
 import sys
@@ -80,7 +84,7 @@ def test_record_and_replay_unmodified_agent_script(
 
     # The command round-trips through the store so `verify` can re-run the agent.
     loaded = store.load(cap.run_id)
-    assert decode_command(loaded.command) == argv
+    assert decode_command(loaded.command) == canonicalize_command(argv)
 
     # Replay 20x bit-exact, offline — the stub is never called again (kill-switch on).
     result = verify_run(loaded, make_runner(decode_command(loaded.command)), n=20)
@@ -91,10 +95,34 @@ def test_record_and_replay_unmodified_agent_script(
 
 def test_parse_command_forms(tmp_path: Path) -> None:
     script = _write_agent(tmp_path)
-    assert parse_command(["python", script, "Delhi"]) == (script, [script, "Delhi"])
-    assert parse_command(["python3", script]) == (script, [script])
-    assert parse_command([script]) == (script, [script])
+    abs_script = str(Path(script).resolve())
+    assert parse_command(["python", script, "Delhi"]) == (abs_script, [abs_script, "Delhi"])
+    assert parse_command(["python3", script]) == (abs_script, [abs_script])
+    assert parse_command([script]) == (abs_script, [abs_script])
     with pytest.raises(ValueError, match="Python script"):
         parse_command(["ls", "-la"])
     with pytest.raises(ValueError, match="not found"):
         parse_command(["python", str(tmp_path / "nope.py")])
+
+
+def test_command_survives_chdir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Relative argv at record time must still verify after the shell cwd changes."""
+    _stub_network(monkeypatch)
+    script = _write_agent(tmp_path)
+    argv = ["python", script, "Delhi"]
+    stored = canonicalize_command(argv)
+    assert Path(stored[1]).is_absolute()
+
+    store = RunStore(tmp_path / "runs.db")
+    with capture(store, provider="nvidia", model="m", command=encode_command(argv)) as cap:
+        make_runner(argv)()
+    assert cap.run_id is not None
+    loaded = store.load(cap.run_id)
+    assert Path(decode_command(loaded.command)[1]).is_absolute()
+
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    result = verify_run(loaded, make_runner(decode_command(loaded.command)), n=5)
+    assert result.passed, result.detail
+    store.close()
