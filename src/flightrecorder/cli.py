@@ -1,9 +1,11 @@
-"""The ``fr`` command-line interface — the Phase-0 walking-skeleton surface.
+"""The ``fr`` command-line interface.
 
-    fr record --provider nvidia          # record the example agent -> a run id
-    fr show <run_id>                     # scrub the decision timeline
-    fr verify <run_id> --n 50            # replay bit-exact, offline, zero API calls
-    fr runs                              # list recorded runs
+    fr record --provider nvidia                    # bundled example agent
+    fr record --provider nvidia -- python agent.py # unmodified agent (Phase 1)
+    fr show <run_id>                               # decision timeline
+    fr verify <run_id> --n 50                      # bit-exact replay, offline
+    fr runs                                        # list recorded runs
+    fr bisect <run_a> <run_b>                      # first diverging decision
 
 The API key is read from the environment or a git-ignored ``.env`` file.
 """
@@ -89,20 +91,27 @@ def record(
             "omit to run the bundled example",
         ),
     ] = None,
-    provider: Annotated[str, typer.Option(help="openai | nvidia | anthropic")] = "openai",
+    provider: Annotated[
+        str | None,
+        typer.Option(help="openai | nvidia | anthropic (required for the bundled example)"),
+    ] = None,
     model: Annotated[str | None, typer.Option(help="override the provider's default model")] = None,
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
 ) -> None:
     """Record a live run — an unmodified agent (``-- python agent.py``) or the bundled example."""
     _load_dotenv()
     if command:
-        _record_command(command, provider=provider, model=model or "", db=db)
+        # Unmodified agents pick their own HTTP endpoints; do not invent a provider label.
+        _record_command(command, provider=provider or "", model=model or "", db=db)
         return
 
-    if provider not in PROVIDERS:
-        console.print(f"[red]unknown provider '{provider}'. choose from: {', '.join(PROVIDERS)}[/]")
+    resolved_provider = provider or "openai"
+    if resolved_provider not in PROVIDERS:
+        console.print(
+            f"[red]unknown provider '{resolved_provider}'. choose from: {', '.join(PROVIDERS)}[/]"
+        )
         raise typer.Exit(2)
-    prov = PROVIDERS[provider]
+    prov = PROVIDERS[resolved_provider]
     api_key = os.environ.get(prov.key_env, "")
     if not api_key:
         console.print(f"[red]set {prov.key_env} (env or .env) to record a live {prov.name} run.[/]")
@@ -134,20 +143,22 @@ def _record_command(argv: list[str], *, provider: str, model: str, db: str) -> N
     import httpx
 
     from .capture import capture
-    from .runner import encode_command, make_runner
+    from .runner import canonicalize_command, encode_command, make_runner
 
     try:
-        run = make_runner(argv)
+        stored_argv = canonicalize_command(argv)
+        run = make_runner(stored_argv)
     except ValueError as exc:
         console.print(f"[red]{exc}[/]")
         raise typer.Exit(2) from exc
 
-    console.print(
-        f"recording [bold]{' '.join(argv)}[/] — capturing every LLM + tool HTTP call it makes …\n"
-    )
+    console.print(f"recording [bold]{' '.join(stored_argv)}[/]")
+    console.print("capturing every httpx call the agent makes (LLM + tools)\n")
     store = RunStore(db)
     try:
-        with capture(store, provider=provider, model=model, command=encode_command(argv)) as cap:
+        with capture(
+            store, provider=provider, model=model, command=encode_command(stored_argv)
+        ) as cap:
             run()
     except httpx.HTTPError as exc:
         console.print(f"\n[red]the agent's HTTP call failed while recording: {exc}[/]")
@@ -160,16 +171,27 @@ def _record_command(argv: list[str], *, provider: str, model: str, db: str) -> N
         raise typer.Exit(1)
     if not cap.cassette.boundaries:
         console.print("[yellow]recorded 0 boundaries — the agent made no httpx calls.[/]")
-    console.print()
+    else:
+        kinds = _boundary_kind_summary(cap.cassette)
+        console.print(f"\ncaptured [bold]{len(cap.cassette.boundaries)}[/] boundaries ({kinds})")
     _print_recorded(cap.run_id, cap.cassette)
+
+
+def _boundary_kind_summary(cassette: Cassette) -> str:
+    """Human summary of boundary kinds from the real cassette (not hard-coded)."""
+    counts: dict[str, int] = {}
+    for b in cassette.boundaries:
+        counts[b.kind] = counts.get(b.kind, 0) + 1
+    return ", ".join(f"{n} {kind}" for kind, n in counts.items())
 
 
 def _print_recorded(run_id: str, cassette: Cassette) -> None:
     """Shared 'recorded' summary for both the bundled agent and a captured command."""
-    console.print(
-        f"[green]recorded[/] {len(cassette.boundaries)} boundaries → run [bold]{run_id}[/]"
-    )
+    console.print(f"[green]recorded[/] → run [bold]{run_id}[/]")
     console.print(f"fingerprint : {cassette.fingerprint[:16]}…")
+    if cassette.provider or cassette.model:
+        label = "/".join(p for p in (cassette.provider, cassette.model) if p)
+        console.print(f"label       : {label}")
     console.print(f"\nnext: [bold]fr show {run_id}[/]  ·  [bold]fr verify {run_id} --n 50[/]")
 
 
@@ -188,7 +210,10 @@ def show(
     finally:
         store.close()
 
-    table = Table(title=f"run {run_id}  ·  {cassette.provider}/{cassette.model}", show_lines=False)
+    title = f"run {run_id}"
+    if cassette.provider or cassette.model:
+        title += f"  ·  {'/'.join(p for p in (cassette.provider, cassette.model) if p)}"
+    table = Table(title=title, show_lines=False)
     table.add_column("#", justify="right", style="dim")
     table.add_column("boundary", style="cyan")
     table.add_column("key")
@@ -198,7 +223,13 @@ def show(
         table.add_row(str(b.seq), b.kind, b.key, _summarize(b.kind, b.response), b.chain_hash[:8])
     console.print(table)
     console.print(f"fingerprint: [bold]{cassette.fingerprint[:16]}…[/]")
-    console.print(f"output: {cassette.final_output}")
+    if cassette.command:
+        from .runner import decode_command
+
+        console.print(f"command: {' '.join(decode_command(cassette.command))}")
+    if cassette.final_output:
+        console.print(f"output: {cassette.final_output}")
+    console.print(f"boundaries: {len(cassette.boundaries)} ({_boundary_kind_summary(cassette)})")
 
 
 @app.command()
@@ -217,10 +248,7 @@ def verify(
     finally:
         store.close()
 
-    console.print(
-        f"replaying run [bold]{run_id}[/] {n}x offline — "
-        "[bold]network kill-switch ON[/], zero API calls …\n"
-    )
+    console.print(f"replaying run [bold]{run_id}[/] · {n}x · network kill-switch on\n")
     if cassette.command:
         # An arbitrary agent captured via `fr record -- …`: re-run its own code in replay mode.
         # Silence the agent's own stdout across the N replays so only the verdict shows.
@@ -230,7 +258,11 @@ def verify(
         from .capture import verify_run
         from .runner import decode_command, make_runner
 
-        run = make_runner(decode_command(cassette.command))
+        try:
+            run = make_runner(decode_command(cassette.command))
+        except ValueError as exc:
+            console.print(f"[red]cannot replay this run: {exc}[/]")
+            raise typer.Exit(2) from None
         with contextlib.redirect_stdout(io.StringIO()):
             result = verify_run(cassette, run, n=n)
     else:
@@ -252,17 +284,17 @@ def verify(
 
 
 def _print_verdict(result: VerifyResult, run_id: str, n_boundaries: int) -> None:
-    """A projector-friendly PASS/FAIL banner — the moment that lands the demo."""
+    """PASS/FAIL banner for humans — numbers come from the verify result, not copy."""
     if result.passed:
         body = (
-            f"[bold green]✓ BIT-EXACT[/]   {result.runs}/{result.runs} replays identical\n"
-            "[green]🔌 network kill-switch ON — 0 outbound calls[/]\n"
-            f"[dim]{n_boundaries} boundaries · distinct fingerprints: "
-            f"{result.unique_fingerprints} (expected 1)[/]"
+            f"[bold green]BIT-EXACT[/]  {result.runs}/{result.runs} replays identical\n"
+            "network kill-switch on — 0 outbound calls\n"
+            f"{n_boundaries} boundaries · "
+            f"distinct fingerprints: {result.unique_fingerprints} (expected 1)"
         )
         console.print(Panel(body, title=f"run {run_id}", border_style="green", expand=False))
     else:
-        body = f"[bold red]✗ DIVERGED[/]\n{result.detail}"
+        body = f"[bold red]DIVERGED[/] after {result.runs} replay(s)\n{result.detail}"
         console.print(Panel(body, title=f"run {run_id}", border_style="red", expand=False))
 
 

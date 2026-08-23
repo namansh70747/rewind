@@ -2,7 +2,8 @@
 
 A 3-minute live demonstration: record a **real, unmodified** AI agent making live API calls,
 then replay it **bit-for-bit with the wifi off**. No incumbent (Langfuse, LangSmith, Arize)
-can do this — they only show a static log; Rewind *re-executes* the run.
+can do this — they only show a static log; Rewind **replays the recorded decisions**
+(playback of captured HTTP answers, not model re-execution).
 
 Everything here is real: real geocoding + weather APIs, a real LLM, real sampling. Nothing is
 pre-scripted or faked.
@@ -18,6 +19,9 @@ echo 'NVIDIA_API_KEY=nvapi-...' > .env    # a free NVIDIA NIM key (git-ignored)
 uv run fr --help                          # sanity check
 ```
 
+Record from the **repo root** so paths stay stable. The script path is stored absolute on the
+cassette, so `fr verify` still finds it if you open a new shell later.
+
 The example agent (`examples/weather_agent.py`) is a normal tool-using agent: it geocodes a
 city, fetches live weather, and asks an LLM for one line of umbrella advice — three real
 network calls, and it has **no idea Rewind exists**.
@@ -29,8 +33,12 @@ network calls, and it has **no idea Rewind exists**.
 ### Act 1 — Record a real agent, live
 
 ```bash
-uv run fr record -- python examples/weather_agent.py "Delhi"
+uv run fr record --provider nvidia --model meta/llama-3.1-8b-instruct -- \
+  python examples/weather_agent.py "Delhi"
 ```
+
+(`--provider` / `--model` are labels for `fr show` / `fr runs` — the agent itself still
+talks to NVIDIA. Omit them if you prefer an unlabeled run.)
 
 It runs the agent for real — you'll see live weather and a real LLM sentence — and Rewind
 captures every step. Point out: *"I changed nothing in this agent. Rewind recorded it from
@@ -45,7 +53,7 @@ uv run fr show <run_id>
 The decision timeline: the geocode call, the weather call, and the LLM call, each with a
 hash-chain link. *"This is every nondeterministic thing the agent saw."*
 
-### Act 3 — The moment: replay it offline 🔌
+### Act 3 — The moment: replay it offline
 
 **Turn off the wifi.** Then:
 
@@ -55,8 +63,8 @@ uv run fr verify <run_id> --n 50
 
 ```
 ╭────────────────── run ac0e628f43e2 ──────────────────╮
-│ ✓ BIT-EXACT   50/50 replays identical                │
-│ 🔌 network kill-switch ON — 0 outbound calls         │
+│ BIT-EXACT  50/50 replays identical                   │
+│ network kill-switch on — 0 outbound calls            │
 │ 3 boundaries · distinct fingerprints: 1 (expected 1) │
 ╰──────────────────────────────────────────────────────╯
 ```
@@ -71,8 +79,8 @@ whole product in one command: *reproduction is the prerequisite for every fix.*
 Run the live agent **twice** (wifi on) — the LLM wording differs each time (real sampling):
 
 ```bash
-uv run fr record -- python examples/weather_agent.py "London"
-uv run fr record -- python examples/weather_agent.py "London"
+uv run fr record --provider nvidia -- python examples/weather_agent.py "London"
+uv run fr record --provider nvidia -- python examples/weather_agent.py "London"
 ```
 
 *"Live, it's different every run — that's why production agent bugs can't be reproduced.
