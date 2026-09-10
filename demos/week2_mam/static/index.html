@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=2" />
   </head>
   <body>
     <div class="grid-bg" aria-hidden="true"></div>
@@ -18,48 +18,93 @@
     <header class="topbar">
       <div class="brand-block">
         <p class="brand">Rewind</p>
-        <p class="product">Month 1 · Walking skeleton · M0 / M1</p>
+        <p class="product">Month 1 complete · Walking skeleton · Gates M0 / M1</p>
       </div>
       <p class="law" id="story-law">Loading engine…</p>
     </header>
 
     <main>
+      <section class="proof-strip" id="proof-strip" aria-label="Proven results">
+        <div class="proof-card">
+          <p class="proof-k">Bit-exact verify</p>
+          <p class="proof-v" id="strip-verify">…</p>
+        </div>
+        <div class="proof-card">
+          <p class="proof-k">Month 1</p>
+          <p class="proof-v ok" id="strip-month">…</p>
+        </div>
+        <div class="proof-card">
+          <p class="proof-k">Corpus faithfulness</p>
+          <p class="proof-v" id="strip-corpus">…</p>
+        </div>
+        <div class="proof-card">
+          <p class="proof-k">First wrong decision</p>
+          <p class="proof-v" id="strip-bisect">…</p>
+        </div>
+      </section>
+
       <section class="intro">
         <h1 id="story-title">Loading…</h1>
         <p id="story-task"></p>
-        <p class="fail-line" id="story-failure"></p>
+        <p class="ok-line" id="story-result"></p>
+        <p class="muted" id="story-debug"></p>
       </section>
 
       <section class="gate-row" id="gates" aria-label="Month 1 gates"></section>
-
       <section class="milestones" id="milestones" aria-label="Weeks 1 to 4"></section>
 
       <nav class="tabs" role="tablist" aria-label="Demo views">
-        <button class="tab is-on" data-act="live" type="button">Live agent</button>
-        <button class="tab" data-act="good" type="button">Good run</button>
-        <button class="tab" data-act="failed" type="button">Failed run</button>
+        <button class="tab is-on" data-act="proof" type="button">Results 100×</button>
+        <button class="tab" data-act="live" type="button">Try it live</button>
+        <button class="tab" data-act="good" type="button">Correct run</button>
+        <button class="tab" data-act="failed" type="button">Bug case</button>
+        <button class="tab" data-act="bisect" type="button">Find the bug</button>
         <button class="tab" data-act="store" type="button">Capture &amp; store</button>
-        <button class="tab" data-act="bisect" type="button">First failure</button>
-        <button class="tab" data-act="proof" type="button">Verify 100×</button>
         <button class="tab" data-act="spikes" type="button">Spikes A–F</button>
         <button class="tab" data-act="corpus" type="button">Corpus</button>
       </nav>
 
-      <section class="stage" id="panel-live" data-panel="live">
+      <section class="stage" id="panel-proof" data-panel="proof">
+        <div class="proof-grid">
+          <article>
+            <p class="aside-label">Playback proof (Week 4 / M1)</p>
+            <p class="metric" id="proof-metric">…</p>
+            <p class="muted" id="proof-detail"></p>
+            <p class="muted" id="proof-tamper"></p>
+            <button type="button" id="btn-verify">Re-run verify 100× now</button>
+            <p class="muted tiny" style="margin-top:0.75rem">
+              Mam can press this — engine replays the recording offline with the network kill-switch on.
+            </p>
+          </article>
+          <article>
+            <p class="aside-label">What this proves (plan)</p>
+            <ul class="plain-list">
+              <li>Agent run was recorded once, then replayed <strong>100 times</strong> bit-exact</li>
+              <li>Zero API calls on replay — kill-switch engaged</li>
+              <li>One fingerprint only — no silent drift</li>
+              <li>Same surface as CLI: <code>fr show</code> · <code>fr verify</code> · <code>fr bisect</code></li>
+              <li>Mapped to <code>docs/plan/month1-status.md</code></li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="stage is-off" id="panel-live" data-panel="live">
         <div class="live-panel">
           <div class="live-controls">
             <label>
               City
               <input id="live-city" type="text" value="Mumbai" maxlength="64" />
             </label>
-            <button type="button" id="btn-live">Record live run</button>
+            <button type="button" id="btn-live">Run agent + verify</button>
             <p class="muted" id="live-hint">
-              Open-Meteo geocode + weather are live HTTP. LLM uses NVIDIA_API_KEY if set; otherwise
-              a stub response. Then verify with kill-switch on.
+              Press to capture a real agent run (live Open-Meteo weather). Then Rewind verifies it
+              offline. Optional: set NVIDIA_API_KEY for a live LLM; otherwise weather is live and
+              the LLM step uses a deterministic stub.
             </p>
           </div>
           <div class="live-results" id="live-results">
-            <p class="muted">Press Record to capture a real agent run into the store.</p>
+            <p class="muted">Ready — mam can change the city and press the button.</p>
           </div>
         </div>
       </section>
@@ -67,7 +112,7 @@
       <section class="stage is-off" id="panel-good" data-panel="good">
         <div class="split">
           <aside>
-            <p class="aside-label">Boundaries</p>
+            <p class="aside-label">Boundaries (correct)</p>
             <ol class="timeline" id="timeline-good"></ol>
           </aside>
           <article class="inspect" id="inspect-good"></article>
@@ -75,9 +120,16 @@
       </section>
 
       <section class="stage is-off" id="panel-failed" data-panel="failed">
+        <div class="case-banner">
+          <strong>Intentional bug case</strong>
+          <span class="muted"
+            >Not a Rewind failure — a recorded wrong LLM decision used to prove auto-bisect. Weather
+            was clear; the model still told the user to take an umbrella.</span
+          >
+        </div>
         <div class="split">
           <aside>
-            <p class="aside-label">Boundaries</p>
+            <p class="aside-label">Boundaries (bug case)</p>
             <ol class="timeline" id="timeline-failed"></ol>
           </aside>
           <article class="inspect" id="inspect-failed"></article>
@@ -93,28 +145,6 @@
         <div class="diff" id="bisect-diff"></div>
       </section>
 
-      <section class="stage is-off" id="panel-proof" data-panel="proof">
-        <div class="proof-grid">
-          <article>
-            <p class="aside-label">Playback proof (Week 4 / M1)</p>
-            <p class="metric" id="proof-metric">…</p>
-            <p class="muted" id="proof-detail"></p>
-            <p class="muted" id="proof-tamper"></p>
-            <button type="button" id="btn-verify">Run verify 100× again</button>
-          </article>
-          <article>
-            <p class="aside-label">Mapped to plan</p>
-            <ul class="plain-list">
-              <li>Week 1 — Spike A bit-exact playback</li>
-              <li>Week 2 — fail-loud tamper oracle + ADR-0006</li>
-              <li>Week 3 — SQLite + CAS + <code>fr record -- python</code></li>
-              <li>Week 4 — kill-switch verify (M1 gate)</li>
-              <li>CLI: <code>fr show</code> · <code>fr verify</code> · <code>fr bisect</code></li>
-            </ul>
-          </article>
-        </div>
-      </section>
-
       <section class="stage is-off" id="panel-spikes" data-panel="spikes">
         <div class="spike-grid" id="spike-grid"></div>
       </section>
@@ -126,9 +156,9 @@
     </main>
 
     <footer>
-      <span>docs/plan/roadmap-6-months.md · Month 1 · docs/plan/month1-status.md</span>
+      <span>docs/plan/roadmap-6-months.md · Month 1 COMPLETE · docs/plan/month1-status.md</span>
       <span id="run-ids"></span>
     </footer>
-    <script src="/app.js"></script>
+    <script src="/app.js?v=2"></script>
   </body>
 </html>

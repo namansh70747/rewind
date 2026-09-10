@@ -53,7 +53,8 @@ FAILED_ADVICE = (
     "Heavy rain is coming — definitely take an umbrella and a raincoat."
 )
 FAILURE_SUMMARY = (
-    "Wrong umbrella advice: model warned of heavy rain while precipitation was 0.0 mm."
+    "Intentional bug case for bisect: model said take an umbrella while precip was 0.0 mm "
+    "(clear weather). Rewind localizes this to the LLM boundary — the recorder itself is PASS."
 )
 
 
@@ -181,9 +182,12 @@ def seed(*, verify_n: int = 100) -> dict[str, Any]:
             "title": "Travel advisor — umbrella decision",
             "city": CITY,
             "task": (
-                f"Geocode {CITY}, fetch weather, ask the LLM whether to carry an umbrella."
+                f"Geocode {CITY}, fetch weather, ask the LLM whether to carry an umbrella. "
+                "Correct run is verified bit-exact offline; a second recording is kept only "
+                "as a bug case for auto-bisect."
             ),
             "failure_summary": FAILURE_SUMMARY,
+            "debug_case": FAILURE_SUMMARY,
             "good_advice": GOOD_ADVICE,
             "failed_advice": FAILED_ADVICE,
             "weather": WEATHER["current"],

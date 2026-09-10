@@ -1,49 +1,37 @@
 # Month-1 Mam Console — Speaking Notes (~6 minutes)
 
-**Launch:** `.\demos\week2_mam\run.ps1` → http://127.0.0.1:8765/  
-**Plan status:** `docs/plan/month1-status.md` (M0 + M1 COMPLETE)
+**Launch (fresh every time):** stop any old server → `.\demos\week2_mam\run.ps1`  
+**URL:** http://127.0.0.1:8765/  
+**First screen must show:** green **COMPLETE**, **100/100 PASS**, not red “failed”.
 
 ---
 
 ## Opening
 
-> “Ma’am — this is Month 1 of the Rewind plan: prove bit-exact playback, fail loud, capture to store, verify with a kill-switch.  
-> The gate cards are live engine results, not slides.”
-
-Point at **M0 / M1 / COMPLETE**.
-
----
-
-## Live agent
-
-> “Record live run — Open-Meteo weather is real HTTP. We capture three boundaries, then verify offline with the network kill-switch.”
-
-Optional: set `NVIDIA_API_KEY` for a live LLM; otherwise stub LLM + live weather.
+> “Ma’am, Month 1 of the GitHub plan is complete — M0 and M1.  
+> Top strip: agent recording verified **100/100 bit-exact** offline.  
+> Green COMPLETE is the product status. The ‘bug case’ tab is only a sample wrong LLM decision so we can show auto-bisect — Rewind itself did not fail.”
 
 ---
 
-## Good → Failed → First failure
+## Results 100× (default tab)
 
-> “Same weather (precip 0). Failed run invents heavy rain. Bisect stops at boundary #2 — same input, different output.”
-
----
-
-## Spikes + Corpus
-
-> “Spikes A–F are the Week-2 go/no-go pack. Corpus is twelve city fixtures at 100% faithfulness.”
+> “Press Re-run verify 100× if you want — same proof live, kill-switch on, zero API calls.”
 
 ---
 
-## Verify 100×
+## Try it live
 
-> “Good run replayed 100 times, one fingerprint. Tamper fails loud. Same as `fr show` / `fr verify` / `fr bisect`.”
+> “Change city → Run agent + verify. Weather is live Open-Meteo; then offline verify.”
 
 ---
 
-## Backup CLI
+## Correct run → Bug case → Find the bug
 
-```powershell
-$env:PYTHONPATH="src"
-python -m flightrecorder.cli record -- python demos/week2_mam/agent.py Mumbai
-python -m pytest tests/test_week2_mam_demo.py tests/test_walking_skeleton.py -q
-```
+> “Correct advice vs intentional wrong advice. Bisect stops at boundary #2 — same weather input, different LLM output.”
+
+---
+
+## Close
+
+> “Same as CLI `fr record -- python` / `show` / `verify` / `bisect`. Plan: `docs/plan/month1-status.md`.”

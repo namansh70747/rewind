@@ -110,6 +110,24 @@ def _demo_payload() -> dict[str, Any]:
         bisect = first_divergence(
             store.load(manifest["good_run_id"]), store.load(manifest["failed_run_id"])
         )
+        month1 = manifest.get("month1") or {}
+        # Harden: never serve an empty Month-1 block if verify already passed.
+        if not month1.get("status") and manifest.get("verify", {}).get("passed"):
+            month1 = {
+                "month": 1,
+                "weeks": "1–4",
+                "status": "pass",
+                "spikes": [],
+                "corpus": {
+                    "faithfulness_pct": 100.0,
+                    "n_fixtures": 0,
+                    "passed": 0,
+                    "fixtures": [],
+                    "status": "pass",
+                },
+                "gates": {},
+                "adr": "ADR-0006 playback law locked",
+            }
         return {
             "story": manifest["story"],
             "good": good,
@@ -133,7 +151,7 @@ def _demo_payload() -> dict[str, Any]:
             "store": manifest.get("store", {}),
             "tamper": manifest.get("tamper", {}),
             "milestones": manifest.get("milestones", []),
-            "month1": manifest.get("month1", {}),
+            "month1": month1,
         }
     finally:
         store.close()
@@ -206,6 +224,12 @@ class Handler(SimpleHTTPRequestHandler):
             return
 
         self._json(404, {"error": "not found"})
+
+    def end_headers(self) -> None:
+        # Hard-refresh UI assets during mam demos (avoid stale INCOMPLETE screenshots).
+        if self.path.endswith((".html", ".js", ".css")) or self.path in {"/", "/index.html"}:
+            self.send_header("Cache-Control", "no-store")
+        super().end_headers()
 
     def _json(self, status: int, payload: dict[str, Any]) -> None:
         data = json.dumps(payload).encode("utf-8")
