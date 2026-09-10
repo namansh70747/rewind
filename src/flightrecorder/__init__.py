@@ -8,10 +8,11 @@ from __future__ import annotations
 
 from .bisect import BisectResult, first_divergence
 from .boundary import Boundary, Cassette, Divergence, Session
-from .capture import Capture, capture, replay_run, verify_run
+from .capture import Capture, active_session, capture, replay_run, verify_run
 from .redaction import redact, redact_text
 from .replay import VerifyResult, record, replay_once, verify
 from .store import RunStore, RunSummary
+from .tool import tool
 
 __version__ = "0.0.0"
 __all__ = [
@@ -25,6 +26,7 @@ __all__ = [
     "Session",
     "VerifyResult",
     "__version__",
+    "active_session",
     "capture",
     "first_divergence",
     "record",
@@ -32,6 +34,7 @@ __all__ = [
     "redact_text",
     "replay_once",
     "replay_run",
+    "tool",
     "verify",
     "verify_run",
 ]

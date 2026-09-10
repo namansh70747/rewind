@@ -1,56 +1,49 @@
-# Weeks 1–4 Mam Demo — Speaking Notes (~5 minutes)
+# Month-1 Mam Console — Speaking Notes (~6 minutes)
 
-**Launch:** `.\demos\week2_mam\run.ps1`  
-**URL:** http://127.0.0.1:8765/  
-**Plan:** `docs/plan/roadmap-6-months.md` Weeks 1–4 (M1 walking skeleton)
+**Launch:** `.\demos\week2_mam\run.ps1` → http://127.0.0.1:8765/  
+**Plan status:** `docs/plan/month1-status.md` (M0 + M1 COMPLETE)
 
 ---
 
 ## Opening
 
-> “Ma’am, this is Rewind — a flight recorder for AI agents.  
-> Per our plan, Weeks 1–4 build the walking skeleton: prove bit-exact playback, fail loud, capture to store, then verify with a kill-switch.  
-> The UI shows that thread on a real agent example.”
+> “Ma’am — this is Month 1 of the Rewind plan: prove bit-exact playback, fail loud, capture to store, verify with a kill-switch.  
+> The gate cards are live engine results, not slides.”
 
-Point at the four **Week** cards (PASS evidence is live from the engine).
-
----
-
-## Good run
-
-> “Agent: Mumbai → weather → LLM umbrella advice. Each row is one captured HTTP boundary.”
+Point at **M0 / M1 / COMPLETE**.
 
 ---
 
-## Failed run
+## Live agent
 
-> “Same weather (precip 0), but the model gave wrong advice — take an umbrella for heavy rain. That is the production failure.”
+> “Record live run — Open-Meteo weather is real HTTP. We capture three boundaries, then verify offline with the network kill-switch.”
 
----
-
-## Capture & store (Week 3)
-
-> “Recording is persisted in SQLite with content-addressed blobs. Dedup held when we re-saved the same payloads.”
+Optional: set `NVIDIA_API_KEY` for a live LLM; otherwise stub LLM + live weather.
 
 ---
 
-## First failure (bisect)
+## Good → Failed → First failure
 
-> “Auto-bisect stops at boundary #2: same input, different output — the LLM decision. Geocode and weather matched.”
-
----
-
-## Verify 100× (Week 4 / M1)
-
-> “Good run replayed 100 times offline, kill-switch on, one fingerprint. Tamper oracle fails loud at boundary #2.  
-> Same work as `fr show` / `fr verify` / `fr bisect`.”
+> “Same weather (precip 0). Failed run invents heavy rain. Bisect stops at boundary #2 — same input, different output.”
 
 ---
 
-## Backup
+## Spikes + Corpus
+
+> “Spikes A–F are the Week-2 go/no-go pack. Corpus is twelve city fixtures at 100% faithfulness.”
+
+---
+
+## Verify 100×
+
+> “Good run replayed 100 times, one fingerprint. Tamper fails loud. Same as `fr show` / `fr verify` / `fr bisect`.”
+
+---
+
+## Backup CLI
 
 ```powershell
 $env:PYTHONPATH="src"
-python demos/week2_mam/seed.py 100
-python -m pytest tests/test_week2_mam_demo.py -v
+python -m flightrecorder.cli record -- python demos/week2_mam/agent.py Mumbai
+python -m pytest tests/test_week2_mam_demo.py tests/test_walking_skeleton.py -q
 ```

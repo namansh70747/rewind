@@ -1,7 +1,7 @@
-"""Local demo server for the Week-2 mam timeline UI.
+"""Local demo server — Month-1 mam console (live agent + Weeks 1–4 evidence).
 
-Serves static files + JSON API backed by real flightrecorder (RunStore, bisect, verify_run).
-Regenerates the offline good/failed recordings on startup.
+Serves static UI + JSON API backed by real flightrecorder (RunStore, bisect, verify_run).
+Regenerates offline good/failed recordings + Month-1 proofs on startup.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ if str(_DEMO) not in sys.path:
 from flightrecorder import RunStore, first_divergence, verify_run  # noqa: E402
 
 from agent import run_advisor  # noqa: E402
+from live import live_record  # noqa: E402
 from seed import CITY, DB_PATH, MANIFEST_PATH, seed  # noqa: E402
 
 HOST = "127.0.0.1"
@@ -132,6 +133,7 @@ def _demo_payload() -> dict[str, Any]:
             "store": manifest.get("store", {}),
             "tamper": manifest.get("tamper", {}),
             "milestones": manifest.get("milestones", []),
+            "month1": manifest.get("month1", {}),
         }
     finally:
         store.close()
@@ -183,18 +185,27 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
-        if parsed.path != "/api/verify":
-            self._json(404, {"error": "not found"})
-            return
         length = int(self.headers.get("Content-Length", "0"))
         raw = self.rfile.read(length) if length else b"{}"
         try:
             body = json.loads(raw.decode("utf-8") or "{}")
         except json.JSONDecodeError:
             body = {}
-        n = int(body.get("n", 100))
-        n = max(1, min(n, 200))
-        self._json(200, _live_verify(n))
+
+        if parsed.path == "/api/verify":
+            n = int(body.get("n", 100))
+            n = max(1, min(n, 200))
+            self._json(200, _live_verify(n))
+            return
+
+        if parsed.path == "/api/live":
+            city = str(body.get("city") or "Mumbai").strip()[:64] or "Mumbai"
+            verify_n = int(body.get("verify_n", 25))
+            verify_n = max(1, min(verify_n, 100))
+            self._json(200, live_record(city, verify_n=verify_n))
+            return
+
+        self._json(404, {"error": "not found"})
 
     def _json(self, status: int, payload: dict[str, Any]) -> None:
         data = json.dumps(payload).encode("utf-8")
@@ -207,15 +218,17 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main() -> None:
-    print("Seeding good + failed runs (verify 100x)…")
+    print("Seeding Month-1 demo (story + spikes + corpus + verify)…")
     manifest = seed(verify_n=100)
     print(f"  good={manifest['good_run_id']}  failed={manifest['failed_run_id']}")
     print(f"  divergence at boundary #{manifest['divergence']['index']}")
     print(f"  verify {manifest['verify']['n']}/{manifest['verify']['n']} bit-exact")
+    m1 = manifest.get("month1", {})
+    print(f"  month1 status={m1.get('status')} corpus={m1.get('corpus', {}).get('faithfulness_pct')}%")
     print()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     url = f"http://{HOST}:{PORT}/"
-    print(f"Weeks 1-4 mam demo UI → {url}")
+    print(f"Month-1 mam console → {url}")
     print("Press Ctrl+C to stop.")
     try:
         server.serve_forever()

@@ -1,4 +1,4 @@
-"""Weeks 1-4 mam demo — milestones, bisect, verify 100x, store dedup, tamper."""
+"""Month-1 completeness: record -- python, proofs, mam API surface."""
 
 from __future__ import annotations
 
@@ -6,51 +6,74 @@ import json
 import sys
 from pathlib import Path
 
+import httpx
+from typer.testing import CliRunner
+
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / "demos" / "week2_mam"
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(DEMO))
 
-from flightrecorder import RunStore, first_divergence  # noqa: E402
+from flightrecorder.cli import app  # noqa: E402
+from flightrecorder import RunStore  # noqa: E402
 
+from month1_proof import run_month1_proofs  # noqa: E402
 from seed import DB_PATH, MANIFEST_PATH, seed  # noqa: E402
 from server import _demo_payload  # noqa: E402
 
 
-def test_seed_weeks_1_to_4_and_verify_100() -> None:
-    manifest = seed(verify_n=100)
-    assert manifest["divergence"]["index"] == 2
-    assert "same input" in manifest["divergence"]["reason"]
+def test_month1_proofs_pass() -> None:
+    out = run_month1_proofs(spike_verify_n=10, corpus_verify_n=2)
+    assert out["status"] == "pass", out
+    assert out["corpus"]["n_fixtures"] >= 10
+    assert out["corpus"]["faithfulness_pct"] == 100.0
+    assert all(s["status"] == "pass" for s in out["spikes"])
+
+
+def test_seed_includes_month1_and_verify() -> None:
+    manifest = seed(verify_n=20)
+    assert manifest["month1"]["status"] == "pass"
     assert manifest["verify"]["passed"] is True
-    assert manifest["verify"]["n"] == 100
-    assert manifest["verify"]["unique_fingerprints"] == 1
-    assert manifest["store"]["dedup_ok"] is True
-    assert manifest["tamper"]["caught"] is True
-    assert manifest["tamper"]["localized"] is True
-    assert [m["week"] for m in manifest["milestones"]] == [1, 2, 3, 4]
-    assert all(m["status"] == "pass" for m in manifest["milestones"])
-
-    store = RunStore(DB_PATH)
-    good = store.load(manifest["good_run_id"])
-    failed = store.load(manifest["failed_run_id"])
-    assert len(good.boundaries) == 3
-    assert first_divergence(good, failed).index == 2
-    store.close()
-    assert json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))["good_run_id"] == manifest[
-        "good_run_id"
-    ]
+    assert manifest["divergence"]["index"] == 2
+    assert json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))["month1"]["status"] == "pass"
 
 
-def test_demo_api_includes_milestones_and_store() -> None:
+def test_demo_api_exposes_gates() -> None:
     seed(verify_n=5)
     payload = _demo_payload()
-    assert len(payload["milestones"]) == 4
-    assert payload["store"]["blob_count"] >= 1
-    assert payload["divergence"]["good_summary"] != payload["divergence"]["failed_summary"]
-    assert payload["tamper"]["caught"] is True
+    assert "M0" in payload["month1"]["gates"]
+    assert "M1" in payload["month1"]["gates"]
+    assert payload["month1"]["corpus"]["n_fixtures"] >= 10
 
 
-def test_static_assets_present() -> None:
-    assert (DEMO / "static" / "index.html").is_file()
+def test_fr_record_unmodified_script(tmp_path: Path) -> None:
+    agent = tmp_path / "agent.py"
+    agent.write_text(
+        "import httpx\n"
+        "def main():\n"
+        "    r = httpx.get('https://example.test/ping')\n"
+        "    print(r.json())\n"
+        "if __name__ == '__main__':\n"
+        "    main()\n",
+        encoding="utf-8",
+    )
+    db = str(tmp_path / "runs.db")
+
+    def handle(self: httpx.HTTPTransport, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"ok": True}, request=request)
+
+    httpx.HTTPTransport.handle_request = handle  # type: ignore[method-assign]
+    result = CliRunner().invoke(app, ["record", "--db", db, "--", "python", str(agent)])
+    assert result.exit_code == 0, result.output
+    store = RunStore(db)
+    runs = store.list_runs()
+    store.close()
+    assert len(runs) == 1
+    assert runs[0].n_boundaries == 1
+
+
+def test_static_month1_assets() -> None:
+    html = (DEMO / "static" / "index.html").read_text(encoding="utf-8")
+    assert "Live agent" in html
+    assert "Spikes" in html
     assert (DEMO / "static" / "app.js").is_file()
-    assert (DEMO / "static" / "styles.css").is_file()

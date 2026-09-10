@@ -132,6 +132,13 @@ def seed(*, verify_n: int = 100) -> dict[str, Any]:
 
     tamper = _tamper_oracle(store, good_id)
 
+    from month1_proof import run_month1_proofs
+
+    month1 = run_month1_proofs(
+        spike_verify_n=min(50, max(10, verify_n // 2)),
+        corpus_verify_n=3,
+    )
+
     milestones = [
         {
             "week": 1,
@@ -207,6 +214,7 @@ def seed(*, verify_n: int = 100) -> dict[str, Any]:
         },
         "tamper": tamper,
         "milestones": milestones,
+        "month1": month1,
         "db": str(DB_PATH),
     }
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2), encoding="utf-8")

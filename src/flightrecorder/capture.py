@@ -27,7 +27,7 @@ phase. Non-HTTP nondeterminism (wall-clock, ``uuid``, RNG) in an unmodified agen
 auto-captured yet — if it affects the run, the divergence oracle flags it loudly on replay
 rather than lie. (Agents that need those captured can use the ``Session`` shims, as the
 bundled example agent does.) Global clock/uuid/rng shims and a
-``fr record -- python agent.py`` subprocess wrapper are follow-ups.
+``fr record -- python agent.py`` in-process runner (see :mod:`flightrecorder.runner`).
 """
 
 from __future__ import annotations
@@ -49,6 +49,13 @@ if TYPE_CHECKING:
     from .store import RunStore
 
 _active_session: ContextVar[Session | None] = ContextVar("flightrecorder_session", default=None)
+
+
+def active_session() -> Session | None:
+    """Return the session bound by an in-flight :func:`capture` / :func:`replay_run`, if any."""
+    return _active_session.get()
+
+
 _orig_client_init = httpx.Client.__init__
 _orig_async_client_init = httpx.AsyncClient.__init__
 #: Nesting depth for the process-global ``__init__`` patches (sync + async are patched and

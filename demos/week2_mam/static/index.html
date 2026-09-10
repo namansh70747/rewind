@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Rewind — Weeks 1–4 Demo</title>
+    <title>Rewind — Month 1 Console</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,7 +18,7 @@
     <header class="topbar">
       <div class="brand-block">
         <p class="brand">Rewind</p>
-        <p class="product">Flight recorder for AI agents</p>
+        <p class="product">Month 1 · Walking skeleton · M0 / M1</p>
       </div>
       <p class="law" id="story-law">Loading engine…</p>
     </header>
@@ -30,17 +30,41 @@
         <p class="fail-line" id="story-failure"></p>
       </section>
 
+      <section class="gate-row" id="gates" aria-label="Month 1 gates"></section>
+
       <section class="milestones" id="milestones" aria-label="Weeks 1 to 4"></section>
 
       <nav class="tabs" role="tablist" aria-label="Demo views">
-        <button class="tab is-on" data-act="good" type="button">Good run</button>
+        <button class="tab is-on" data-act="live" type="button">Live agent</button>
+        <button class="tab" data-act="good" type="button">Good run</button>
         <button class="tab" data-act="failed" type="button">Failed run</button>
         <button class="tab" data-act="store" type="button">Capture &amp; store</button>
         <button class="tab" data-act="bisect" type="button">First failure</button>
         <button class="tab" data-act="proof" type="button">Verify 100×</button>
+        <button class="tab" data-act="spikes" type="button">Spikes A–F</button>
+        <button class="tab" data-act="corpus" type="button">Corpus</button>
       </nav>
 
-      <section class="stage" id="panel-good" data-panel="good">
+      <section class="stage" id="panel-live" data-panel="live">
+        <div class="live-panel">
+          <div class="live-controls">
+            <label>
+              City
+              <input id="live-city" type="text" value="Mumbai" maxlength="64" />
+            </label>
+            <button type="button" id="btn-live">Record live run</button>
+            <p class="muted" id="live-hint">
+              Open-Meteo geocode + weather are live HTTP. LLM uses NVIDIA_API_KEY if set; otherwise
+              a stub response. Then verify with kill-switch on.
+            </p>
+          </div>
+          <div class="live-results" id="live-results">
+            <p class="muted">Press Record to capture a real agent run into the store.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="stage is-off" id="panel-good" data-panel="good">
         <div class="split">
           <aside>
             <p class="aside-label">Boundaries</p>
@@ -82,18 +106,27 @@
             <p class="aside-label">Mapped to plan</p>
             <ul class="plain-list">
               <li>Week 1 — Spike A bit-exact playback</li>
-              <li>Week 2 — fail-loud tamper oracle</li>
-              <li>Week 3 — SQLite + content-addressed blobs</li>
+              <li>Week 2 — fail-loud tamper oracle + ADR-0006</li>
+              <li>Week 3 — SQLite + CAS + <code>fr record -- python</code></li>
               <li>Week 4 — kill-switch verify (M1 gate)</li>
-              <li>CLI equivalents: <code>fr show</code> · <code>fr verify</code> · <code>fr bisect</code></li>
+              <li>CLI: <code>fr show</code> · <code>fr verify</code> · <code>fr bisect</code></li>
             </ul>
           </article>
         </div>
       </section>
+
+      <section class="stage is-off" id="panel-spikes" data-panel="spikes">
+        <div class="spike-grid" id="spike-grid"></div>
+      </section>
+
+      <section class="stage is-off" id="panel-corpus" data-panel="corpus">
+        <div class="corpus-head" id="corpus-head"></div>
+        <div class="corpus-table" id="corpus-table"></div>
+      </section>
     </main>
 
     <footer>
-      <span>docs/plan/roadmap-6-months.md · Weeks 1–4 · M1 walking skeleton</span>
+      <span>docs/plan/roadmap-6-months.md · Month 1 · docs/plan/month1-status.md</span>
       <span id="run-ids"></span>
     </footer>
     <script src="/app.js"></script>

@@ -14,10 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Weeks 1–4 mam demo UI** (`demos/week2_mam/`): dark-blue browser console for the
-  M1 walking skeleton — milestone cards (bit-exact, fail-loud tamper, capture/store CAS
-  dedup, kill-switch verify), good vs failed travel-advisor timeline, auto-bisect at the
-  first wrong LLM decision, and offline `verify` 100x. Launch with `demos/week2_mam/run.ps1`.
+- **Weeks 1–4 mam demo UI** (`demos/week2_mam/`): dark-blue Month-1 console — M0/M1 gate
+  cards, live agent record (Open-Meteo + optional NVIDIA), spikes A–F, 12-city corpus
+  faithfulness, good vs failed timeline, auto-bisect, verify 100x. Plan status:
+  `docs/plan/month1-status.md`. Launch: `demos/week2_mam/run.ps1`.
+- **`fr record -- python agent.py`**: in-process unmodified-agent capture (`runner` + CLI).
+- **`@fr.tool`**: Session-mediated tool boundary decorator (Week 3 plan surface).
 - Repository scaffolding, governance, CI, and complete design documentation.
 - **Phase-0 walking skeleton**: the `flightrecorder` core (Session/boundary hash-chain,
   httpx transport capture, deterministic replay with a network kill-switch),

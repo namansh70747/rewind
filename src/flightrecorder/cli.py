@@ -1,7 +1,8 @@
 """The ``fr`` command-line interface — the Phase-0 walking-skeleton surface.
 
-    fr record --provider nvidia          # record the example agent -> a run id
-    fr show <run_id>                     # scrub the decision timeline
+    fr record --provider nvidia          # record the bundled example agent -> a run id
+    fr record -- python agent.py         # record an unmodified agent script (M1)
+    fr show <run_id>                     # print the decision timeline
     fr verify <run_id> --n 50            # replay bit-exact, offline, zero API calls
     fr runs                              # list recorded runs
 
@@ -13,7 +14,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Optional
 
 import typer
 from rich.console import Console
@@ -74,18 +75,29 @@ def _summarize_request(request: Any) -> str:
     return " ".join(str(request.get("url", request)).split())[:70]
 
 
-@app.command()
+@app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+)
 def record(
-    provider: Annotated[str, typer.Option(help="openai | nvidia | anthropic")] = "openai",
+    ctx: typer.Context,
+    provider: Annotated[
+        Optional[str], typer.Option(help="openai | nvidia | anthropic (bundled agent)")
+    ] = None,
     model: Annotated[str | None, typer.Option(help="override the provider's default model")] = None,
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
 ) -> None:
-    """Record one live run of the bundled example agent."""
+    """Record a run: bundled agent (``--provider``) or unmodified script (``-- python agent.py``)."""
     _load_dotenv()
-    if provider not in PROVIDERS:
-        console.print(f"[red]unknown provider '{provider}'. choose from: {', '.join(PROVIDERS)}[/]")
+    extras = list(ctx.args)
+    if extras:
+        _record_unmodified(extras, db=db, provider=provider or "unmodified", model=model or "")
+        return
+
+    chosen = provider or "openai"
+    if chosen not in PROVIDERS:
+        console.print(f"[red]unknown provider '{chosen}'. choose from: {', '.join(PROVIDERS)}[/]")
         raise typer.Exit(2)
-    prov = PROVIDERS[provider]
+    prov = PROVIDERS[chosen]
     api_key = os.environ.get(prov.key_env, "")
     if not api_key:
         console.print(f"[red]set {prov.key_env} (env or .env) to record a live {prov.name} run.[/]")
@@ -115,6 +127,38 @@ def record(
     console.print(f"fingerprint : {cassette.fingerprint[:16]}…")
     console.print(f"output      : {cassette.final_output}")
     console.print(f"\nnext: [bold]fr show {run_id}[/]  ·  [bold]fr verify {run_id} --n 50[/]")
+
+
+def _record_unmodified(
+    argv: list[str], *, db: str, provider: str, model: str
+) -> None:
+    """M1 path: ``fr record -- python agent.py [args]``."""
+    from .capture import capture
+    from .runner import make_runner
+
+    try:
+        runner = make_runner(argv)
+    except (ValueError, FileNotFoundError) as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(2) from exc
+
+    console.print(f"recording unmodified agent [cyan]{' '.join(argv)}[/] …")
+    store = RunStore(db)
+    try:
+        with capture(store, provider=provider, model=model) as cap:
+            runner()
+    except Exception as exc:
+        store.close()
+        console.print(f"[red]recording failed: {exc}[/]")
+        raise typer.Exit(1) from exc
+
+    assert cap.cassette is not None and cap.run_id is not None
+    store.close()
+    console.print(
+        f"[green]recorded[/] {len(cap.cassette.boundaries)} boundaries → run [bold]{cap.run_id}[/]"
+    )
+    console.print(f"fingerprint : {cap.cassette.fingerprint[:16]}…")
+    console.print(f"\nnext: [bold]fr show {cap.run_id}[/]  ·  [bold]fr bisect[/] / verify via capture API")
 
 
 @app.command()

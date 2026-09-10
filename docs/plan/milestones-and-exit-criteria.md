@@ -6,6 +6,8 @@ Six monthly **gates**, each a hard go/no-go. A gate is either met (all its crite
 
 ## Gate M0 — Go/No-Go (end of Week 2) 🚦
 
+**Status:** see [`month1-status.md`](./month1-status.md) (Month 1 complete).
+
 The project's foundational bet, tested before real building.
 
 | # | Exit criterion | Evidence |
@@ -20,6 +22,8 @@ The project's foundational bet, tested before real building.
 ---
 
 ## Gate M1 — Walking Skeleton (end of Week 4)
+
+**Status:** see [`month1-status.md`](./month1-status.md) (Month 1 complete).
 
 | # | Exit criterion |
 |---|---|
