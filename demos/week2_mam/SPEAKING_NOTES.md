@@ -1,77 +1,55 @@
-# Week 2 Mam Demo — Speaking Notes (~4 minutes)
+# Weeks 1–4 Mam Demo — Speaking Notes (~5 minutes)
 
 **Launch:** `.\demos\week2_mam\run.ps1`  
 **URL:** http://127.0.0.1:8765/  
-**Needs:** no API key (offline fixtures)
+**Plan:** `docs/plan/roadmap-6-months.md` Weeks 1–4 (M1 walking skeleton)
 
 ---
 
-## Opening (20 sec)
+## Opening
 
-> “Ma’am, Rewind is a flight recorder for AI agents.  
-> Week 1–2 we proved: record a run, replay it bit-exact offline, and find where two runs first diverge.  
-> This UI is the same engine as our CLI — so you can *see* the failure.”
+> “Ma’am, this is Rewind — a flight recorder for AI agents.  
+> Per our plan, Weeks 1–4 build the walking skeleton: prove bit-exact playback, fail loud, capture to store, then verify with a kill-switch.  
+> The UI shows that thread on a real agent example.”
 
----
-
-## Act 1 — Good run
-
-Click **1 · Good run**.
-
-> “This agent geocodes Mumbai, fetches weather (27.8C, precip 0), then asks an LLM for umbrella advice.  
-> Every row is one HTTP boundary we captured.”
-
-Click boundary #2 (LLM).
-
-> “Clear advice: leave the umbrella. That matches the weather.”
+Point at the four **Week** cards (PASS evidence is live from the engine).
 
 ---
 
-## Act 2 — Failed run
+## Good run
 
-Click **2 · Failed run**.
-
-> “Same task, same weather inputs — but in production the model gave wrong advice: heavy rain / take an umbrella while precip was 0.  
-> That is the failure we need to localize.”
-
-Click the red-tinted step (#2).
+> “Agent: Mumbai → weather → LLM umbrella advice. Each row is one captured HTTP boundary.”
 
 ---
 
-## Act 3 — Find failure
+## Failed run
 
-Click **3 · Find failure**.
-
-> “Auto-bisect walks both recordings and stops at the first difference.  
-> Boundary #2: **same input → different output** — the LLM decision diverged here.  
-> Geocode and weather matched; only the model answer changed. That is the failure point.”
+> “Same weather (precip 0), but the model gave wrong advice — take an umbrella for heavy rain. That is the production failure.”
 
 ---
 
-## Act 4 — Proof
+## Capture & store (Week 3)
 
-Click **4 · Proof**.
-
-> “We replayed the good run **100 times** offline with the network kill-switch on.  
-> BIT-EXACT 100/100 — same fingerprint every time, zero API calls.”
-
-Optional: click **Re-run verify 100×** (takes ~1–2 min) to show live proof.
-
-> “Terminal commands `fr show`, `fr verify`, `fr bisect` do the same work; this UI is for the demo surface.”
+> “Recording is persisted in SQLite with content-addressed blobs. Dedup held when we re-saved the same payloads.”
 
 ---
 
-## If she asks “is this hardcoded?”
+## First failure (bisect)
 
-> “The HTTP answers are fixture transports so the room needs no API key.  
-> Capture, hash-chain, verify, and bisect are the real `flightrecorder` library — same as CI.”
+> “Auto-bisect stops at boundary #2: same input, different output — the LLM decision. Geocode and weather matched.”
 
 ---
 
-## Backup (terminal)
+## Verify 100× (Week 4 / M1)
+
+> “Good run replayed 100 times offline, kill-switch on, one fingerprint. Tamper oracle fails loud at boundary #2.  
+> Same work as `fr show` / `fr verify` / `fr bisect`.”
+
+---
+
+## Backup
 
 ```powershell
-cd C:\Users\vt903\Projects\rewind
 $env:PYTHONPATH="src"
 python demos/week2_mam/seed.py 100
 python -m pytest tests/test_week2_mam_demo.py -v

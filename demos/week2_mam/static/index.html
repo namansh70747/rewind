@@ -3,78 +3,89 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Rewind — Week 2 Mam Demo</title>
+    <title>Rewind — Weeks 1–4 Demo</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="atmosphere" aria-hidden="true"></div>
-    <header class="hero">
-      <p class="brand">Rewind</p>
-      <h1>Flight recorder for AI agents</h1>
-      <p class="lede">
-        Record a real agent run. Replay it bit-exact offline. Find the first decision that went wrong.
-      </p>
+    <div class="grid-bg" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="brand-block">
+        <p class="brand">Rewind</p>
+        <p class="product">Flight recorder for AI agents</p>
+      </div>
+      <p class="law" id="story-law">Loading engine…</p>
     </header>
 
     <main>
-      <section class="story" id="story">
-        <p class="eyebrow">Live example</p>
-        <h2 id="story-title">Loading…</h2>
+      <section class="intro">
+        <h1 id="story-title">Loading…</h1>
         <p id="story-task"></p>
-        <p class="failure" id="story-failure"></p>
+        <p class="fail-line" id="story-failure"></p>
       </section>
 
-      <nav class="acts" role="tablist" aria-label="Demo acts">
-        <button class="act is-active" data-act="good" type="button">1 · Good run</button>
-        <button class="act" data-act="failed" type="button">2 · Failed run</button>
-        <button class="act" data-act="bisect" type="button">3 · Find failure</button>
-        <button class="act" data-act="proof" type="button">4 · Proof</button>
+      <section class="milestones" id="milestones" aria-label="Weeks 1 to 4"></section>
+
+      <nav class="tabs" role="tablist" aria-label="Demo views">
+        <button class="tab is-on" data-act="good" type="button">Good run</button>
+        <button class="tab" data-act="failed" type="button">Failed run</button>
+        <button class="tab" data-act="store" type="button">Capture &amp; store</button>
+        <button class="tab" data-act="bisect" type="button">First failure</button>
+        <button class="tab" data-act="proof" type="button">Verify 100×</button>
       </nav>
 
-      <section class="panel" id="panel-good" data-panel="good">
+      <section class="stage" id="panel-good" data-panel="good">
         <div class="split">
-          <ol class="timeline" id="timeline-good"></ol>
-          <article class="inspect" id="inspect-good">
-            <p class="hint">Select a boundary step</p>
-          </article>
+          <aside>
+            <p class="aside-label">Boundaries</p>
+            <ol class="timeline" id="timeline-good"></ol>
+          </aside>
+          <article class="inspect" id="inspect-good"></article>
         </div>
       </section>
 
-      <section class="panel is-hidden" id="panel-failed" data-panel="failed">
+      <section class="stage is-off" id="panel-failed" data-panel="failed">
         <div class="split">
-          <ol class="timeline" id="timeline-failed"></ol>
-          <article class="inspect" id="inspect-failed">
-            <p class="hint">Select a boundary step</p>
-          </article>
+          <aside>
+            <p class="aside-label">Boundaries</p>
+            <ol class="timeline" id="timeline-failed"></ol>
+          </aside>
+          <article class="inspect" id="inspect-failed"></article>
         </div>
       </section>
 
-      <section class="panel is-hidden" id="panel-bisect" data-panel="bisect">
-        <div class="bisect-banner" id="bisect-banner"></div>
+      <section class="stage is-off" id="panel-store" data-panel="store">
+        <div class="store-grid" id="store-grid"></div>
+      </section>
+
+      <section class="stage is-off" id="panel-bisect" data-panel="bisect">
+        <div class="bisect-head" id="bisect-banner"></div>
         <div class="diff" id="bisect-diff"></div>
       </section>
 
-      <section class="panel is-hidden" id="panel-proof" data-panel="proof">
+      <section class="stage is-off" id="panel-proof" data-panel="proof">
         <div class="proof-grid">
-          <article class="proof-card" id="proof-verify">
-            <h3>Bit-exact verify</h3>
+          <article>
+            <p class="aside-label">Playback proof (Week 4 / M1)</p>
             <p class="metric" id="proof-metric">…</p>
-            <p class="detail" id="proof-detail"></p>
-            <button type="button" id="btn-verify">Re-run verify 100×</button>
+            <p class="muted" id="proof-detail"></p>
+            <p class="muted" id="proof-tamper"></p>
+            <button type="button" id="btn-verify">Run verify 100× again</button>
           </article>
-          <article class="proof-card">
-            <h3>What this proves</h3>
-            <ul class="checklist">
-              <li>Playback of recorded HTTP answers — model is not re-called</li>
-              <li>Network kill-switch on during verify (0 outbound calls)</li>
-              <li>First wrong decision localized by auto-bisect</li>
-              <li>Same engine powers <code>fr show</code> / <code>fr verify</code> / <code>fr bisect</code></li>
+          <article>
+            <p class="aside-label">Mapped to plan</p>
+            <ul class="plain-list">
+              <li>Week 1 — Spike A bit-exact playback</li>
+              <li>Week 2 — fail-loud tamper oracle</li>
+              <li>Week 3 — SQLite + content-addressed blobs</li>
+              <li>Week 4 — kill-switch verify (M1 gate)</li>
+              <li>CLI equivalents: <code>fr show</code> · <code>fr verify</code> · <code>fr bisect</code></li>
             </ul>
           </article>
         </div>
@@ -82,7 +93,7 @@
     </main>
 
     <footer>
-      <span>Week 1–2 walking skeleton · E2 timeline demo</span>
+      <span>docs/plan/roadmap-6-months.md · Weeks 1–4 · M1 walking skeleton</span>
       <span id="run-ids"></span>
     </footer>
     <script src="/app.js"></script>

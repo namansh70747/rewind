@@ -14,9 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Week-2 mam demo UI** (`demos/week2_mam/`): browser timeline for a realistic
-  travel-advisor agent -- good vs failed run, auto-bisect highlight at the first wrong
-  LLM decision, and offline `verify` 100x. Launch with `demos/week2_mam/run.ps1`.
+- **Weeks 1–4 mam demo UI** (`demos/week2_mam/`): dark-blue browser console for the
+  M1 walking skeleton — milestone cards (bit-exact, fail-loud tamper, capture/store CAS
+  dedup, kill-switch verify), good vs failed travel-advisor timeline, auto-bisect at the
+  first wrong LLM decision, and offline `verify` 100x. Launch with `demos/week2_mam/run.ps1`.
 - Repository scaffolding, governance, CI, and complete design documentation.
 - **Phase-0 walking skeleton**: the `flightrecorder` core (Session/boundary hash-chain,
   httpx transport capture, deterministic replay with a network kill-switch),

@@ -106,7 +106,9 @@ def _demo_payload() -> dict[str, Any]:
         manifest = _load_manifest()
         good = _run_payload(store, manifest["good_run_id"])
         failed = _run_payload(store, manifest["failed_run_id"])
-        bisect = first_divergence(store.load(manifest["good_run_id"]), store.load(manifest["failed_run_id"]))
+        bisect = first_divergence(
+            store.load(manifest["good_run_id"]), store.load(manifest["failed_run_id"])
+        )
         return {
             "story": manifest["story"],
             "good": good,
@@ -127,6 +129,9 @@ def _demo_payload() -> dict[str, Any]:
                 else None,
             },
             "verify": manifest["verify"],
+            "store": manifest.get("store", {}),
+            "tamper": manifest.get("tamper", {}),
+            "milestones": manifest.get("milestones", []),
         }
     finally:
         store.close()
@@ -210,7 +215,7 @@ def main() -> None:
     print()
     server = ThreadingHTTPServer((HOST, PORT), Handler)
     url = f"http://{HOST}:{PORT}/"
-    print(f"Week-2 mam demo UI → {url}")
+    print(f"Weeks 1-4 mam demo UI → {url}")
     print("Press Ctrl+C to stop.")
     try:
         server.serve_forever()
