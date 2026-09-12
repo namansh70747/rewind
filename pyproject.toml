@@ -35,7 +35,7 @@ classifiers = [
 # (content-addressed blobs). Later phases add: wrapt (broad interception),
 # opentelemetry-sdk (+ semantic-conventions), zstandard, duckdb, orjson, lancedb.
 dependencies = [
-    "httpx>=0.27",   # transport-layer capture (ADR-0007); OpenAI/Anthropic/NVIDIA ride httpx
+    "httpx>=0.28.1",   # transport-layer capture (ADR-0007); OpenAI/Anthropic/NVIDIA ride httpx
     "typer>=0.12",   # the `fr` CLI
     "rich>=13",      # timeline rendering
 ]
