@@ -31,7 +31,7 @@ async function loadDemo() {
     demo.verify.n +
     " bit-exact offline (network kill-switch on).";
   document.getElementById("story-debug").textContent =
-    "Also recorded: an intentional wrong-advice case so we can show auto-bisect finding the first bad LLM decision — Rewind itself is PASS.";
+    "Debug fixture: an intentional wrong-advice recording is retained so auto-bisect can localise the first diverging LLM decision. The recorder and verify path remain PASS.";
 
   renderStrip();
   renderGates();
@@ -54,26 +54,20 @@ function renderStrip() {
   const complete = isMonth1Complete();
 
   const stripV = document.getElementById("strip-verify");
-  stripV.textContent = v.passed ? v.n + "/" + v.n + " PASS" : "FAILED";
-  stripV.className = "proof-v " + (v.passed ? "ok" : "bad");
+  stripV.textContent = v.passed ? v.n + "/" + v.n : "FAIL";
+  stripV.className = "gauge-v " + (v.passed ? "ok" : "bad");
 
   const stripM = document.getElementById("strip-month");
-  stripM.textContent = complete ? "COMPLETE" : "INCOMPLETE";
-  stripM.className = "proof-v " + (complete ? "ok" : "bad");
+  stripM.textContent = complete ? "Month 1 complete" : "Month 1 incomplete";
 
   const pct = c.faithfulness_pct;
   const stripC = document.getElementById("strip-corpus");
-  if (pct != null) {
-    stripC.textContent = pct + "%";
-    stripC.className = "proof-v ok";
-  } else {
-    stripC.textContent = v.passed ? "verify PASS" : "—";
-    stripC.className = "proof-v " + (v.passed ? "ok" : "");
-  }
+  stripC.textContent =
+    pct != null ? "corpus " + pct + "%" : v.passed ? "verify pass" : "—";
 
   document.getElementById("strip-bisect").textContent =
     demo.divergence && demo.divergence.index != null
-      ? "boundary #" + demo.divergence.index
+      ? "first fail #" + demo.divergence.index
       : "—";
 }
 
@@ -382,32 +376,71 @@ document.querySelectorAll(".tab").forEach((btn) => {
   });
 });
 
+async function postJson(url, body) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error((data && data.error) || "HTTP " + res.status);
+  }
+  return data;
+}
+
 document.getElementById("btn-verify").addEventListener("click", async () => {
   const btn = document.getElementById("btn-verify");
+  const status = document.getElementById("verify-status");
+  const TOTAL = 100;
+  const BATCH = 10;
   btn.disabled = true;
-  btn.textContent = "Verifying 100×…";
+  btn.textContent = "Verifying…";
+  status.textContent = "Starting offline verify 0/" + TOTAL + "…";
+  const t0 = Date.now();
+  let done = 0;
+  let last = null;
   try {
-    const res = await fetch("/api/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ n: 100 }),
-      cache: "no-store",
-    });
-    const data = await res.json();
-    demo.verify = {
-      n: data.runs,
-      runs: data.runs,
-      passed: data.passed,
-      detail: data.detail,
-      fingerprint_prefix: data.fingerprint_prefix,
-      kill_switch: true,
-    };
+    // Batches keep the UI alive — a single 100× call looks hung for ~50s.
+    while (done < TOTAL) {
+      const n = Math.min(BATCH, TOTAL - done);
+      status.textContent =
+        "Verifying " + done + "/" + TOTAL + " bit-exact… (" + Math.round((Date.now() - t0) / 1000) + "s)";
+      btn.textContent = "Verifying " + done + "/" + TOTAL + "…";
+      last = await postJson("/api/verify", { n: n });
+      if (!last.passed) {
+        throw new Error(last.detail || "verify failed");
+      }
+      done += last.runs;
+      demo.verify = {
+        n: done,
+        runs: done,
+        passed: true,
+        detail: last.detail,
+        fingerprint_prefix: last.fingerprint_prefix,
+        kill_switch: true,
+      };
+      renderProof(demo.verify, demo.tamper);
+      renderStrip();
+    }
+    demo.verify.n = TOTAL;
+    demo.verify.runs = TOTAL;
+    demo.verify.detail =
+      "all replays match the recorded fingerprint (bit-exact) — re-ran " + TOTAL + "× just now";
     renderProof(demo.verify, demo.tamper);
     renderStrip();
     renderGates();
+    status.textContent =
+      "PASS " + TOTAL + "/" + TOTAL + " in " + Math.round((Date.now() - t0) / 1000) + "s — kill-switch on.";
+  } catch (err) {
+    status.textContent = "Verify failed: " + err;
+    if (demo && demo.verify) {
+      renderProof(demo.verify, demo.tamper);
+    }
   } finally {
     btn.disabled = false;
-    btn.textContent = "Re-run verify 100× now";
+    btn.textContent = "Re-run verify 100×";
   }
 });
 
@@ -417,15 +450,15 @@ document.getElementById("btn-live").addEventListener("click", async () => {
   const box = document.getElementById("live-results");
   btn.disabled = true;
   btn.textContent = "Running…";
-  box.innerHTML = "<p class='muted'>Capturing agent run, then verifying offline…</p>";
+  const t0 = Date.now();
+  const tick = setInterval(() => {
+    box.innerHTML =
+      "<p class='muted'>Capturing live weather + offline verify… " +
+      Math.round((Date.now() - t0) / 1000) +
+      "s</p>";
+  }, 400);
   try {
-    const res = await fetch("/api/live", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ city: city, verify_n: 25 }),
-      cache: "no-store",
-    });
-    const data = await res.json();
+    const data = await postJson("/api/live", { city: city, verify_n: 5 });
     if (!data.ok) {
       box.innerHTML =
         "<p class='bad-line'>Could not finish live capture</p><p class='muted'>" +
@@ -464,18 +497,222 @@ document.getElementById("btn-live").addEventListener("click", async () => {
       "</p>" +
       "<p class='muted'>offline verify " +
       (data.verify ? data.verify.n + "/" + data.verify.n : "—") +
-      " bit-exact</p></article>" +
+      " bit-exact · " +
+      Math.round((Date.now() - t0) / 1000) +
+      "s</p></article>" +
       "<article><p class='aside-label'>Boundaries captured</p><ol class='live-steps'>" +
       steps +
       "</ol></article></div>";
+  } catch (err) {
+    box.innerHTML =
+      "<p class='bad-line'>Live request failed</p><p class='muted'>" +
+      escapeHtml(String(err)) +
+      "</p>";
   } finally {
+    clearInterval(tick);
     btn.disabled = false;
     btn.textContent = "Run agent + verify";
   }
 });
 
-loadDemo().catch((err) => {
-  document.getElementById("story-title").textContent = "Could not load demo";
-  document.getElementById("story-task").textContent =
-    String(err) + " — stop old server and run .\\demos\\week2_mam\\run.ps1 again.";
+/* ——— Auth (demo session in this browser) ——— */
+const STORAGE_USERS = "rewind.mam.users.v1";
+const STORAGE_SESSION = "rewind.mam.session.v1";
+const viewAuth = document.getElementById("view-auth");
+const viewApp = document.getElementById("view-app");
+let demoLoaded = false;
+
+function toast(message) {
+  const el = document.getElementById("toast");
+  el.hidden = false;
+  el.textContent = message;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => {
+    el.hidden = true;
+  }, 2400);
+}
+
+function loadUsers() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_USERS) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveUsers(users) {
+  localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+}
+
+function getSession() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_SESSION) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function setSession(session) {
+  localStorage.setItem(STORAGE_SESSION, JSON.stringify(session));
+}
+
+function hashPassword(password) {
+  let h = 2166136261;
+  const s = "rewind:" + password;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16);
+}
+
+function paintUser(session) {
+  document.getElementById("user-name").textContent = session.name || "User";
+  document.getElementById("user-email").textContent = session.email;
+  document.getElementById("user-avatar").textContent = (session.name || session.email || "R")
+    .trim()
+    .charAt(0)
+    .toUpperCase();
+}
+
+function showAuth() {
+  viewAuth.hidden = false;
+  viewApp.hidden = true;
+  document.title = "Rewind — Sign in";
+}
+
+function showApp(session) {
+  viewAuth.hidden = true;
+  viewApp.hidden = false;
+  paintUser(session);
+  document.title = "Rewind — Month 1 Prototype";
+  if (!demoLoaded) {
+    demoLoaded = true;
+    loadDemo().catch((err) => {
+      document.getElementById("story-title").textContent = "Could not load demo";
+      document.getElementById("story-task").textContent =
+        String(err) + " — stop old server and run .\\demos\\week2_mam\\run.ps1 again.";
+    });
+  }
+}
+
+let authMode = "login";
+
+function setAuthMode(next) {
+  authMode = next;
+  document.querySelectorAll(".seg").forEach((btn) => {
+    const on = btn.dataset.mode === authMode;
+    btn.classList.toggle("is-on", on);
+    btn.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  const signup = authMode === "signup";
+  document.getElementById("field-name").hidden = !signup;
+  document.getElementById("name").required = signup;
+  document.getElementById("password").autocomplete = signup ? "new-password" : "current-password";
+  document.getElementById("auth-title").textContent = signup ? "Create your account" : "Welcome back";
+  document.getElementById("auth-lead").textContent = signup
+    ? "Then open the full Month 1 console for mam review."
+    : "Open the Month 1 console for mam review.";
+  document.getElementById("btn-submit").textContent = signup ? "Create account" : "Sign in";
+  document.getElementById("form-error").hidden = true;
+}
+
+function showFormError(message) {
+  const el = document.getElementById("form-error");
+  el.hidden = !message;
+  el.textContent = message || "";
+}
+
+document.querySelectorAll(".seg").forEach((btn) => {
+  btn.addEventListener("click", () => setAuthMode(btn.dataset.mode));
 });
+
+document.getElementById("btn-eye").addEventListener("click", () => {
+  const input = document.getElementById("password");
+  const show = input.type === "password";
+  input.type = show ? "text" : "password";
+  document.getElementById("btn-eye").textContent = show ? "Hide" : "Show";
+  document.getElementById("btn-eye").setAttribute("aria-label", show ? "Hide password" : "Show password");
+});
+
+document.getElementById("auth-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  showFormError("");
+  const email = document.getElementById("email").value.trim().toLowerCase();
+  const password = document.getElementById("password").value;
+  const name = document.getElementById("name").value.trim();
+  const btn = document.getElementById("btn-submit");
+
+  if (!email || !email.includes("@")) {
+    showFormError("Enter a valid email address.");
+    return;
+  }
+  if (password.length < 8) {
+    showFormError("Password must be at least 8 characters.");
+    return;
+  }
+  if (authMode === "signup" && name.length < 2) {
+    showFormError("Enter your full name.");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = authMode === "signup" ? "Creating…" : "Signing in…";
+  await new Promise((r) => setTimeout(r, 280));
+  const users = loadUsers();
+  try {
+    if (authMode === "signup") {
+      if (users[email]) throw new Error("Account already exists. Sign in instead.");
+      users[email] = { email, name, passwordHash: hashPassword(password), provider: "email" };
+      saveUsers(users);
+      const session = { email, name, provider: "email" };
+      setSession(session);
+      toast("Account created");
+      showApp(session);
+    } else {
+      const user = users[email];
+      if (!user || user.passwordHash !== hashPassword(password)) {
+        throw new Error("Email or password is incorrect.");
+      }
+      const session = { email: user.email, name: user.name, provider: "email" };
+      setSession(session);
+      toast("Signed in");
+      showApp(session);
+    }
+  } catch (err) {
+    showFormError(String(err.message || err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = authMode === "signup" ? "Create account" : "Sign in";
+  }
+});
+
+document.getElementById("btn-google").addEventListener("click", async () => {
+  const btn = document.getElementById("btn-google");
+  const html = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = "Connecting…";
+  await new Promise((r) => setTimeout(r, 500));
+  const session = { email: "you@gmail.com", name: "Google User", provider: "google" };
+  const users = loadUsers();
+  users[session.email] = { email: session.email, name: session.name, provider: "google", passwordHash: null };
+  saveUsers(users);
+  setSession(session);
+  toast("Signed in with Google");
+  showApp(session);
+  btn.disabled = false;
+  btn.innerHTML = html;
+});
+
+document.getElementById("btn-signout").addEventListener("click", () => {
+  localStorage.removeItem(STORAGE_SESSION);
+  toast("Signed out");
+  document.getElementById("password").value = "";
+  showAuth();
+});
+
+(function boot() {
+  const session = getSession();
+  if (session && session.email) showApp(session);
+  else showAuth();
+})();

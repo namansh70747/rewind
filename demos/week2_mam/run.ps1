@@ -10,8 +10,9 @@ $env:PYTHONIOENCODING = "utf-8"
 $env:PYTHONUTF8 = "1"
 
 Write-Host ""
-Write-Host "Rewind — Month 1 mam console" -ForegroundColor DarkCyan
+Write-Host "Rewind — Month 1 mam console (login → full prototype)" -ForegroundColor DarkCyan
 Write-Host "Seeding + Month-1 proofs + UI on http://127.0.0.1:8765/"
+Write-Host "Sign in / Create account / Continue with Google, then all Month 1 tabs."
 Write-Host "(first launch: verify 100x + spikes/corpus — a few minutes)"
 Write-Host ""
 

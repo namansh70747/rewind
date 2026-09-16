@@ -3,162 +3,227 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Rewind — Month 1 Console</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="/styles.css?v=2" />
+    <meta name="color-scheme" content="light" />
+    <title>Rewind — Month 1 Prototype</title>
+    <link rel="stylesheet" href="/styles.css?v=7" />
   </head>
   <body>
-    <div class="grid-bg" aria-hidden="true"></div>
+    <div class="atmosphere" aria-hidden="true">
+      <span class="orb orb-a"></span>
+      <span class="orb orb-b"></span>
+      <span class="orb orb-c"></span>
+    </div>
 
-    <header class="topbar">
-      <div class="brand-block">
-        <p class="brand">Rewind</p>
-        <p class="product">Month 1 complete · Walking skeleton · Gates M0 / M1</p>
-      </div>
-      <p class="law" id="story-law">Loading engine…</p>
-    </header>
-
-    <main>
-      <section class="proof-strip" id="proof-strip" aria-label="Proven results">
-        <div class="proof-card">
-          <p class="proof-k">Bit-exact verify</p>
-          <p class="proof-v" id="strip-verify">…</p>
-        </div>
-        <div class="proof-card">
-          <p class="proof-k">Month 1</p>
-          <p class="proof-v ok" id="strip-month">…</p>
-        </div>
-        <div class="proof-card">
-          <p class="proof-k">Corpus faithfulness</p>
-          <p class="proof-v" id="strip-corpus">…</p>
-        </div>
-        <div class="proof-card">
-          <p class="proof-k">First wrong decision</p>
-          <p class="proof-v" id="strip-bisect">…</p>
-        </div>
-      </section>
-
-      <section class="intro">
-        <h1 id="story-title">Loading…</h1>
-        <p id="story-task"></p>
-        <p class="ok-line" id="story-result"></p>
-        <p class="muted" id="story-debug"></p>
-      </section>
-
-      <section class="gate-row" id="gates" aria-label="Month 1 gates"></section>
-      <section class="milestones" id="milestones" aria-label="Weeks 1 to 4"></section>
-
-      <nav class="tabs" role="tablist" aria-label="Demo views">
-        <button class="tab is-on" data-act="proof" type="button">Results 100×</button>
-        <button class="tab" data-act="live" type="button">Try it live</button>
-        <button class="tab" data-act="good" type="button">Correct run</button>
-        <button class="tab" data-act="failed" type="button">Bug case</button>
-        <button class="tab" data-act="bisect" type="button">Find the bug</button>
-        <button class="tab" data-act="store" type="button">Capture &amp; store</button>
-        <button class="tab" data-act="spikes" type="button">Spikes A–F</button>
-        <button class="tab" data-act="corpus" type="button">Corpus</button>
-      </nav>
-
-      <section class="stage" id="panel-proof" data-panel="proof">
-        <div class="proof-grid">
-          <article>
-            <p class="aside-label">Playback proof (Week 4 / M1)</p>
-            <p class="metric" id="proof-metric">…</p>
-            <p class="muted" id="proof-detail"></p>
-            <p class="muted" id="proof-tamper"></p>
-            <button type="button" id="btn-verify">Re-run verify 100× now</button>
-            <p class="muted tiny" style="margin-top:0.75rem">
-              Mam can press this — engine replays the recording offline with the network kill-switch on.
-            </p>
-          </article>
-          <article>
-            <p class="aside-label">What this proves (plan)</p>
-            <ul class="plain-list">
-              <li>Agent run was recorded once, then replayed <strong>100 times</strong> bit-exact</li>
-              <li>Zero API calls on replay — kill-switch engaged</li>
-              <li>One fingerprint only — no silent drift</li>
-              <li>Same surface as CLI: <code>fr show</code> · <code>fr verify</code> · <code>fr bisect</code></li>
-              <li>Mapped to <code>docs/plan/month1-status.md</code></li>
-            </ul>
-          </article>
-        </div>
-      </section>
-
-      <section class="stage is-off" id="panel-live" data-panel="live">
-        <div class="live-panel">
-          <div class="live-controls">
-            <label>
-              City
-              <input id="live-city" type="text" value="Mumbai" maxlength="64" />
-            </label>
-            <button type="button" id="btn-live">Run agent + verify</button>
-            <p class="muted" id="live-hint">
-              Press to capture a real agent run (live Open-Meteo weather). Then Rewind verifies it
-              offline. Optional: set NVIDIA_API_KEY for a live LLM; otherwise weather is live and
-              the LLM step uses a deterministic stub.
-            </p>
+    <!-- LOGIN / SIGNUP -->
+    <main id="view-auth" class="auth-stage">
+      <section class="glass sheet" aria-labelledby="auth-title">
+        <header class="brand-row">
+          <span class="mark" aria-hidden="true"></span>
+          <div>
+            <p class="brand">Rewind</p>
+            <p class="brand-sub">Month 1 · Flight recorder prototype</p>
           </div>
-          <div class="live-results" id="live-results">
-            <p class="muted">Ready — mam can change the city and press the button.</p>
+        </header>
+
+        <div class="segmented" role="tablist" aria-label="Account">
+          <button type="button" class="seg is-on" data-mode="login" role="tab" aria-selected="true">Sign in</button>
+          <button type="button" class="seg" data-mode="signup" role="tab" aria-selected="false">Create account</button>
+        </div>
+
+        <h1 id="auth-title" class="auth-title">Welcome back</h1>
+        <p id="auth-lead" class="auth-lead">Open the Month 1 console for mam review.</p>
+
+        <button type="button" class="btn btn-google" id="btn-google">
+          <svg class="g-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.96 10.96 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <div class="divider"><span>or use email</span></div>
+
+        <form id="auth-form" class="form" novalidate>
+          <div class="field" id="field-name" hidden>
+            <label for="name">Full name</label>
+            <input id="name" name="name" type="text" autocomplete="name" placeholder="Your name" />
           </div>
-        </div>
-      </section>
-
-      <section class="stage is-off" id="panel-good" data-panel="good">
-        <div class="split">
-          <aside>
-            <p class="aside-label">Boundaries (correct)</p>
-            <ol class="timeline" id="timeline-good"></ol>
-          </aside>
-          <article class="inspect" id="inspect-good"></article>
-        </div>
-      </section>
-
-      <section class="stage is-off" id="panel-failed" data-panel="failed">
-        <div class="case-banner">
-          <strong>Intentional bug case</strong>
-          <span class="muted"
-            >Not a Rewind failure — a recorded wrong LLM decision used to prove auto-bisect. Weather
-            was clear; the model still told the user to take an umbrella.</span
-          >
-        </div>
-        <div class="split">
-          <aside>
-            <p class="aside-label">Boundaries (bug case)</p>
-            <ol class="timeline" id="timeline-failed"></ol>
-          </aside>
-          <article class="inspect" id="inspect-failed"></article>
-        </div>
-      </section>
-
-      <section class="stage is-off" id="panel-store" data-panel="store">
-        <div class="store-grid" id="store-grid"></div>
-      </section>
-
-      <section class="stage is-off" id="panel-bisect" data-panel="bisect">
-        <div class="bisect-head" id="bisect-banner"></div>
-        <div class="diff" id="bisect-diff"></div>
-      </section>
-
-      <section class="stage is-off" id="panel-spikes" data-panel="spikes">
-        <div class="spike-grid" id="spike-grid"></div>
-      </section>
-
-      <section class="stage is-off" id="panel-corpus" data-panel="corpus">
-        <div class="corpus-head" id="corpus-head"></div>
-        <div class="corpus-table" id="corpus-table"></div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" placeholder="you@college.edu" required />
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="password-wrap">
+              <input id="password" name="password" type="password" autocomplete="current-password" placeholder="At least 8 characters" required minlength="8" />
+              <button type="button" class="eye" id="btn-eye" aria-label="Show password">Show</button>
+            </div>
+          </div>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+          <button type="submit" class="btn btn-primary" id="btn-submit">Sign in</button>
+        </form>
+        <p class="fineprint">Demo login is local to this browser. After sign-in you get the full Month 1 prototype.</p>
       </section>
     </main>
 
-    <footer>
-      <span>docs/plan/roadmap-6-months.md · Month 1 COMPLETE · docs/plan/month1-status.md</span>
-      <span id="run-ids"></span>
-    </footer>
-    <script src="/app.js?v=2"></script>
+    <!-- MONTH 1 CONSOLE -->
+    <div id="view-app" class="shell" hidden>
+      <aside class="rail glass">
+        <div class="brand-mark">
+          <span class="mark" aria-hidden="true"></span>
+          <div>
+            <p class="brand">Rewind</p>
+            <p class="product">Flight recorder</p>
+          </div>
+        </div>
+        <p class="rail-meta">Month 1 · M0 / M1</p>
+        <nav class="tabs" role="tablist" aria-label="Demo views">
+          <button class="tab is-on" data-act="proof" type="button">Results 100×</button>
+          <button class="tab" data-act="live" type="button">Live capture</button>
+          <button class="tab" data-act="good" type="button">Correct run</button>
+          <button class="tab" data-act="failed" type="button">Bug case</button>
+          <button class="tab" data-act="bisect" type="button">Find the bug</button>
+          <button class="tab" data-act="store" type="button">Capture &amp; store</button>
+          <button class="tab" data-act="spikes" type="button">Spikes A–F</button>
+          <button class="tab" data-act="corpus" type="button">Corpus</button>
+        </nav>
+        <p class="law" id="story-law">Loading…</p>
+        <div class="user-chip" id="user-chip">
+          <span class="avatar" id="user-avatar">R</span>
+          <div>
+            <p class="user-name" id="user-name">User</p>
+            <p class="user-email" id="user-email">email</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-ghost" id="btn-signout">Sign out</button>
+      </aside>
+
+      <div class="workspace">
+        <header class="hero glass">
+          <div class="hero-copy">
+            <h1 id="story-title">Loading…</h1>
+            <p id="story-task"></p>
+            <p class="ok-line" id="story-result"></p>
+            <p class="muted" id="story-debug"></p>
+          </div>
+          <div class="hero-gauge" aria-label="Primary verify reading">
+            <p class="gauge-k">Offline verify</p>
+            <p class="gauge-v" id="strip-verify">…</p>
+            <p class="gauge-sub">
+              <span id="strip-month">…</span>
+              <span class="sep"></span>
+              <span id="strip-corpus">…</span>
+              <span class="sep"></span>
+              <span id="strip-bisect">…</span>
+            </p>
+          </div>
+        </header>
+
+        <section class="gate-row" id="gates" aria-label="Month 1 gates"></section>
+        <section class="milestones" id="milestones" aria-label="Weeks 1 to 4"></section>
+
+        <main class="deck glass">
+          <section class="stage" id="panel-proof" data-panel="proof">
+            <div class="proof-grid">
+              <article>
+                <p class="aside-label">Playback proof</p>
+                <p class="metric" id="proof-metric">…</p>
+                <p class="muted" id="proof-detail"></p>
+                <p class="muted" id="proof-tamper"></p>
+                <button type="button" class="btn btn-primary" id="btn-verify">Re-run verify 100×</button>
+                <p class="muted tiny" id="verify-status" aria-live="polite"></p>
+                <p class="muted tiny">
+                  Offline replay with kill-switch on — zero outbound API calls. Progress every 10 replays.
+                </p>
+              </article>
+              <article>
+                <p class="aside-label">What this proves</p>
+                <ul class="plain-list">
+                  <li>Correct run replayed <strong>100 times</strong> bit-exact</li>
+                  <li>Kill-switch on — no live API calls during verify</li>
+                  <li>One fingerprint — no silent drift</li>
+                  <li>CLI: <code>fr show</code> · <code>fr verify</code> · <code>fr bisect</code></li>
+                  <li>Plan: <code>docs/plan/month1-status.md</code></li>
+                </ul>
+              </article>
+            </div>
+          </section>
+
+          <section class="stage is-off" id="panel-live" data-panel="live">
+            <div class="live-panel">
+              <div class="live-controls">
+                <label>
+                  City
+                  <input id="live-city" type="text" value="Mumbai" maxlength="64" />
+                </label>
+                <button type="button" class="btn btn-primary" id="btn-live">Run agent + verify</button>
+                <p class="muted" id="live-hint">
+                  Live Open-Meteo weather over HTTP, then offline verify. Uses NVIDIA_API_KEY when set;
+                  otherwise live weather + deterministic LLM stub.
+                </p>
+              </div>
+              <div class="live-results" id="live-results">
+                <p class="muted">Enter a city and run the agent to capture and verify a recording.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="stage is-off" id="panel-good" data-panel="good">
+            <div class="split">
+              <aside>
+                <p class="aside-label">Boundaries</p>
+                <ol class="timeline" id="timeline-good"></ol>
+              </aside>
+              <article class="inspect" id="inspect-good"></article>
+            </div>
+          </section>
+
+          <section class="stage is-off" id="panel-failed" data-panel="failed">
+            <div class="case-banner">
+              <strong>Intentional bug case</strong>
+              <span class="muted"
+                >Not a Rewind failure — wrong LLM advice kept so auto-bisect can be shown. Weather was
+                clear; the model still pushed an umbrella.</span
+              >
+            </div>
+            <div class="split">
+              <aside>
+                <p class="aside-label">Boundaries</p>
+                <ol class="timeline" id="timeline-failed"></ol>
+              </aside>
+              <article class="inspect" id="inspect-failed"></article>
+            </div>
+          </section>
+
+          <section class="stage is-off" id="panel-store" data-panel="store">
+            <div class="store-grid" id="store-grid"></div>
+          </section>
+
+          <section class="stage is-off" id="panel-bisect" data-panel="bisect">
+            <div class="bisect-head" id="bisect-banner"></div>
+            <div class="diff" id="bisect-diff"></div>
+          </section>
+
+          <section class="stage is-off" id="panel-spikes" data-panel="spikes">
+            <div class="spike-grid" id="spike-grid"></div>
+          </section>
+
+          <section class="stage is-off" id="panel-corpus" data-panel="corpus">
+            <div class="corpus-head" id="corpus-head"></div>
+            <div class="corpus-table" id="corpus-table"></div>
+          </section>
+        </main>
+
+        <footer class="glass foot">
+          <span>roadmap-6-months.md · Month 1 complete · month1-status.md</span>
+          <span id="run-ids"></span>
+        </footer>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <script src="/app.js?v=7"></script>
   </body>
 </html>

@@ -27,7 +27,7 @@ if str(_DEMO) not in sys.path:
 from flightrecorder import RunStore, first_divergence, verify_run  # noqa: E402
 
 from agent import run_advisor  # noqa: E402
-from live import live_record  # noqa: E402
+from live import _PATCH_LOCK, live_record  # noqa: E402
 from seed import CITY, DB_PATH, MANIFEST_PATH, seed  # noqa: E402
 
 HOST = "127.0.0.1"
@@ -158,21 +158,24 @@ def _demo_payload() -> dict[str, Any]:
 
 
 def _live_verify(n: int) -> dict[str, Any]:
+    # Load cassette then release the DB. Hold the patch lock so Live's httpx
+    # monkeypatches cannot race with offline replay.
     store = RunStore(DB_PATH)
     try:
         manifest = _load_manifest()
         cassette = store.load(manifest["good_run_id"])
-        with contextlib.redirect_stdout(io.StringIO()):
-            result = verify_run(cassette, lambda: run_advisor(CITY), n=n)
-        return {
-            "passed": result.passed,
-            "runs": result.runs,
-            "unique_fingerprints": result.unique_fingerprints,
-            "detail": result.detail,
-            "fingerprint_prefix": cassette.fingerprint[:16],
-        }
     finally:
         store.close()
+    with _PATCH_LOCK:
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = verify_run(cassette, lambda: run_advisor(CITY), n=n)
+    return {
+        "passed": result.passed,
+        "runs": result.runs,
+        "unique_fingerprints": result.unique_fingerprints,
+        "detail": result.detail,
+        "fingerprint_prefix": cassette.fingerprint[:16],
+    }
 
 
 class Handler(SimpleHTTPRequestHandler):

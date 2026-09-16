@@ -74,6 +74,12 @@ def test_fr_record_unmodified_script(tmp_path: Path) -> None:
 
 def test_static_month1_assets() -> None:
     html = (DEMO / "static" / "index.html").read_text(encoding="utf-8")
-    assert "Live agent" in html
+    js = (DEMO / "static" / "app.js").read_text(encoding="utf-8")
+    assert "Live capture" in html
     assert "Spikes" in html
+    assert "Continue with Google" in html
+    assert "Create account" in html
+    assert "btn-verify" in html
+    assert "btn-live" in html
+    assert "view-auth" in js
     assert (DEMO / "static" / "app.js").is_file()

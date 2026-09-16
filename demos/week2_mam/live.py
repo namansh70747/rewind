@@ -5,7 +5,9 @@ NVIDIA when ``NVIDIA_API_KEY`` is set; otherwise a local stub response is inject
 the demo still records three real-shaped HTTP boundaries without a paid key.
 
 On Windows hosts with a broken CA store, we fall back to ``verify=False`` for the
-Open-Meteo hop only after a probe fails — still a live network round-trip.
+Open-Meteo hop only after a probe fails — still a live network round-trip. If that
+still fails mid-capture (common under concurrent verify), we retry with fixtures so
+the mam console never hard-fails.
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ import contextlib
 import io
 import os
 import sys
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +40,7 @@ from seed import DB_PATH  # noqa: E402
 _ORIG_HANDLE = httpx.HTTPTransport.handle_request
 _TRUE_CLIENT_INIT = httpx.Client.__init__
 _CAPTURE_ORIG_CLIENT_INIT = capture_mod._orig_client_init
+_PATCH_LOCK = threading.Lock()
 
 
 def _llm_stub_advice(city: str) -> str:
@@ -68,7 +72,7 @@ def _probe_open_meteo() -> dict[str, Any]:
         except Exception as exc_insecure:  # noqa: BLE001
             return {
                 "ok": False,
-                "verify": True,
+                "verify": False,
                 "mode": "fixture-fallback",
                 "error": f"live Open-Meteo unreachable: {exc_insecure}",
             }
@@ -133,7 +137,42 @@ def _patch_client_verify(verify: bool) -> None:
 def _restore_patches() -> None:
     httpx.HTTPTransport.handle_request = _ORIG_HANDLE  # type: ignore[method-assign]
     capture_mod._orig_client_init = _CAPTURE_ORIG_CLIENT_INIT
-    httpx.Client.__init__ = _TRUE_CLIENT_INIT  # type: ignore[method-assign]
+    # Only restore Client.__init__ if capture is not mid-patch (depth 0).
+    if getattr(capture_mod, "_patch_depth", 0) == 0:
+        httpx.Client.__init__ = _TRUE_CLIENT_INIT  # type: ignore[method-assign]
+
+
+def _is_tls_error(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return "certificate" in text or "ssl" in text or "tls" in text
+
+
+def _record_once(
+    city: str,
+    *,
+    use_live_llm: bool,
+    network_mode: str,
+    tls_verify: bool,
+    db_path: Path,
+) -> tuple[Any, Any, str, list[dict[str, str]], io.StringIO]:
+    _patch_client_verify(tls_verify)
+    events = _install_hybrid_transport(city, use_live_llm=use_live_llm, network_mode=network_mode)
+    store = RunStore(db_path)
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf):
+            with capture(
+                store,
+                provider="nvidia" if use_live_llm else "live-hybrid",
+                model=MODEL if use_live_llm else "stub-llm+open-meteo",
+            ) as cap:
+                advice = run_advisor(city)
+    except Exception:
+        store.close()
+        _restore_patches()
+        raise
+    assert cap.cassette is not None and cap.run_id is not None
+    return store, cap, advice, events, buf
 
 
 def live_record(
@@ -145,77 +184,100 @@ def live_record(
     """Record one live-ish agent run, persist it, verify offline with kill-switch."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     use_live_llm = bool(os.environ.get("NVIDIA_API_KEY"))
-    probe = _probe_open_meteo()
-    network_mode = probe["mode"]
-    _patch_client_verify(bool(probe.get("verify", True)))
-    events = _install_hybrid_transport(city, use_live_llm=use_live_llm, network_mode=network_mode)
 
-    store = RunStore(db_path)
-    buf = io.StringIO()
-    try:
-        with contextlib.redirect_stdout(buf):
-            with capture(
-                store,
-                provider="nvidia" if use_live_llm else "live-hybrid",
-                model=MODEL if use_live_llm else "stub-llm+open-meteo",
-            ) as cap:
-                advice = run_advisor(city)
-    except Exception as exc:  # noqa: BLE001
+    with _PATCH_LOCK:
+        probe = _probe_open_meteo()
+        network_mode = probe["mode"]
+        tls_verify = bool(probe.get("verify", True))
+        attempts: list[tuple[str, bool]] = [(network_mode, tls_verify)]
+        # Prefer insecure TLS if probe already needed it; always have fixture escape hatch.
+        if network_mode != "fixture-fallback":
+            attempts.append(("live-insecure-tls", False))
+            attempts.append(("fixture-fallback", False))
+
+        last_exc: BaseException | None = None
+        store = None
+        cap = None
+        advice = ""
+        events: list[dict[str, str]] = []
+        buf = io.StringIO()
+        used_mode = network_mode
+        used_probe: dict[str, Any] = probe
+
+        for mode, verify in attempts:
+            try:
+                store, cap, advice, events, buf = _record_once(
+                    city,
+                    use_live_llm=use_live_llm,
+                    network_mode=mode,
+                    tls_verify=verify,
+                    db_path=db_path,
+                )
+                used_mode = mode
+                if mode != network_mode:
+                    used_probe = {
+                        **probe,
+                        "mode": mode,
+                        "note": f"retried as {mode} after {last_exc or probe.get('error') or 'probe'}",
+                    }
+                break
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                continue
+        else:
+            return {
+                "ok": False,
+                "error": str(last_exc) if last_exc else "live capture failed",
+                "log": buf.getvalue(),
+                "events": events,
+                "live_llm": use_live_llm,
+                "network_mode": used_mode,
+                "city": city,
+                "probe": used_probe,
+            }
+
+        assert store is not None and cap is not None and cap.cassette is not None
+        steps = [
+            {
+                "seq": b.seq,
+                "kind": b.kind,
+                "key": b.key,
+                "chain_hash": b.chain_hash[:12],
+            }
+            for b in cap.cassette.boundaries
+        ]
+
+        # Keep hybrid / insecure patches for verify replay of stubbed LLM hosts.
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = verify_run(cap.cassette, lambda: run_advisor(city), n=verify_n)
+
+        payload = {
+            "ok": True,
+            "city": city,
+            "advice": advice,
+            "log": buf.getvalue().strip(),
+            "live_weather": used_mode.startswith("live"),
+            "live_llm": use_live_llm,
+            "llm_mode": "nvidia" if use_live_llm else "stub",
+            "network_mode": used_mode,
+            "probe_note": used_probe.get("note") or used_probe.get("error"),
+            "run_id": cap.run_id,
+            "fingerprint": cap.cassette.fingerprint[:16],
+            "n_boundaries": len(cap.cassette.boundaries),
+            "steps": steps,
+            "events": events,
+            "verify": {
+                "passed": result.passed,
+                "n": result.runs,
+                "unique_fingerprints": result.unique_fingerprints,
+                "detail": result.detail,
+                "kill_switch": True,
+            },
+            "cli": f"fr record -- python demos/week2_mam/agent.py {city}",
+        }
         store.close()
         _restore_patches()
-        return {
-            "ok": False,
-            "error": str(exc),
-            "log": buf.getvalue(),
-            "events": events,
-            "live_llm": use_live_llm,
-            "network_mode": network_mode,
-            "city": city,
-            "probe": probe,
-        }
-
-    assert cap.cassette is not None and cap.run_id is not None
-    steps = [
-        {
-            "seq": b.seq,
-            "kind": b.kind,
-            "key": b.key,
-            "chain_hash": b.chain_hash[:12],
-        }
-        for b in cap.cassette.boundaries
-    ]
-
-    # Verify must replay under the same LLM stub / fixture policy for non-recorded hosts.
-    with contextlib.redirect_stdout(io.StringIO()):
-        result = verify_run(cap.cassette, lambda: run_advisor(city), n=verify_n)
-
-    payload = {
-        "ok": True,
-        "city": city,
-        "advice": advice,
-        "log": buf.getvalue().strip(),
-        "live_weather": network_mode.startswith("live"),
-        "live_llm": use_live_llm,
-        "llm_mode": "nvidia" if use_live_llm else "stub",
-        "network_mode": network_mode,
-        "probe_note": probe.get("note") or probe.get("error"),
-        "run_id": cap.run_id,
-        "fingerprint": cap.cassette.fingerprint[:16],
-        "n_boundaries": len(cap.cassette.boundaries),
-        "steps": steps,
-        "events": events,
-        "verify": {
-            "passed": result.passed,
-            "n": result.runs,
-            "unique_fingerprints": result.unique_fingerprints,
-            "detail": result.detail,
-            "kill_switch": True,
-        },
-        "cli": f"fr record -- python demos/week2_mam/agent.py {city}",
-    }
-    store.close()
-    _restore_patches()
-    return payload
+        return payload
 
 
 if __name__ == "__main__":
