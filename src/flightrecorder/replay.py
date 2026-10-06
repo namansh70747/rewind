@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import httpx
 
 from .boundary import Cassette, Divergence, Session
+from .strict import strict_guard
 
 Run = Callable[[Session, httpx.BaseTransport | None], str]
 
@@ -32,10 +33,18 @@ def record(
     )
 
 
-def replay_once(cassette: Cassette, run: Run) -> tuple[str, str]:
-    """Re-run the agent serving recorded values; returns (output, fingerprint)."""
+def replay_once(cassette: Cassette, run: Run, *, strict: bool = False) -> tuple[str, str]:
+    """Re-run the agent serving recorded values; returns (output, fingerprint).
+
+    ``strict`` refuses uncaptured ``time`` / ``random`` / ``uuid`` / ``os.urandom`` reads
+    in agent code (see :func:`flightrecorder.strict.strict_guard`).
+    """
     session = Session("replay", cassette)
-    output = run(session, None)  # inner=None -> network kill-switch
+    if strict:
+        with strict_guard(session):
+            output = run(session, None)  # inner=None -> network kill-switch
+    else:
+        output = run(session, None)  # inner=None -> network kill-switch
     session.assert_fully_consumed()
     return output, session.chain
 
@@ -48,21 +57,27 @@ class VerifyResult:
     unique_fingerprints: int
     detail: str
 
+    @property
+    def verdict(self) -> str:
+        """First-class replay line: ``replay verified ✓`` or ``replay verified ✗``."""
+        return "replay verified ✓" if self.passed else "replay verified ✗"
+
     def __str__(self) -> str:
         verdict = "PASS" if self.passed else "FAIL"
         return (
+            f"{self.verdict}\n"
             f"{verdict}  replays={self.runs}  distinct_outputs={self.unique_outputs}  "
             f"distinct_fingerprints={self.unique_fingerprints}\n  {self.detail}"
         )
 
 
-def verify(cassette: Cassette, run: Run, n: int = 50) -> VerifyResult:
+def verify(cassette: Cassette, run: Run, n: int = 50, *, strict: bool = False) -> VerifyResult:
     """Replay ``n`` times; PASS iff every replay is byte-identical to the recording."""
     outputs: set[str] = set()
     fingerprints: set[str] = set()
     for i in range(n):
         try:
-            output, fingerprint = replay_once(cassette, run)
+            output, fingerprint = replay_once(cassette, run, strict=strict)
         except Divergence as exc:
             return VerifyResult(False, i + 1, len(outputs), len(fingerprints), f"replay {i}: {exc}")
         outputs.add(output)

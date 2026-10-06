@@ -280,8 +280,19 @@ function renderBisect() {
     "</p></article>";
 }
 
+function replayVerdict(verify) {
+  if (verify && verify.verdict) return verify.verdict;
+  return verify && verify.passed ? "replay verified ✓" : "replay verified ✗";
+}
+
 function renderProof(verify, tamper) {
   const metric = document.getElementById("proof-metric");
+  const verdict = replayVerdict(verify);
+  const verdictEl = document.getElementById("proof-verdict");
+  if (verdictEl) {
+    verdictEl.textContent = verdict;
+    verdictEl.style.color = verify.passed ? "var(--ok)" : "var(--bad)";
+  }
   if (verify.passed) {
     metric.textContent = "BIT-EXACT  " + verify.n + "/" + verify.n;
     metric.style.color = "var(--ok)";
@@ -419,6 +430,7 @@ document.getElementById("btn-verify").addEventListener("click", async () => {
         runs: done,
         passed: true,
         detail: last.detail,
+        verdict: last.verdict || "replay verified ✓",
         fingerprint_prefix: last.fingerprint_prefix,
         kill_switch: true,
       };
@@ -433,7 +445,13 @@ document.getElementById("btn-verify").addEventListener("click", async () => {
     renderStrip();
     renderGates();
     status.textContent =
-      "PASS " + TOTAL + "/" + TOTAL + " in " + Math.round((Date.now() - t0) / 1000) + "s — kill-switch on.";
+      "replay verified ✓  PASS " +
+      TOTAL +
+      "/" +
+      TOTAL +
+      " in " +
+      Math.round((Date.now() - t0) / 1000) +
+      "s — kill-switch on.";
   } catch (err) {
     status.textContent = "Verify failed: " + err;
     if (demo && demo.verify) {

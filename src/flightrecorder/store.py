@@ -5,10 +5,10 @@ request/response payload written to a **content-addressed** blob table (BLAKE2b 
 zlib-compressed). Identical payloads — the same system prompt across many steps, repeated
 tool schemas — are stored once. Zero servers; it's just a file.
 
-**Phase-0 provisional format (not frozen).** ADR-0003 / the roadmap specify BLAKE3 + zstd;
-this skeleton uses stdlib ``blake2b`` + ``zlib`` (allowed as the fallback in
-``tech-stack-and-oss-map.md``) to stay dependency-free. The on-disk format is not yet
-frozen (that happens ~Week 8), so recordings made now may need migration on the switch.
+**Hash split (Week 5).** The replay hash-chain is BLAKE3
+(:func:`flightrecorder.boundary.chain_link`). Blob addresses in this file stay stdlib
+``blake2b`` + ``zlib`` until the Week 8 log-format freeze switches storage to BLAKE3 +
+zstd. A chain mismatch is a divergence; a blob hash is only a storage address.
 """
 
 from __future__ import annotations

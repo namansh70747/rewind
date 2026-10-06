@@ -14,6 +14,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Week 5 divergence oracle.** The boundary hash-chain is now BLAKE3
+  (`h_i = BLAKE3(h_{i-1} ‖ canon(req) ‖ canon(resp))`, 32-byte digest). Replay still
+  hard-fails at the first mismatch and names the boundary. `fr verify --strict` (and
+  `verify(..., strict=True)` / `verify_run(..., strict=True)`) fails when agent code
+  reads `time.time`, `random.random`, `uuid.uuid4`, or `os.urandom` outside the
+  recorder, so a discarded entropy read cannot pass silently. CLI and the mam playback
+  card surface `replay verified ✓/✗`. Blob content-addressing stays blake2b + zlib
+  until the Week 8 format freeze. Recordings hashed with the previous BLAKE2b chain
+  will not verify until re-recorded.
 - **Weeks 1–4 mam demo UI** (`demos/week2_mam/`): dark-blue Month-1 console — M0/M1 gate
   cards, live agent record (Open-Meteo + optional NVIDIA), spikes A–F, 12-city corpus
   faithfulness, good vs failed timeline, auto-bisect, verify 100x. Plan status:

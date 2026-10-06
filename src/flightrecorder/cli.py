@@ -4,6 +4,7 @@
     fr record -- python agent.py         # record an unmodified agent script (M1)
     fr show <run_id>                     # print the decision timeline
     fr verify <run_id> --n 50            # replay bit-exact, offline, zero API calls
+    fr verify <run_id> --strict          # also fail on uncaptured time/random/uuid
     fr runs                              # list recorded runs
 
 The API key is read from the environment or a git-ignored ``.env`` file.
@@ -194,6 +195,13 @@ def verify(
     run_id: str,
     n: Annotated[int, typer.Option(help="number of replays")] = 50,
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+    strict: Annotated[
+        bool,
+        typer.Option(
+            "--strict",
+            help="Fail if agent code reads time, random, uuid4, or os.urandom outside the recorder.",
+        ),
+    ] = False,
 ) -> None:
     """Replay a recorded run N times and prove it is bit-exact (zero API calls)."""
     from .replay import verify as do_verify
@@ -215,9 +223,13 @@ def verify(
         raise typer.Exit(2)
     prov = PROVIDERS[cassette.provider]
     run = make_example_run(prov, cassette.model or None, api_key="replay-needs-no-key")
-    console.print(f"replaying run [bold]{run_id}[/] {n}x offline (network kill-switch on) ...")
-    result = do_verify(cassette, run, n=n)
+    mode = " · strict" if strict else ""
+    console.print(
+        f"replaying run [bold]{run_id}[/] {n}x offline (network kill-switch on){mode} ..."
+    )
+    result = do_verify(cassette, run, n=n, strict=strict)
     style = "green" if result.passed else "red"
+    console.print(f"[{style}]{result.verdict}[/]")
     console.print(f"[{style}]{result}[/]")
     raise typer.Exit(0 if result.passed else 1)
 

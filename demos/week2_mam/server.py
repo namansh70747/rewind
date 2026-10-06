@@ -198,6 +198,7 @@ def _live_verify(n: int) -> dict[str, Any]:
         "runs": result.runs,
         "unique_fingerprints": result.unique_fingerprints,
         "detail": result.detail,
+        "verdict": result.verdict,
         "fingerprint_prefix": cassette.fingerprint[:16],
     }
 

@@ -3,29 +3,30 @@
 An agent run is a sequence of **boundary reads** — every value the agent gets from the
 outside world (an LLM HTTP response, the clock, a UUID, an RNG draw). ``RECORD`` calls
 the real world and logs the value; ``REPLAY`` serves the recorded value, never calls out,
-and verifies a BLAKE2b **hash-chain** link by link, raising :class:`Divergence` — loud and
+and verifies a BLAKE3 **hash-chain** link by link, raising :class:`Divergence` — loud and
 localized — at the first mismatch.
 
 See ADR-0006 (replay is playback, not re-execution) and ADR-0008 (our own recording
 schema). HTTP capture lives in :mod:`flightrecorder.interceptors.transport` (ADR-0007);
 clock/uuid/rng are shimmed here.
 
-**Phase-0 provisional format (not frozen).** The hash-chain uses stdlib ``blake2b`` to keep
-the walking skeleton dependency-free; the ADR-frozen algorithm will be **BLAKE3**
-(``docs/plan/algorithms-and-math.md`` §1). Because the chain algorithm is part of the
-recording identity, recordings made now are not guaranteed to survive the switch — the
-on-disk recording format is not yet frozen (that happens ~Week 8, per the plan).
+**Week 5 hash-chain.** ``h_i = BLAKE3(h_{i-1} ‖ canon(request_i) ‖ canon(response_i))``
+with a 32-byte digest (``docs/plan/algorithms-and-math.md`` §1). The on-disk blob
+addressing in :mod:`flightrecorder.store` is still stdlib ``blake2b`` + ``zlib`` until
+the Week 8 format freeze, so a chain hash and a blob hash are not interchangeable.
+Recordings made with the earlier BLAKE2b chain do not verify under this algorithm.
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
 import random
 import time
 import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
+
+import blake3
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -54,12 +55,12 @@ def canon(obj: Any) -> bytes:
 
 
 def chain_link(prev_hex: str, request: bytes, response: bytes) -> str:
-    """One hash-chain link: ``h_i = BLAKE2b(h_{i-1} ‖ canon(req_i) ‖ canon(resp_i))``."""
-    h = hashlib.blake2b(digest_size=32)
-    h.update(bytes.fromhex(prev_hex))
-    h.update(request)
-    h.update(response)
-    return h.hexdigest()
+    """One hash-chain link: ``h_i = BLAKE3(h_{i-1} ‖ canon(req_i) ‖ canon(resp_i))``."""
+    hasher = blake3.blake3()
+    hasher.update(bytes.fromhex(prev_hex))
+    hasher.update(request)
+    hasher.update(response)
+    return hasher.hexdigest()
 
 
 @dataclass
@@ -95,6 +96,18 @@ class Session:
         self._cursor = 0
         self.chain = GENESIS
         self._in_flight = False  # guards against concurrent (asyncio.gather) boundaries
+
+    @property
+    def boundary_index(self) -> int:
+        """Index of the boundary about to be recorded or served.
+
+        Strict mode uses this so an uncaptured entropy read is blamed on a boundary
+        number: during record it is how many boundaries are already stored; during
+        replay it is the cursor of the next recorded boundary.
+        """
+        if self.mode == "record":
+            return len(self.boundaries)
+        return self._cursor
 
     def mediate(self, kind: str, key: str, request: Any, produce: Callable[[], Any]) -> Any:
         """The one method every boundary goes through."""

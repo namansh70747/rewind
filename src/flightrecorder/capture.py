@@ -24,8 +24,9 @@ Both ``httpx.Client`` and ``httpx.AsyncClient`` are captured (base transport + p
 **serialized** — concurrent boundaries (e.g. ``asyncio.gather`` of HTTP calls) are detected
 and **fail loud** rather than corrupt the single hash-chain; concurrent replay is a later
 phase. Non-HTTP nondeterminism (wall-clock, ``uuid``, RNG) in an unmodified agent is *not*
-auto-captured yet — if it affects the run, the divergence oracle flags it loudly on replay
-rather than lie. (Agents that need those captured can use the ``Session`` shims, as the
+auto-captured yet. If it changes a later request, replay fails with an input divergence.
+``verify_run(..., strict=True)`` also fails when those reads are discarded, so a silent
+leak cannot pass. (Agents that need those captured can use the ``Session`` shims, as the
 bundled example agent does.) Global clock/uuid/rng shims and a
 ``fr record -- python agent.py`` in-process runner (see :mod:`flightrecorder.runner`).
 """
@@ -42,6 +43,7 @@ import httpx
 from .boundary import Cassette, Divergence, Session
 from .interceptors.transport import AsyncRecordingTransport, RecordingTransport
 from .replay import VerifyResult
+from .strict import strict_guard
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -158,21 +160,30 @@ def capture(
         handle.run_id = store.save(handle.cassette)
 
 
-def replay_run(cassette: Cassette, fn: Callable[[], Any]) -> str:
-    """Re-run an unmodified callable serving recorded values; returns the replay fingerprint."""
+def replay_run(cassette: Cassette, fn: Callable[[], Any], *, strict: bool = False) -> str:
+    """Re-run an unmodified callable serving recorded values; returns the replay fingerprint.
+
+    ``strict`` refuses uncaptured clock/RNG/UUID reads in the agent (Week 5 oracle).
+    """
     session = Session("replay", cassette)
     with _patched(session):
-        fn()
+        if strict:
+            with strict_guard(session):
+                fn()
+        else:
+            fn()
     session.assert_fully_consumed()
     return session.chain
 
 
-def verify_run(cassette: Cassette, fn: Callable[[], Any], n: int = 50) -> VerifyResult:
+def verify_run(
+    cassette: Cassette, fn: Callable[[], Any], n: int = 50, *, strict: bool = False
+) -> VerifyResult:
     """Replay an unmodified callable ``n`` times; PASS iff every fingerprint matches."""
     fingerprints: set[str] = set()
     for i in range(n):
         try:
-            fingerprints.add(replay_run(cassette, fn))
+            fingerprints.add(replay_run(cassette, fn, strict=strict))
         except Divergence as exc:
             return VerifyResult(False, i + 1, 0, len(fingerprints), f"replay {i}: {exc}")
     passed = fingerprints == {cassette.fingerprint}

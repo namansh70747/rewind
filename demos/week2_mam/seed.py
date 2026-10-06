@@ -123,8 +123,10 @@ def seed(*, verify_n: int = 100) -> dict[str, Any]:
 
     with contextlib.redirect_stdout(io.StringIO()):
         result = verify_run(good, lambda: run_advisor(CITY), n=verify_n)
+        strict_result = verify_run(good, lambda: run_advisor(CITY), n=1, strict=True)
     assert result.passed, result.detail
     assert result.unique_fingerprints == 1
+    assert strict_result.passed, strict_result.detail
 
     blobs_before = store.blob_count()
     # Dedup check (Week 3 / CAS): saving identical payloads again must not grow blob table.
@@ -175,6 +177,15 @@ def seed(*, verify_n: int = 100) -> dict[str, Any]:
                 f"bisect first fail at #{bisect.index}"
             ),
         },
+        {
+            "week": 5,
+            "title": "Divergence oracle",
+            "plan": "BLAKE3 hash-chain, fail-loud at the exact boundary, strict on uncaptured entropy.",
+            "status": "pass" if strict_result.passed and tamper["localized"] else "fail",
+            "evidence": (
+                f"{result.verdict} · strict replay clean · tamper localized · {tamper['detail']}"
+            ),
+        },
     ]
 
     manifest = {
@@ -206,6 +217,8 @@ def seed(*, verify_n: int = 100) -> dict[str, Any]:
             "passed": result.passed,
             "unique_fingerprints": result.unique_fingerprints,
             "detail": result.detail,
+            "verdict": result.verdict,
+            "strict_passed": strict_result.passed,
             "fingerprint_prefix": good.fingerprint[:16],
             "kill_switch": True,
         },
