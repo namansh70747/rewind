@@ -11,6 +11,7 @@ It is written to be **precise and executable**: every month has a milestone gate
 | Doc | What it gives you |
 |---|---|
 | **README.md** (this file) | North star, operating principles, the scope-cut ladder, the go/no-go gate |
+| **month1-status.md** | Month 1 (Weeks 1–4 / M0+M1) execution status + evidence |
 | [`team-and-cadence.md`](./team-and-cadence.md) | The three roles, who owns what, the weekly rhythm, Definition of Done, tooling |
 | [`roadmap-6-months.md`](./roadmap-6-months.md) | **The centerpiece** — all 26 weeks, per-person targets + exit criteria |
 | [`milestones-and-exit-criteria.md`](./milestones-and-exit-criteria.md) | The 6 milestone gates, the final Definition of Done, the killer-demo script |

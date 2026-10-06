@@ -10,6 +10,8 @@ Legend: 🚦 = go/no-go gate · 🔒 = a contract is frozen this week · ⭐ = t
 
 ## Month 1 — Foundations & the Go/No-Go (Weeks 1–4)
 
+**Status:** COMPLETE — see [`month1-status.md`](./month1-status.md). Demo: `demos/week2_mam/`.
+
 **Milestone M1 goal:** prove the core thesis is possible, then land a walking skeleton that records one real agent run and replays it bit-exact from the CLI. Everything downstream hangs off this thread.
 
 ### Week 1 — Prove bit-exact playback (🚦 the whole project rides on this)
