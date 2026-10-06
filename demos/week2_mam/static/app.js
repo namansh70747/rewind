@@ -15,7 +15,7 @@ function isMonth1Complete() {
 }
 
 async function loadDemo() {
-  const res = await fetch("/api/demo", { cache: "no-store" });
+  const res = await fetch("/api/demo", { cache: "no-store", credentials: "include" });
   if (!res.ok) throw new Error("failed to load /api/demo");
   demo = await res.json();
   if (!demo.verify || !demo.good) throw new Error("demo payload incomplete — re-run run.ps1");
@@ -382,6 +382,7 @@ async function postJson(url, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
     cache: "no-store",
+    credentials: "include",
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -515,12 +516,17 @@ document.getElementById("btn-live").addEventListener("click", async () => {
   }
 });
 
-/* ——— Auth (demo session in this browser) ——— */
-const STORAGE_USERS = "rewind.mam.users.v1";
-const STORAGE_SESSION = "rewind.mam.session.v1";
+/* ——— Server-side auth (cookie session) ——— */
 const viewAuth = document.getElementById("view-auth");
 const viewApp = document.getElementById("view-app");
 let demoLoaded = false;
+let demoLogin = { email: "atyagi1_be24@thapar.edu", password: "Rewind@2026" };
+
+function fillDemoLogin() {
+  if (authMode !== "login") return;
+  document.getElementById("email").value = demoLogin.email;
+  document.getElementById("password").value = demoLogin.password;
+}
 
 function toast(message) {
   const el = document.getElementById("toast");
@@ -532,40 +538,6 @@ function toast(message) {
   }, 2400);
 }
 
-function loadUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_USERS) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function saveUsers(users) {
-  localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
-}
-
-function getSession() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_SESSION) || "null");
-  } catch {
-    return null;
-  }
-}
-
-function setSession(session) {
-  localStorage.setItem(STORAGE_SESSION, JSON.stringify(session));
-}
-
-function hashPassword(password) {
-  let h = 2166136261;
-  const s = "rewind:" + password;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return (h >>> 0).toString(16);
-}
-
 function paintUser(session) {
   document.getElementById("user-name").textContent = session.name || "User";
   document.getElementById("user-email").textContent = session.email;
@@ -575,17 +547,47 @@ function paintUser(session) {
     .toUpperCase();
 }
 
+let lastAuthCfg = null;
+
+async function applyAuthConfig() {
+  const skipBtn = document.getElementById("btn-skip");
+  const googleBlock = document.getElementById("google-block");
+  try {
+    if (!lastAuthCfg) {
+      const res = await fetch("/api/auth/config", { cache: "no-store", credentials: "include" });
+      lastAuthCfg = await res.json();
+    }
+    const cfg = lastAuthCfg;
+    skipBtn.hidden = !cfg.skip;
+    googleBlock.hidden = !cfg.google;
+    skipBtn.classList.remove("btn-skip-main");
+    const accounts = Array.isArray(cfg.accounts) ? cfg.accounts : [];
+    const presenter = accounts[0];
+    if (presenter) {
+      demoLogin = { email: presenter.email, password: presenter.password };
+    }
+    document.getElementById("auth-footnote").textContent = cfg.google
+      ? "Google Sign-In is on. Assigned local accounts still work. Password for both: Rewind@2026."
+      : "These are local hashed accounts (HttpOnly session cookie). Password for both: Rewind@2026.";
+  } catch {
+    skipBtn.hidden = false;
+    googleBlock.hidden = true;
+  }
+  fillDemoLogin();
+}
+
 function showAuth() {
   viewAuth.hidden = false;
   viewApp.hidden = true;
   document.title = "Rewind — Sign in";
+  applyAuthConfig();
 }
 
 function showApp(session) {
   viewAuth.hidden = true;
   viewApp.hidden = false;
   paintUser(session);
-  document.title = "Rewind — Month 1 Prototype";
+  document.title = "Rewind — Month 1 Console";
   if (!demoLoaded) {
     demoLoaded = true;
     loadDemo().catch((err) => {
@@ -611,7 +613,7 @@ function setAuthMode(next) {
   document.getElementById("password").autocomplete = signup ? "new-password" : "current-password";
   document.getElementById("auth-title").textContent = signup ? "Create your account" : "Welcome back";
   document.getElementById("auth-lead").textContent = signup
-    ? "Then open the full Month 1 console for mam review."
+    ? "Create an account, then open the Month 1 console for mam review."
     : "Open the Month 1 console for mam review.";
   document.getElementById("btn-submit").textContent = signup ? "Create account" : "Sign in";
   document.getElementById("form-error").hidden = true;
@@ -658,27 +660,11 @@ document.getElementById("auth-form").addEventListener("submit", async (event) =>
 
   btn.disabled = true;
   btn.textContent = authMode === "signup" ? "Creating…" : "Signing in…";
-  await new Promise((r) => setTimeout(r, 280));
-  const users = loadUsers();
   try {
-    if (authMode === "signup") {
-      if (users[email]) throw new Error("Account already exists. Sign in instead.");
-      users[email] = { email, name, passwordHash: hashPassword(password), provider: "email" };
-      saveUsers(users);
-      const session = { email, name, provider: "email" };
-      setSession(session);
-      toast("Account created");
-      showApp(session);
-    } else {
-      const user = users[email];
-      if (!user || user.passwordHash !== hashPassword(password)) {
-        throw new Error("Email or password is incorrect.");
-      }
-      const session = { email: user.email, name: user.name, provider: "email" };
-      setSession(session);
-      toast("Signed in");
-      showApp(session);
-    }
+    const path = authMode === "signup" ? "/api/auth/register" : "/api/auth/login";
+    const data = await postJson(path, { email, password, name });
+    toast(authMode === "signup" ? "Account created" : "Signed in");
+    showApp(data.user);
   } catch (err) {
     showFormError(String(err.message || err));
   } finally {
@@ -688,31 +674,60 @@ document.getElementById("auth-form").addEventListener("submit", async (event) =>
 });
 
 document.getElementById("btn-google").addEventListener("click", async () => {
-  const btn = document.getElementById("btn-google");
-  const html = btn.innerHTML;
-  btn.disabled = true;
-  btn.textContent = "Connecting…";
-  await new Promise((r) => setTimeout(r, 500));
-  const session = { email: "you@gmail.com", name: "Google User", provider: "google" };
-  const users = loadUsers();
-  users[session.email] = { email: session.email, name: session.name, provider: "google", passwordHash: null };
-  saveUsers(users);
-  setSession(session);
-  toast("Signed in with Google");
-  showApp(session);
-  btn.disabled = false;
-  btn.innerHTML = html;
+  showFormError("");
+  try {
+    const res = await fetch("/api/auth/config", { cache: "no-store", credentials: "include" });
+    const cfg = await res.json();
+    if (!cfg.google) {
+      showFormError("Google Sign-In is off until OAuth keys are in .env. Use Skip for demo.");
+      return;
+    }
+    window.location.href = "/auth/google";
+  } catch (err) {
+    showFormError(String(err));
+  }
 });
 
-document.getElementById("btn-signout").addEventListener("click", () => {
-  localStorage.removeItem(STORAGE_SESSION);
-  toast("Signed out");
+document.getElementById("btn-signout").addEventListener("click", async () => {
+  try {
+    await postJson("/api/auth/logout", {});
+  } catch {
+    /* still leave the console */
+  }
+  demoLoaded = false;
   document.getElementById("password").value = "";
   showAuth();
 });
 
-(function boot() {
-  const session = getSession();
-  if (session && session.email) showApp(session);
-  else showAuth();
-})();
+document.getElementById("btn-skip").addEventListener("click", async () => {
+  showFormError("");
+  try {
+    const data = await postJson("/api/auth/skip", {});
+    toast("Demo console");
+    showApp(data.user);
+  } catch (err) {
+    showFormError(String(err.message || err));
+  }
+});
+
+async function bootAuth() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("auth") === "error") {
+    showFormError("Google sign-in failed. Check .env client ID/secret and the callback URL.");
+  }
+  try {
+    const res = await fetch("/api/auth/me", { cache: "no-store", credentials: "include" });
+    const data = await res.json();
+    if (data.user) {
+      if (params.get("auth") === "ok") toast("Signed in with Google");
+      showApp(data.user);
+      if (params.get("auth")) history.replaceState({}, "", "/");
+      return;
+    }
+  } catch {
+    /* fall through to login */
+  }
+  showAuth();
+}
+
+bootAuth();

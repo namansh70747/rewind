@@ -78,8 +78,40 @@ def test_static_month1_assets() -> None:
     assert "Live capture" in html
     assert "Spikes" in html
     assert "Continue with Google" in html
+    assert "Skip for demo" in html
     assert "Create account" in html
     assert "btn-verify" in html
     assert "btn-live" in html
-    assert "view-auth" in js
+    assert "/api/auth/login" in js
+    assert "/auth/google" in js
     assert (DEMO / "static" / "app.js").is_file()
+
+
+def test_demo_accounts_can_login(tmp_path: Path, monkeypatch: object) -> None:
+    import auth as auth_mod
+
+    monkeypatch.setattr(auth_mod, "USERS_DB", tmp_path / "users.db")
+    issued = auth_mod.ensure_demo_accounts()
+    assert issued[0]["email"] == "atyagi1_be24@thapar.edu"
+    ok = auth_mod.login_email("atyagi1_be24@thapar.edu", "Rewind@2026")
+    assert not isinstance(ok, str)
+    _, user = ok
+    assert user["name"] == "Aastha Tyagi"
+    reviewer = auth_mod.login_email("mam@thapar.edu", "Rewind@2026")
+    assert not isinstance(reviewer, str)
+
+
+def test_email_register_and_login(tmp_path: Path, monkeypatch: object) -> None:
+    import auth as auth_mod
+
+    monkeypatch.setattr(auth_mod, "USERS_DB", tmp_path / "users.db")
+    created = auth_mod.register_email("Aastha", "aastha@college.edu", "secret123")
+    assert not isinstance(created, str)
+    uid, user = created
+    assert user["email"] == "aastha@college.edu"
+    token = auth_mod.create_session(uid)
+    assert auth_mod.user_from_token(token)["name"] == "Aastha"
+    again = auth_mod.login_email("aastha@college.edu", "secret123")
+    assert not isinstance(again, str)
+    bad = auth_mod.login_email("aastha@college.edu", "wrongpass")
+    assert isinstance(bad, str)

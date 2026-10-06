@@ -8,6 +8,7 @@ Set-Location $Root
 $env:PYTHONPATH = "src"
 $env:PYTHONIOENCODING = "utf-8"
 $env:PYTHONUTF8 = "1"
+$env:PYTHONUNBUFFERED = "1"
 
 Write-Host ""
 Write-Host "Rewind — Month 1 mam console (login → full prototype)" -ForegroundColor DarkCyan

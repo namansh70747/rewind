@@ -2,7 +2,7 @@
 
 **Launch:** `.\demos\week2_mam\run.ps1` → http://127.0.0.1:8765/
 
-**Login first:** Continue with Google, or Create account (email + 8-character password), then Sign in.
+**Login:** Continue with Google, Create account, or **Skip for demo — open console**.
 
 ---
 
