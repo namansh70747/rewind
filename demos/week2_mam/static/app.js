@@ -559,7 +559,7 @@ async function applyAuthConfig() {
     }
     const cfg = lastAuthCfg;
     skipBtn.hidden = !cfg.skip;
-    googleBlock.hidden = !cfg.google;
+    googleBlock.hidden = false;
     skipBtn.classList.remove("btn-skip-main");
     const accounts = Array.isArray(cfg.accounts) ? cfg.accounts : [];
     const presenter = accounts[0];
@@ -568,10 +568,10 @@ async function applyAuthConfig() {
     }
     document.getElementById("auth-footnote").textContent = cfg.google
       ? "Google Sign-In is on. Assigned local accounts still work. Password for both: Rewind@2026."
-      : "These are local hashed accounts (HttpOnly session cookie). Password for both: Rewind@2026.";
+      : "Google button is here, but this laptop needs a local .env (copy .env.example, add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, restart). Keys are not in git.";
   } catch {
     skipBtn.hidden = false;
-    googleBlock.hidden = true;
+    googleBlock.hidden = false;
   }
   fillDemoLogin();
 }
@@ -679,7 +679,9 @@ document.getElementById("btn-google").addEventListener("click", async () => {
     const res = await fetch("/api/auth/config", { cache: "no-store", credentials: "include" });
     const cfg = await res.json();
     if (!cfg.google) {
-      showFormError("Google Sign-In is off until OAuth keys are in .env. Use Skip for demo.");
+      showFormError(
+        "Google keys missing on this laptop. Copy repo .env.example to .env, paste GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET from a teammate (not GitHub), restart run.ps1."
+      );
       return;
     }
     window.location.href = "/auth/google";

@@ -45,7 +45,7 @@ def load_dotenv() -> None:
                 continue
             key, val = line.split("=", 1)
             key, val = key.strip(), val.strip().strip("'").strip('"')
-            if key and key not in os.environ:
+            if key and not os.environ.get(key):
                 os.environ[key] = val
 
 
