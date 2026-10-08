@@ -134,6 +134,18 @@ def register(app: typer.Typer) -> None:
         _json(report, output)
         raise typer.Exit(0 if report["passed"] else 1)
 
+    @app.command("run-features")
+    def run_features_command(run_id: str, db: str = DEFAULT_DB, output: Path | None = None) -> None:
+        """Export versioned per-run evidence; unavailable measurements remain null."""
+        from .run_features import run_features
+
+        store = RunStore(db)
+        try:
+            report = run_features(store.load(run_id))
+        finally:
+            store.close()
+        _json(report, output)
+
     @app.command("fleet-map")
     def fleet_map_command(
         db: str = DEFAULT_DB,

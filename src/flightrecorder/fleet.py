@@ -7,6 +7,8 @@ import json
 from typing import TYPE_CHECKING, Any
 
 from .inspection import features
+from .redaction import redact
+from .run_features import run_features
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -23,6 +25,53 @@ def feature_text(cassette: Cassette) -> str:
         )
         or "empty-run"
     )
+
+
+def exploration_data(runs: dict[str, Cassette], vectors: Any) -> dict[str, Any]:
+    """Neighbors use original feature space, never the lossy 2-D projection.
+
+    Embed bounded, redacted timeline previews so the report works offline. Full
+    recordings remain in the local store; truncation is explicit in the UI.
+    """
+    from sklearn.neighbors import NearestNeighbors
+
+    ids = list(runs)
+    distances, indices = (
+        NearestNeighbors(metric="cosine")
+        .fit(vectors)
+        .kneighbors(vectors, n_neighbors=min(6, len(ids)))
+    )
+    return {
+        "neighbor_metric": "cosine distance in original feature space (lower is closer)",
+        "neighbors": {
+            rid: [
+                {"id": ids[int(j)], "distance": float(distance)}
+                for distance, j in zip(ds, js, strict=True)
+                if int(j) != i
+            ][:5]
+            for i, (rid, ds, js) in enumerate(zip(ids, distances, indices, strict=True))
+        },
+        "timelines": {
+            rid: {
+                "features": run_features(cassette),
+                "fingerprint": cassette.fingerprint,
+                "total_events": len(cassette.boundaries),
+                "preview_limit": 200,
+                "events": [
+                    {
+                        "seq": b.seq,
+                        "kind": redact(b.kind),
+                        "key": redact(b.key),
+                        "request": json.dumps(redact(b.request), ensure_ascii=False)[:4000],
+                        "response": json.dumps(redact(b.response), ensure_ascii=False)[:4000],
+                        "payload_preview_limit": 4000,
+                    }
+                    for b in cassette.boundaries[:200]
+                ],
+            }
+            for rid, cassette in runs.items()
+        },
+    }
 
 
 def fleet_map(runs: dict[str, Cassette], min_cluster_size: int = 3) -> dict[str, Any]:
@@ -46,6 +95,7 @@ def fleet_map(runs: dict[str, Cassette], min_cluster_size: int = 3) -> dict[str,
         xy = np.zeros((len(runs), 2))
     return {
         "embedding": "TF-IDF event features (offline baseline)",
+        **exploration_data(runs, dense),
         "projection": "TruncatedSVD",
         "clusterer": "HDBSCAN",
         "human_evaluation": "not performed",
@@ -181,6 +231,7 @@ def embedding_index(runs: dict[str, Cassette], db_path: Path, model_path: Path) 
     db.create_table(table_name, data=rows)
     return {
         "table": table_name,
+        **exploration_data(runs, vectors),
         "model_fingerprint": fingerprint,
         "feature_schema": "event-count-tokens-v1",
         "model": str(model_path),

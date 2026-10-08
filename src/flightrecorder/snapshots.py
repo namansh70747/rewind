@@ -22,9 +22,11 @@ class SnapshotIndex:
     def __init__(self, cassette: Cassette, interval: int | None = None) -> None:
         validate(cassette)
         self.cassette = copy.deepcopy(cassette)
-        self.interval = interval or max(1, math.isqrt(len(cassette.boundaries)))
-        if self.interval < 1:
-            raise ValueError("snapshot interval must be positive")
+        self.interval = (
+            max(1, math.isqrt(len(cassette.boundaries))) if interval is None else interval
+        )
+        if type(self.interval) is not int or self.interval < 1:
+            raise ValueError("snapshot interval must be a positive integer")
         self.checkpoints: dict[int, tuple[dict[str, Any], Any]] = {}
         observed: dict[str, Any] = {}
         state: Any = None

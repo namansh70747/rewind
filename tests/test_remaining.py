@@ -292,3 +292,107 @@ def test_semantic_alignment_vectors_are_validated() -> None:
         align(a, b, vectors=([[float("nan"), 0.0]], [[1.0, 0.0]]))
     with pytest.raises(ValueError, match="count"):
         align(a, b, vectors=([], [[1.0, 0.0]]))
+
+
+def test_two_real_mcp_servers_concurrent_persisted_offline_replay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pytest.importorskip("mcp")
+    from flightrecorder.concurrency import ConcurrentSession
+    from flightrecorder.store import RunStore
+
+    markers = [tmp_path / f"server-{i}.txt" for i in range(2)]
+
+    async def run(session: ConcurrentSession) -> str:
+        async with (
+            mcp_stdio(
+                session, "left", sys.executable, [str(SERVER), "stdio", str(markers[0])]
+            ) as left,
+            mcp_stdio(
+                session, "right", sys.executable, [str(SERVER), "stdio", str(markers[1])]
+            ) as right,
+        ):
+            results = await asyncio.gather(
+                left.call_tool("add", {"a": 20, "b": 22}),
+                right.call_tool("add", {"a": 10, "b": 7}),
+                left.call_tool("fail", {}),
+            )
+            assert results[2]["isError"] is True
+            return json.dumps(results, sort_keys=True)
+
+    session = ConcurrentSession("record")
+    output = asyncio.run(run(session))
+    cassette = Cassette(session.boundaries, session.chain, output)
+    store = RunStore(tmp_path / "runs.db")
+    try:
+        rid = store.save(cassette)
+        restored = store.load(rid)
+    finally:
+        store.close()
+    assert restored.fingerprint == cassette.fingerprint
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        pytest.fail("replay attempted to start an MCP server")
+
+    monkeypatch.setattr(subprocess, "Popen", forbidden)
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", forbidden)
+    with offline_guard() as audit:
+        for _ in range(50):
+            replay = ConcurrentSession("replay", restored)
+            assert asyncio.run(run(replay)) == output
+            replay.assert_fully_consumed()
+    assert not audit.blocked_operations
+    assert [p.read_text() for p in markers] == ["called\n", "called\n"]
+
+
+@pytest.mark.parametrize("interval", [0, -1, True])
+def test_snapshot_rejects_invalid_explicit_interval(interval: int) -> None:
+    from flightrecorder.snapshots import SnapshotIndex
+
+    with pytest.raises(ValueError, match="positive integer"):
+        SnapshotIndex(Cassette(), interval=interval)
+
+
+def test_fleet_neighbors_use_feature_space_and_redacted_timeline() -> None:
+    pytest.importorskip("sklearn")
+    from flightrecorder.fleet import exploration_data
+
+    s = Session("record")
+    s.mediate("tool", "lookup", {"authorization": "secret-value"}, lambda: {"ok": True})
+    cassette = Cassette(s.boundaries, s.chain)
+    runs = {"a": cassette, "b": cassette, "c": cassette}
+    report = exploration_data(runs, [[1, 0], [0.99, 0.01], [0, 1]])
+    assert report["neighbors"]["a"][0]["id"] == "b"
+    assert all(n["id"] != "a" for n in report["neighbors"]["a"])
+    assert report["timelines"]["a"]["total_events"] == 1
+    assert "secret-value" not in json.dumps(report)
+    assert cassette.boundaries[0].request["authorization"] == "secret-value"
+
+
+def test_run_features_missing_usage_is_not_zero_and_calls_are_not_retries() -> None:
+    from flightrecorder.run_features import run_features
+
+    s = Session("record")
+    for _ in range(2):
+        s.mediate("tool", "lookup", {}, lambda: {"ok": True})
+    s.mediate(
+        "http",
+        "POST /chat",
+        {},
+        lambda: {
+            "status": 200,
+            "body": {
+                "json": {
+                    "usage": {"prompt_tokens": 12, "completion_tokens": 4},
+                    "choices": [{"finish_reason": "stop"}],
+                }
+            },
+        },
+    )
+    report = run_features(Cassette(s.boundaries, s.chain))
+    assert report["tool_histogram"] == {"lookup": 2}
+    assert report["tokens"] == {"input_tokens": 12, "output_tokens": 4}
+    assert report["finish_reasons"] == {"stop": 1}
+    assert report["retry_count"] is None
+    assert report["cost_usd"] is None
+    assert run_features(Cassette())["tokens"] is None

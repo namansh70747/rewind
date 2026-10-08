@@ -24,17 +24,17 @@ remain open. Evidence applies to the cited commit, not automatically to future c
 | 7 | Providers / retries | OpenAI and Anthropic SDK tests; transport errors and retries; config_read | Live provider diversity and arbitrary config interception |
 | 8 | CAS / format | BLAKE3/zstd dedup, GC, v2 export and legacy reads | Format ADR approval/merge and real footprint budget |
 | 9 | Redaction / coverage | 20 seed-secret regression; Python socket audit catches swallowed errors | Real stored-corpus scan and broader I/O; configurable extra key/literal redaction now implemented |
-| 10 | Snapshots | Sqrt-N checkpoints, immutable state views, persisted CAS checkpoints | Real long-run latency budget; not process-heap restoration |
+| 10 | Snapshots | Sqrt-N checkpoints, immutable state views, persisted CAS checkpoints; invalid explicit intervals rejected | Real long-run latency budget; not process-heap restoration |
 | 11 | TUI / Perfetto | Textual scrubber; actual Perfetto TraceProcessor accepted all seven demo boundaries | Real-corpus usability and interactive Perfetto UI review |
 | 12 | Safe fork | Mock-default forks, explicit per-tool live policy, quarantined lineage | Production side-effect qualification; JSON policy editor now implemented |
 | 13 | LangGraph / OTel | Sync graph record/replay/fork plus async isolated checkpointer replay; OTLP JSON/protobuf; Phoenix accepted and displayed all seven demo spans; trace-only ingest | Arbitrary existing-checkpoint restoration and real-corpus viewer usability |
 | 14 | Hash bisect | Validated O(log N) search after O(N) integrity check | Remote CI gate and real labeled pairs |
 | 15 | Sequence alignment | Needleman–Wunsch structured/lexical or local embedding cosine; bounded matrix; aligned dashboard lanes | Real labeled localization accuracy and human review |
 | 16 | Taxonomy | Evidence-based categories, raw JSON diagnosis, dashboard comparison | Full proposed taxonomy evaluation / causal attribution not claimed |
-| 17 | MCP | Official MCP v1 stdio/Streamable HTTP lifecycle; real local server tests and server-off replay | Real fleet coverage; server-initiated callbacks and SDK v2 unsupported |
+| 17 | MCP | Official MCP v1 stdio/Streamable HTTP lifecycle; real local server tests; two-server concurrent capture persisted to SQLite and replayed 50× with process creation forbidden and Python networking guarded | Real fleet coverage; server-initiated callbacks and SDK v2 unsupported |
 | 18 | Concurrency | Opt-in async starts/results/errors/cancellations; stored replay; script source/concurrency flags | Arbitrary external scheduling/cancellation timing/threads and real corpus report |
-| 19 | Embeddings / neighbors | Actual BGE-small CPU encoding, fingerprinted LanceDB cosine search; synthetic runtime qualified | Human-reviewed neighbor quality on real corpus |
-| 20 | Failure map | Offline TF-IDF map plus actual BGE/HDBSCAN/UMAP runtime and drill-down | Actual Ollama/Qwen evidence-selection contract passes on 15 synthetic runs; deterministic rendering replaces unsupported free prose; real feature relevance and human coherence review remain open |
+| 19 | Embeddings / neighbors | Actual BGE-small CPU encoding, fingerprinted LanceDB cosine search; synthetic runtime qualified; original-space neighbors in the offline UI; versioned `run-features` export | Human-reviewed neighbor quality on real corpus |
+| 20 | Failure map | Offline TF-IDF map plus actual BGE/HDBSCAN/UMAP runtime; cluster/run navigation, keyboard controls and bounded redacted boundary timeline drilldown | Actual Ollama/Qwen evidence-selection contract passes on 15 synthetic runs; deterministic rendering replaces unsupported free prose; real feature relevance and human coherence review remain open |
 | 21 | Classifier / eval | Grouped classifier, JSON weights, fixture gate, exact held-out baseline comparison command | Reviewed real labels and held-out prompted-LLM baseline comparison |
 | 22 | Real fleet / DSL | Safe boundary-query DSL, weak labels and classifier prediction | 672-tool/10-provider fleet access and hundreds of real runs |
 | 23 | Performance / package | Synthetic benchmark, wheel/sdist, console entrypoint; Linux Python 3.11/3.12/3.13 tests and demos | Production budget, PyPI name/credentials/publication |
@@ -44,7 +44,7 @@ remain open. Evidence applies to the cited commit, not automatically to future c
 
 ## Gate sequence to finish the original plan
 
-1. Complete remote CI on PR #43 and obtain its required independent Code Owner review.
+1. Recheck remote CI on the final PR #43 head and obtain its required independent Code Owner review.
 2. Record authorized OpenAI/Anthropic and fleet workloads with credentials configured
    locally. Review redaction before sharing. Run `eval-fixtures` over that corpus.
 3. Supply reviewed failure labels grouped by originating task/run; evaluate held-out
