@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
@@ -567,5 +568,15 @@ def verify_script_command(
 
 register(app)
 
-if __name__ == "__main__":
+
+def main() -> None:
+    """Keep redirected legacy terminals usable without changing their encoding."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(errors="backslashreplace")
     app()
+
+
+if __name__ == "__main__":
+    main()

@@ -66,7 +66,7 @@ Changelog = "https://github.com/namansh70747/rewind/blob/main/CHANGELOG.md"
 Documentation = "https://github.com/namansh70747/rewind#readme"
 
 [project.scripts]
-fr = "flightrecorder.cli:app"
+fr = "flightrecorder.cli:main"
 
 [tool.hatch.version]
 path = "src/flightrecorder/__init__.py"

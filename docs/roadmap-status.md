@@ -1,12 +1,15 @@
 # Roadmap evidence ledger — weeks 1–26
 
-Updated 2026-10-08. This is a local implementation candidate, **not a declaration that
+Updated 2026-10-08. This is an implementation candidate, **not a declaration that
 all 26 weekly exit criteria passed**. The original roadmap requires CI evidence and
 real recordings. Local synthetic tests cannot substitute for those gates.
 
-The current GitHub integration reads this repository but rejects tree writes with
-HTTP 403 “Resource not accessible by integration”. No remote branch, PR, tag or
-release was created. Required review and CI have not been bypassed.
+Repository-scoped GitHub access is now configured. The candidate is published on
+`feat/rewind-demo-release` in [draft PR #43](https://github.com/namansh70747/rewind/pull/43).
+The initial remote run passed Linux Python 3.11–3.13 tests and lint; Windows
+exposed a legacy-terminal encoding failure, now covered by a regression and fixed
+at the CLI entry point. Current CI results are visible on the PR. No tag or release
+was created; required Code Owner review and release gates remain in force.
 
 | Week | Theme | Implemented / local evidence | Remaining gate or scope limitation |
 |---|---|---|---|
@@ -39,8 +42,7 @@ release was created. Required review and CI have not been bypassed.
 
 ## Gate sequence to finish the original plan
 
-1. Enable repository write access for the GitHub integration, submit the branch as a PR,
-   run the repository CI matrix and obtain its required Code Owner review.
+1. Complete remote CI on PR #43 and obtain its required independent Code Owner review.
 2. Record authorized OpenAI/Anthropic and fleet workloads with credentials configured
    locally. Review redaction before sharing. Run `eval-fixtures` over that corpus.
 3. Supply reviewed failure labels grouped by originating task/run; evaluate held-out

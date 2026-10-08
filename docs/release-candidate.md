@@ -1,6 +1,8 @@
 # Release candidate notes and retrospective
 
-Unpublished local 0.1.0 candidate. The GitHub main branch is not this candidate.
+Unreleased 0.1.0 candidate, published for review in
+[draft PR #43](https://github.com/namansh70747/rewind/pull/43).
+The GitHub main branch is not this candidate.
 
 Added BLAKE3/zstd with legacy readers, selected nondeterministic-source capture,
 decorated tools, recorded HTTP failures, async completion ordering, immutable
@@ -21,6 +23,6 @@ HTTP fidelity; dependency provenance; async LangGraph checkpoint qualification;
 real labeled semantic alignment accuracy; real fleet benchmarks; hosted sharing;
 publication of the prepared synthetic gallery; release automation and Windows/macOS evidence.
 
-Release procedure: review the evidence ledger, resolve required gates, submit PR,
+Release procedure: review the evidence ledger, resolve required gates, complete PR #43,
 obtain Code Owner approval and green CI, build reproducibly, smoke-test the wheel,
 publish using maintainer credentials, then tag and publish release notes.

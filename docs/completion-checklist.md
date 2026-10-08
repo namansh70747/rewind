@@ -22,7 +22,7 @@ reported and must pass `fr release-check` before publication.
 
 | Input / access | Work already prepared | Acceptance still required |
 |---|---|---|
-| GitHub installation with access to `namansh70747/rewind` and authorized repository/workflow writes | Local branch, patch, CI matrix, Pages and release workflows | Submit PR, obtain Code Owner review, pass remote checks and merge |
+| GitHub repository-scoped installation: configured | Candidate published in draft PR #43; CI matrix, Pages and release workflows | Obtain Code Owner review, pass current remote checks and merge |
 | Locally configured `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`, with an explicitly chosen account model | `examples/provider_corpus.py`: three provider calls plus two local tools per recording, then offline verification | Capture and inspect 10–15 recordings per intended provider; live streaming/diversity remain separate coverage requirements |
 | Authorized real fleet recordings and original trusted scripts | Checksummed import, fixture manifest evaluation, MCP capture, query DSL, vector search and maps | Hundreds of author-fleet runs; coverage across intended tools/providers; privacy review |
 | Reviewed task-grouped failure labels and an independently collected prompted baseline | Grouped train/validation/test classifier and held-out baseline comparison | Meet the roadmap's held-out accuracy gate without leakage; human cluster and neighbor review |

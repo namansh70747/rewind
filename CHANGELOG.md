@@ -64,6 +64,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- CLI startup preserves legacy terminal encodings while escaping unsupported
+  characters, preventing Windows redirected help/demo UnicodeEncodeError.
+  Added a cp1252 subprocess regression.
+
 ### Added
 
 - Repository scaffolding, governance, CI, and complete design documentation.

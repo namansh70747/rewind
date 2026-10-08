@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 from typing import TYPE_CHECKING
 
 from typer.testing import CliRunner
@@ -16,6 +19,20 @@ from flightrecorder.scripts import record_script
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def test_cli_on_legacy_redirected_terminal(tmp_path: Path) -> None:
+    """Windows pipes can use cp1252, which cannot represent help/demo arrows."""
+    env = {**os.environ, "PYTHONIOENCODING": "cp1252:strict"}
+    for arguments in (["--help"], ["demo", "--n", "2", "--output", str(tmp_path / "demo.html")]):
+        result = subprocess.run(
+            [sys.executable, "-m", "flightrecorder.cli", *arguments],
+            env=env,
+            capture_output=True,
+            timeout=60,
+        )
+        assert result.returncode == 0, result.stderr.decode("cp1252", errors="replace")
+    assert (tmp_path / "demo.html").is_file()
 
 
 def test_roadmap_cli_commands(tmp_path: Path) -> None:
