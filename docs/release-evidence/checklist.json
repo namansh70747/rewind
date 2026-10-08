@@ -40,16 +40,24 @@
       "reason": "Real workload latency/storage within an approved budget \u2014 authoritative evidence/approval not supplied"
     },
     "platforms": {
-      "status": "blocked",
-      "reason": "Supported Python matrix plus platform smoke evidence \u2014 authoritative evidence/approval not supplied"
+      "status": "passed",
+      "reviewer": "GitHub Actions (automated verification; not Code Owner approval)",
+      "reference": "https://github.com/namansh70747/rewind/actions/runs/37797795829",
+      "artifact": "github-ci-qualification.json",
+      "sha256": "f02550833b6efd1d82063ad69eb29b6c625e84fa13ca6d7ffe101bcadb3c0eb1",
+      "scope": "Qualified code at beecba4491a436d3a33bc5ededa3e1115f3d72f8. Recheck the final release head before publication."
     },
     "code_owner_review": {
       "status": "blocked",
       "reason": "Approving Code Owner review on release code \u2014 authoritative evidence/approval not supplied"
     },
     "remote_ci": {
-      "status": "blocked",
-      "reason": "Green required CI checks on release code \u2014 authoritative evidence/approval not supplied"
+      "status": "passed",
+      "reviewer": "GitHub Actions (automated verification; not Code Owner approval)",
+      "reference": "https://github.com/namansh70747/rewind/actions/runs/37797795829",
+      "artifact": "github-ci-qualification.json",
+      "sha256": "f02550833b6efd1d82063ad69eb29b6c625e84fa13ca6d7ffe101bcadb3c0eb1",
+      "scope": "Qualified code at beecba4491a436d3a33bc5ededa3e1115f3d72f8. Recheck the final release head before publication."
     },
     "package_publication": {
       "status": "blocked",

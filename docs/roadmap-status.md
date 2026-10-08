@@ -6,10 +6,12 @@ real recordings. Local synthetic tests cannot substitute for those gates.
 
 Repository-scoped GitHub access is now configured. The candidate is published on
 `feat/rewind-demo-release` in [draft PR #43](https://github.com/namansh70747/rewind/pull/43).
-The initial remote run passed Linux Python 3.11–3.13 tests and lint; Windows
-exposed a legacy-terminal encoding failure, now covered by a regression and fixed
-at the CLI entry point. Current CI results are visible on the PR. No tag or release
-was created; required Code Owner review and release gates remain in force.
+The PR now tracks the updated candidate. Remote CI, strict docs and CodeQL pass
+on `beecba4`; Python 3.11–3.13 tests and clean-wheel checks on Ubuntu, Windows
+and macOS are qualified. The Windows terminal defect is fixed and regression-tested.
+See [machine verification evidence](release-evidence/github-ci-qualification.json).
+No tag or release was created; independent Code Owner review and real-data gates
+remain open. Evidence applies to the cited commit, not automatically to future changes.
 
 | Week | Theme | Implemented / local evidence | Remaining gate or scope limitation |
 |---|---|---|---|
@@ -35,10 +37,10 @@ was created; required Code Owner review and release gates remain in force.
 | 20 | Failure map | Offline TF-IDF map plus actual BGE/HDBSCAN/UMAP runtime and drill-down | Actual Ollama/Qwen evidence-selection contract passes on 15 synthetic runs; deterministic rendering replaces unsupported free prose; real feature relevance and human coherence review remain open |
 | 21 | Classifier / eval | Grouped classifier, JSON weights, fixture gate, exact held-out baseline comparison command | Reviewed real labels and held-out prompted-LLM baseline comparison |
 | 22 | Real fleet / DSL | Safe boundary-query DSL, weak labels and classifier prediction | 672-tool/10-provider fleet access and hundreds of real runs |
-| 23 | Performance / package | Synthetic benchmark, wheel/sdist, console entrypoint; Linux Python 3.11/3.12/3.13 tests and demos | Production budget, remote Windows/macOS wheel smoke (workflow prepared), PyPI name/credentials/publication |
+| 23 | Performance / package | Synthetic benchmark, wheel/sdist, console entrypoint; Linux Python 3.11/3.12/3.13 tests and demos | Production budget, PyPI name/credentials/publication |
 | 24 | Demo / docs / gallery | Offline recovery demo plus actual local-model capture/live-fork/decision-intervention qualification (200 server-off replays); examples, gallery and strict docs build | Real failing-agent demo and publication of gallery/docs site |
 | 25 | Stretch decision | LoRA cut documented; replay safety, compatibility and typing hardened | No model-training claim; retain decision for maintainer review |
-| 26 | Release | Local candidate, release notes/backlog, digest-checked evidence gate and prepared publishing workflows | Code Owner approval, CI, tag, publish and final real-data Definition of Done |
+| 26 | Release | Published PR candidate, release notes/backlog, digest-checked evidence gate and prepared publishing workflows | Code Owner approval, CI, tag, publish and final real-data Definition of Done |
 
 ## Gate sequence to finish the original plan
 
