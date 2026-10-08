@@ -1,0 +1,30 @@
+// Run after python examples/alignment_demo.py; uses the optional Playwright setup.
+const {chromium}=require('playwright');
+const {pathToFileURL}=require('node:url');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+(async()=>{
+ const browser=await chromium.launch({headless:true,...(process.env.REWIND_CHROMIUM?{executablePath:process.env.REWIND_CHROMIUM,args:['--no-sandbox']}:{})});
+ const page=await browser.newPage({viewport:{width:1440,height:1000}}), errors=[],network=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ page.on('request',r=>{if(/^https?:/.test(r.url()))network.push(r.url())});
+ await page.goto(pathToFileURL(path.resolve('.rewind/alignment.html')).href);
+ assert.equal(await page.locator('.aligned-row').count(),8);
+ await page.getByRole('button',{name:'step-inserted: baseline absent, candidate 2',exact:true}).click();
+ assert.match(await page.locator('#leftDiff').innerText(),/No corresponding step/);
+ assert.match(await page.locator('#rightDiff').innerText(),/extra_check/);
+ assert.equal(await page.locator('#run').inputValue(),'With extra step');
+ assert.equal(await page.locator('#scrubber').inputValue(),'2');
+ await page.locator('#compareA').selectOption('With extra step');
+ await page.locator('#compareB').selectOption('Baseline');
+ await page.getByRole('button',{name:'step-removed: baseline 2, candidate absent',exact:true}).click();
+ assert.match(await page.locator('#leftDiff').innerText(),/extra_check/);
+ assert.match(await page.locator('#rightDiff').innerText(),/No corresponding step/);
+ await page.locator('#alignment').scrollIntoViewIfNeeded();
+ await page.screenshot({path:'.rewind/alignment-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.screenshot({path:'.rewind/alignment-mobile.png',fullPage:true});
+ assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
+ await browser.close();console.log('PASS aligned insertion/removal, reversed indices, inspector jump, responsive layout and offline behavior');
+})();

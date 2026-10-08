@@ -32,7 +32,17 @@ theme:
     - toc.follow
 
 nav:
+  - Actual local-model demo: local-model-demo.md
+  - Completion checklist: completion-checklist.md
   - Home: index.md
+  - Demo and viva: demo-guide.md
+  - Implemented architecture: implementation.md
+  - Validation: validation.md
+  - Roadmap evidence: roadmap-status.md
+  - Integration guide: integrations.md
+  - Sample gallery: gallery.md
+  - Release candidate: release-candidate.md
+  - Release execution: release-guide.md
   - Design: design.md
   - Architecture: architecture.md
   - Roadmap: roadmap.md
@@ -58,6 +68,9 @@ nav:
       - "ADR-0006: Replay is playback, not re-execution": adr/0006-replay-is-playback-not-re-execution.md
       - "ADR-0007: Capture at the HTTP transport layer": adr/0007-capture-at-http-transport-layer.md
       - "ADR-0008: Own the recording schema; OTel as export": adr/0008-internal-recording-schema-otel-as-export.md
+      - "ADR-0009: Local alpha safe counterfactuals": adr/0009-local-alpha-safe-counterfactuals.md
+
+  - "Storage and scope ADR": adr/0010-roadmap-storage-and-scope.md
 
 markdown_extensions:
   - admonition

@@ -23,7 +23,7 @@ The instrumentation ecosystem (OpenInference, OpenLLMetry, the official `opentel
 | `httpx` transport (**ours**) | raw bytes, headers, SSE chunks + timing | **bit-exact replay** | capture + replay **core** |
 | OTel / OpenInference / OpenLLMetry | normalized span attributes (truncated content) | rendering, search, dashboards | **semantic / UX layer only** |
 
-**Decision:** Lock the transport-capture point in **Phase 0**. Everything downstream — storage, scrubbing, TUI, analytics — reads from the bytes the transport records. OTel is normalized *in* at ingest for presentation, and never becomes our on-disk format (see [§5](#5-opentelemetry-genai-semantic-conventions--current-state)).
+**Decision:** Lock the transport-capture point in **Phase 0**. Everything downstream — storage, scrubbing, TUI, analytics — reads from the bytes the transport records. OTel is normalized *in* at ingest for presentation, and never becomes our on-disk format (see [§5](#5-opentelemetry-genai-semantic-conventions-current-state)).
 
 ---
 
