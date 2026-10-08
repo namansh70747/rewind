@@ -15,7 +15,48 @@ guarantee — a structure-only capture mode and richer detectors come later.
 from __future__ import annotations
 
 import re
-from typing import Any
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+
+@dataclass(frozen=True)
+class RedactionRules:
+    extra_keys: frozenset[str] = frozenset()
+    literals: tuple[str, ...] = ()
+
+    @classmethod
+    def from_json(cls, data: Any) -> RedactionRules:
+        if not isinstance(data, dict) or set(data) - {"extra_keys", "literals"}:
+            raise ValueError("redaction rules accept extra_keys and literals only")
+        for key in ("extra_keys", "literals"):
+            if not isinstance(data.get(key, []), list) or any(
+                not isinstance(v, str) or not v for v in data.get(key, [])
+            ):
+                raise ValueError("redaction entries must be non-empty strings in lists")
+        return cls(
+            frozenset(v.lower() for v in data.get("extra_keys", [])),
+            tuple(data.get("literals", [])),
+        )
+
+
+_DEFAULT_RULES = RedactionRules()
+_RULES: ContextVar[RedactionRules] = ContextVar("rewind_redaction_rules", default=_DEFAULT_RULES)
+
+
+@contextmanager
+def redaction_rules(rules: RedactionRules) -> Iterator[None]:
+    """Additional literal/key rules; configuration is never embedded in recordings."""
+    token = _RULES.set(rules)
+    try:
+        yield
+    finally:
+        _RULES.reset(token)
+
 
 # Order matters: more specific patterns first (e.g. sk-ant- before the generic sk-).
 # Leading lookbehind avoids matching mid-token noise (e.g. random base64 containing "sk-").
@@ -40,9 +81,50 @@ _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
 
 def redact_text(text: str) -> str:
     """Replace any known secret/PII pattern in ``text`` with a deterministic placeholder."""
+    rules = _RULES.get()
+    for literal in sorted(rules.literals, key=len, reverse=True):
+        parts = re.split(r"(<redacted:[^>]*>)", text)
+        text = "".join(
+            part if index % 2 else part.replace(literal, "<redacted:custom>")
+            for index, part in enumerate(parts)
+        )
+    if rules.extra_keys:
+        keys = "|".join(re.escape(key) for key in sorted(rules.extra_keys))
+        text = re.sub(
+            r'(?i)("(?:' + keys + r')"\s*:\s*)"(?:\\.|[^"\\])*"',
+            lambda m: m.group(1) + '"<redacted:field>"',
+            text,
+        )
+    # Quoted JSON/SSE credentials may contain whitespace or escaped quotes. Remove
+    # the whole value before pattern matching; a token-only regex can leak its tail.
+    text = re.sub(
+        r'(?i)("(?:password|passwd|secret|api_key|apikey|access_token|refresh_token|authorization|token|client_secret)"\s*:\s*)"(?:\\.|[^"\\])*"',
+        lambda match: match.group(1) + '"<redacted:field>"',
+        text,
+    )
+    # Covers short named credentials in fragments and URL query strings.
+    text = re.sub(
+        r'(?i)((?:"?(?:password|passwd|api_key|apikey|access_token|refresh_token|client_secret)"?)\s*[:=]\s*"?)(?!<redacted:)([^"\s,&}]+)',
+        lambda match: match.group(1) + "<redacted:field>",
+        text,
+    )
     for name, pattern in _PATTERNS:
         text = pattern.sub(f"<redacted:{name}>", text)
     return text
+
+
+_SENSITIVE_KEYS = {
+    "password",
+    "passwd",
+    "secret",
+    "api_key",
+    "apikey",
+    "access_token",
+    "refresh_token",
+    "authorization",
+    "token",
+    "client_secret",
+}
 
 
 def redact(obj: Any) -> Any:
@@ -50,7 +132,12 @@ def redact(obj: Any) -> Any:
     if isinstance(obj, str):
         return redact_text(obj)
     if isinstance(obj, dict):
-        return {key: redact(value) for key, value in obj.items()}
+        return {
+            redact_text(str(key)): "<redacted:field>"
+            if str(key).lower() in _SENSITIVE_KEYS | _RULES.get().extra_keys
+            else redact(value)
+            for key, value in obj.items()
+        }
     if isinstance(obj, list):
         return [redact(value) for value in obj]
     if isinstance(obj, tuple):

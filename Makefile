@@ -8,7 +8,7 @@ help: ## Show this help message
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install project with all extras and set up pre-commit hooks
-	uv sync --all-extras --dev
+	uv sync --extra dev --extra docs --extra integrations --extra tui --extra ml
 	uv run pre-commit install
 
 lint: ## Run ruff linter

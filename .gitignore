@@ -133,3 +133,7 @@ models/
 
 # Spike/run artifacts (recordings may contain data; never commit)
 *.cassette.json
+
+# Optional browser tooling and portable recordings
+node_modules/
+*.rewind.json

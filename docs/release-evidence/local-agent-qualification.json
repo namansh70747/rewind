@@ -1,0 +1,148 @@
+{
+  "qualification": {
+    "passed": true,
+    "verification": {
+      "Failed \u00b7 actual local model": {
+        "passed": true,
+        "runs": 50,
+        "unique_outputs": 1,
+        "unique_fingerprints": 1,
+        "detail": "all replays byte-identical to the recording; hash-chain matches"
+      },
+      "Fresh \u00b7 actual local model": {
+        "passed": true,
+        "runs": 50,
+        "unique_outputs": 1,
+        "unique_fingerprints": 1,
+        "detail": "all replays byte-identical to the recording; hash-chain matches"
+      },
+      "Fork \u00b7 live local model, mocked tools": {
+        "passed": true,
+        "runs": 50,
+        "unique_outputs": 1,
+        "unique_fingerprints": 1,
+        "detail": "all replays byte-identical to the recording; hash-chain matches"
+      },
+      "Recovery \u00b7 injected model decision, mocked tools": {
+        "passed": true,
+        "runs": 50,
+        "unique_outputs": 1,
+        "unique_fingerprints": 1,
+        "detail": "all replays byte-identical to the recording; hash-chain matches"
+      }
+    },
+    "outcomes": {
+      "failed": "over_budget",
+      "fresh": "declined",
+      "fork": "declined",
+      "decision_fork": "confirmed"
+    },
+    "divergence": 1,
+    "decision_intervention_at": 2,
+    "live_quote_fork_recovered": false,
+    "interpretation": "Quote-only live continuation may fail; injected decision is a labeled what-if, not a model accuracy fix.",
+    "scope": "Actual local LLM; controlled scenario and simulated tools, not real fleet acceptance.",
+    "server_stopped_before_verification": true
+  },
+  "model_weights": {
+    "repository": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+    "revision": "9217f5db79a29953eb74d5343926648285ec7e67",
+    "file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+    "sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+    "bytes": 491400032,
+    "license": "Apache-2.0",
+    "verification": "SHA256 matches upstream LFS object at pinned revision"
+  },
+  "runtime": {
+    "version": {
+      "version": "0.40.1"
+    },
+    "models": {
+      "models": [
+        {
+          "name": "rewind-qwen-chat:latest",
+          "model": "rewind-qwen-chat:latest",
+          "modified_at": "2026-10-08T16:09:40.631959785+02:00",
+          "size": 491400370,
+          "digest": "0ac0e9d197f7a1e4bcd6d9b14bc4e3822786c191b72f8c7769ad8244ca785200",
+          "details": {
+            "parent_model": "rewind-qwen.gguf",
+            "format": "gguf",
+            "family": "qwen2",
+            "families": [
+              "qwen2"
+            ],
+            "parameter_size": "630.17M",
+            "quantization_level": "Q4_K_M",
+            "context_length": 32768,
+            "embedding_length": 896,
+            "runner": "llamacpp"
+          },
+          "capabilities": [
+            "tools",
+            "completion"
+          ]
+        },
+        {
+          "name": "rewind-qwen-smoke:latest",
+          "model": "rewind-qwen-smoke:latest",
+          "modified_at": "2026-10-08T15:52:50.59234564+02:00",
+          "size": 491400182,
+          "digest": "ec6611a789c1e3cf43992fad82859c2079de169e93a6c678a040a21a9376b5c4",
+          "details": {
+            "parent_model": "rewind-qwen.gguf",
+            "format": "gguf",
+            "family": "qwen2",
+            "families": [
+              "qwen2"
+            ],
+            "parameter_size": "630.17M",
+            "quantization_level": "Q4_K_M",
+            "context_length": 32768,
+            "embedding_length": 896,
+            "runner": "llamacpp"
+          },
+          "capabilities": [
+            "tools",
+            "completion"
+          ]
+        }
+      ]
+    }
+  },
+  "template": "FROM /tmp/rewind-qwen.gguf\nTEMPLATE \"\"\"{{ if .System }}<|im_start|>system\n{{ .System }}<|im_end|>\n{{ end }}<|im_start|>user\n{{ .Prompt }}<|im_end|>\n<|im_start|>assistant\n\"\"\"\nPARAMETER stop <|im_end|>\nPARAMETER stop <|im_start|>\nPARAMETER num_thread 4\nPARAMETER num_ctx 2048\n",
+  "earlier_quote_only_attempt": {
+    "passed": false,
+    "verification": {
+      "Failed \u00b7 actual local model": {
+        "passed": true,
+        "runs": 50,
+        "unique_outputs": 1,
+        "unique_fingerprints": 1,
+        "detail": "all replays byte-identical to the recording; hash-chain matches"
+      },
+      "Fresh \u00b7 actual local model": {
+        "passed": true,
+        "runs": 50,
+        "unique_outputs": 1,
+        "unique_fingerprints": 1,
+        "detail": "all replays byte-identical to the recording; hash-chain matches"
+      },
+      "Fork \u00b7 live local model, mocked tools": {
+        "passed": true,
+        "runs": 50,
+        "unique_outputs": 1,
+        "unique_fingerprints": 1,
+        "detail": "all replays byte-identical to the recording; hash-chain matches"
+      }
+    },
+    "outcomes": {
+      "failed": "over_budget",
+      "fresh": "declined",
+      "fork": "declined"
+    },
+    "divergence": 1,
+    "scope": "Actual local LLM; controlled scenario and simulated tools, not real fleet acceptance.",
+    "server_stopped_before_verification": true
+  }
+}

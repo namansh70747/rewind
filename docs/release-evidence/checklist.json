@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "gates": {
+    "real_provider_replay": {
+      "status": "blocked",
+      "reason": "Live OpenAI/Anthropic corpus and 50 replay checks \u2014 authoritative evidence/approval not supplied"
+    },
+    "spike_decision": {
+      "status": "blocked",
+      "reason": "Reviewed spikes and go/pivot ADR \u2014 authoritative evidence/approval not supplied"
+    },
+    "corpus_redaction": {
+      "status": "blocked",
+      "reason": "Reviewed real corpus secret scan and coverage audit \u2014 authoritative evidence/approval not supplied"
+    },
+    "format_approval": {
+      "status": "blocked",
+      "reason": "Merged recording-format ADR and compatibility evidence \u2014 authoritative evidence/approval not supplied"
+    },
+    "real_demo": {
+      "status": "blocked",
+      "reason": "Real failing-agent recording, intervention and recovery \u2014 authoritative evidence/approval not supplied"
+    },
+    "viewer_interop": {
+      "status": "blocked",
+      "reason": "Local Perfetto/Phoenix acceptance passed on synthetic demo; independent evidence review pending",
+      "artifact": "viewer-qualification.json",
+      "sha256": "6e58b06ae366187d09898fda398966a5005daaddc2630a03114293baa66d19c1"
+    },
+    "fleet_quality": {
+      "status": "blocked",
+      "reason": "Real fleet coverage and human cluster/neighbor review \u2014 authoritative evidence/approval not supplied"
+    },
+    "classifier_baseline": {
+      "status": "blocked",
+      "reason": "Held-out reviewed labels beat independently collected prompted baseline \u2014 authoritative evidence/approval not supplied"
+    },
+    "performance": {
+      "status": "blocked",
+      "reason": "Real workload latency/storage within an approved budget \u2014 authoritative evidence/approval not supplied"
+    },
+    "platforms": {
+      "status": "blocked",
+      "reason": "Supported Python matrix plus platform smoke evidence \u2014 authoritative evidence/approval not supplied"
+    },
+    "code_owner_review": {
+      "status": "blocked",
+      "reason": "Approving Code Owner review on release code \u2014 authoritative evidence/approval not supplied"
+    },
+    "remote_ci": {
+      "status": "blocked",
+      "reason": "Green required CI checks on release code \u2014 authoritative evidence/approval not supplied"
+    },
+    "package_publication": {
+      "status": "blocked",
+      "reason": "Maintainer verifies package ownership and publisher setup \u2014 authoritative evidence/approval not supplied"
+    }
+  }
+}

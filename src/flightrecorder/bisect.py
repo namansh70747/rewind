@@ -74,4 +74,8 @@ def first_divergence(a: Cassette, b: Cassette) -> BisectResult:
         )
         return BisectResult(True, common, reason, next_a, next_b)
 
+    if a.final_output != b.final_output:
+        return BisectResult(
+            True, common, "boundaries match but final outputs differ (agent logic changed)"
+        )
     return BisectResult(False, None, "identical")

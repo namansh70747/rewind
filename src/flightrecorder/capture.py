@@ -20,14 +20,13 @@ Both ``httpx.Client`` and ``httpx.AsyncClient`` are captured (base transport + p
 ``asyncio.run(agent())``; to replay it, wrap the same call:
 ``verify_run(cassette, lambda: asyncio.run(agent()))``.
 
-**Scope (this increment):** only the **HTTP** boundary is captured globally, and capture is
-**serialized** — concurrent boundaries (e.g. ``asyncio.gather`` of HTTP calls) are detected
-and **fail loud** rather than corrupt the single hash-chain; concurrent replay is a later
-phase. Non-HTTP nondeterminism (wall-clock, ``uuid``, RNG) in an unmodified agent is *not*
-auto-captured yet — if it affects the run, the divergence oracle flags it loudly on replay
-rather than lie. (Agents that need those captured can use the ``Session`` shims, as the
-bundled example agent does.) Global clock/uuid/rng shims and a
-``fr record -- python agent.py`` subprocess wrapper are follow-ups.
+**Scope:** HTTP clients created inside capture, decorated tools and explicitly
+requested source shims are mediated. Default capture serializes boundaries and
+fails on overlapping work. ``concurrent=True`` records supported async start and
+completion order; it does not reproduce arbitrary threads or external scheduling.
+``sources=True`` enables selected clock/UUID/RNG shims. Trusted Python scripts can
+be executed with the CLI, but arbitrary subprocess capture and OS-level isolation
+are not provided. Unmediated nondeterminism remains outside the replay guarantee.
 """
 
 from __future__ import annotations
@@ -40,7 +39,9 @@ from typing import TYPE_CHECKING, Any
 import httpx
 
 from .boundary import Cassette, Divergence, Session
+from .integrity import validate
 from .interceptors.transport import AsyncRecordingTransport, RecordingTransport
+from .offline import NetworkBlocked, offline_guard
 from .replay import VerifyResult
 
 if TYPE_CHECKING:
@@ -133,12 +134,21 @@ class Capture:
 
 @contextlib.contextmanager
 def capture(
-    store: RunStore | None = None, *, provider: str = "", model: str = ""
+    store: RunStore | None = None,
+    *,
+    provider: str = "",
+    model: str = "",
+    concurrent: bool = False,
+    sources: bool = False,
 ) -> Iterator[Capture]:
     """Record every ``httpx`` call made by unmodified code inside the block."""
-    session = Session("record")
+    from .concurrency import ConcurrentSession
+
+    session = ConcurrentSession("record") if concurrent else Session("record")
     handle = Capture(session=session)
-    with _patched(session):
+    from .sources import deterministic_sources
+
+    with _patched(session), deterministic_sources(session) if sources else contextlib.nullcontext():
         yield handle
     handle.cassette = Cassette(
         boundaries=session.boundaries,
@@ -146,6 +156,7 @@ def capture(
         final_output="",
         provider=provider,
         model=model,
+        metadata={"concurrent": concurrent, "sources": sources},
     )
     if store is not None:
         handle.run_id = store.save(handle.cassette)
@@ -153,24 +164,47 @@ def capture(
 
 def replay_run(cassette: Cassette, fn: Callable[[], Any]) -> str:
     """Re-run an unmodified callable serving recorded values; returns the replay fingerprint."""
-    session = Session("replay", cassette)
-    with _patched(session):
+    validate(cassette)
+    if cassette.metadata.get("replayable") is False:
+        raise Divergence(0, "trace-only evidence cannot be executed as a replay")
+    from .concurrency import ConcurrentSession
+
+    session = (
+        ConcurrentSession("replay", cassette)
+        if cassette.metadata.get("concurrent")
+        else Session("replay", cassette)
+    )
+    from .sources import deterministic_sources
+
+    with (
+        _patched(session),
+        offline_guard() as audit,
+        deterministic_sources(session)
+        if cassette.metadata.get("sources")
+        else contextlib.nullcontext(),
+    ):
         fn()
+    if audit.blocked_operations:
+        raise NetworkBlocked(
+            "agent attempted unrecorded network I/O, even though it caught the error"
+        )
     session.assert_fully_consumed()
     return session.chain
 
 
 def verify_run(cassette: Cassette, fn: Callable[[], Any], n: int = 50) -> VerifyResult:
     """Replay an unmodified callable ``n`` times; PASS iff every fingerprint matches."""
+    if n < 1:
+        raise ValueError("number of replays must be at least 1")
     fingerprints: set[str] = set()
     for i in range(n):
         try:
             fingerprints.add(replay_run(cassette, fn))
-        except Divergence as exc:
+        except (Divergence, NetworkBlocked) as exc:
             return VerifyResult(False, i + 1, 0, len(fingerprints), f"replay {i}: {exc}")
     passed = fingerprints == {cassette.fingerprint}
     detail = (
-        "all replays match the recorded fingerprint (bit-exact)"
+        "all boundary fingerprints match; callable return values are not verified"
         if passed
         else f"MISMATCH — {len(fingerprints)} distinct fingerprints, expected exactly 1"
     )

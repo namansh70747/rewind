@@ -1,4 +1,4 @@
-"""The ``fr`` command-line interface — the Phase-0 walking-skeleton surface.
+"""The ``fr`` command-line interface — record, inspect, replay, evaluate and export captured runs.
 
     fr record --provider nvidia          # record the example agent -> a run id
     fr show <run_id>                     # scrub the decision timeline
@@ -13,15 +13,19 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
+from .commands import register
 from .example_agent import make_example_run
 from .providers import PROVIDERS
 from .store import DEFAULT_DB, RunStore
+
+if TYPE_CHECKING:
+    from .boundary import Cassette
 
 app = typer.Typer(add_completion=False, help="Rewind — flight recorder for AI agents.")
 console = Console()
@@ -79,8 +83,22 @@ def record(
     provider: Annotated[str, typer.Option(help="openai | nvidia | anthropic")] = "openai",
     model: Annotated[str | None, typer.Option(help="override the provider's default model")] = None,
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+    concurrent: Annotated[
+        bool, typer.Option(help="opt-in async completion-order capture for scripts")
+    ] = False,
+    sources: Annotated[
+        bool, typer.Option(help="capture selected clock/RNG/UUID sources for scripts")
+    ] = False,
+    command: Annotated[
+        list[str] | None, typer.Argument(help="optional: -- python agent.py")
+    ] = None,
 ) -> None:
-    """Record one live run of the bundled example agent."""
+    """Record the provider example, or a trusted script with -- python agent.py."""
+    if command:
+        if len(command) != 2 or Path(command[0]).name not in {"python", "python3", "python.exe"}:
+            raise typer.BadParameter("supported command form: -- python path/to/agent.py")
+        record_script_command(Path(command[1]), db, concurrent, sources)
+        return
     _load_dotenv()
     if provider not in PROVIDERS:
         console.print(f"[red]unknown provider '{provider}'. choose from: {', '.join(PROVIDERS)}[/]")
@@ -120,6 +138,7 @@ def record(
 @app.command()
 def show(
     run_id: str,
+    at: Annotated[int | None, typer.Option(min=0, help="inspect state at boundary N")] = None,
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
 ) -> None:
     """Print a recorded run's decision timeline."""
@@ -131,6 +150,15 @@ def show(
         raise typer.Exit(1) from None
     finally:
         store.close()
+
+    if at is not None:
+        from .inspection import state_at
+
+        try:
+            console.print_json(data=state_at(cassette, at))
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        return
 
     table = Table(title=f"run {run_id}  ·  {cassette.provider}/{cassette.model}", show_lines=False)
     table.add_column("#", justify="right", style="dim")
@@ -148,7 +176,7 @@ def show(
 @app.command()
 def verify(
     run_id: str,
-    n: Annotated[int, typer.Option(help="number of replays")] = 50,
+    n: Annotated[int, typer.Option(min=1, help="number of replays")] = 50,
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
 ) -> None:
     """Replay a recorded run N times and prove it is bit-exact (zero API calls)."""
@@ -162,6 +190,13 @@ def verify(
         raise typer.Exit(1) from None
     finally:
         store.close()
+
+    if cassette.provider == "demo":
+        from .demo import make_demo_run
+
+        result = do_verify(cassette, make_demo_run(), n=n)
+        console.print(str(result), markup=False)
+        raise typer.Exit(0 if result.passed else 1)
 
     if cassette.provider not in PROVIDERS:
         console.print(
@@ -243,6 +278,294 @@ def bisect(
         console.print(table)
     raise typer.Exit(1)  # diverged -> non-zero, useful as a CI gate
 
+
+def _load_run(run_id: str, db: str) -> Cassette:
+    from .boundary import Divergence
+    from .integrity import validate
+
+    store = RunStore(db)
+    try:
+        cassette = store.load(run_id)
+        validate(cassette)
+        return cassette
+    except (KeyError, ValueError, Divergence) as exc:
+        console.print(str(exc), style="red", markup=False)
+        raise typer.Exit(1) from exc
+    finally:
+        store.close()
+
+
+@app.command()
+def demo(
+    db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+    output: Annotated[Path, typer.Option(help="offline investigation dashboard")] = Path(
+        ".rewind/demo.html"
+    ),
+    n: Annotated[int, typer.Option(min=1, max=1000, help="verification replays per run")] = 50,
+) -> None:
+    """Run the complete failure → bisect → safe fork → recovery demo, without API keys."""
+    from dataclasses import asdict
+
+    from .bisect import first_divergence
+    from .dashboard import render_dashboard
+    from .demo import make_demo_run, record_demo, recover_demo
+    from .portable import export_run
+    from .replay import verify as do_verify
+
+    failed, passed = record_demo(720), record_demo(420)
+    recovered = recover_demo(failed)
+    cassettes = {
+        "Failed · stale quote": failed,
+        "Passing · fresh quote": passed,
+        "Recovered · counterfactual": recovered,
+    }
+    evidence = {}
+    store = RunStore(db)
+    try:
+        for label, cassette in cassettes.items():
+            result = do_verify(cassette, make_demo_run(), n)
+            if not result.passed:
+                console.print(str(result), markup=False)
+                raise typer.Exit(1)
+            run_id = store.save(cassette)
+            evidence[label] = {**asdict(result), "run_id": run_id}
+            export_run(cassette, output.parent / f"{run_id}.rewind.json")
+            console.print(f"{label}: {run_id} · PASS ({n} replays)", markup=False)
+    finally:
+        store.close()
+    render_dashboard(cassettes, output, evidence)
+    console.print(str(first_divergence(passed, failed)), markup=False)
+    console.print("Recovery: 720 → 420; simulated reservation confirmed within the 500 budget.")
+    console.print(f"Dashboard: {output.resolve()}", markup=False)
+    console.print("All external services in this demo are simulated. No API keys or real bookings.")
+
+
+@app.command()
+def fork(
+    run_id: str,
+    price: Annotated[int, typer.Option(min=0, help="replacement price for the demo quote")] = 420,
+    db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+) -> None:
+    """Safely fork a travel demo. Custom agents use the fork_run Python API."""
+    from .demo import recover_demo
+
+    cassette = _load_run(run_id, db)
+    try:
+        recovered = recover_demo(cassette, price)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    store = RunStore(db)
+    try:
+        child_id = store.save(recovered)
+    finally:
+        store.close()
+    console.print(f"Counterfactual run: {child_id}\n{recovered.final_output}", markup=False)
+
+
+@app.command("export")
+def export_command(
+    run_id: str,
+    output: Path,
+    db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+) -> None:
+    """Export a checksummed JSON recording. Review content before sharing."""
+    from .portable import export_run
+
+    export_run(_load_run(run_id, db), output)
+    console.print(f"Exported: {output.resolve()}", markup=False)
+
+
+@app.command("import")
+def import_command(
+    source: Path,
+    db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+) -> None:
+    """Validate and import a portable recording without executing code."""
+    from .boundary import Divergence
+    from .portable import import_run
+
+    try:
+        cassette = import_run(source)
+    except (OSError, ValueError, Divergence) as exc:
+        console.print(str(exc), style="red", markup=False)
+        raise typer.Exit(1) from exc
+    store = RunStore(db)
+    try:
+        run_id = store.save(cassette)
+    finally:
+        store.close()
+    console.print(f"Imported: {run_id}", markup=False)
+
+
+@app.command()
+def dashboard(
+    run_ids: Annotated[list[str], typer.Argument(help="one or more recorded run IDs")],
+    output: Annotated[Path, typer.Option()] = Path(".rewind/dashboard.html"),
+    db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+    alignment_model: Annotated[
+        Path | None, typer.Option(help="optional local embedding model")
+    ] = None,
+) -> None:
+    """Export an interactive, offline timeline and side-by-side comparison."""
+    from .dashboard import render_dashboard
+
+    render_dashboard(
+        {rid: _load_run(rid, db) for rid in run_ids}, output, alignment_model=alignment_model
+    )
+    console.print(f"Dashboard: {output.resolve()}", markup=False)
+
+
+@app.command()
+def doctor() -> None:
+    """Explain actual capture coverage and limitations (no credentials printed)."""
+    import platform
+
+    from . import __version__
+
+    console.print(f"Rewind {__version__} · Python {platform.python_version()}")
+    console.print(
+        "Supported: httpx sync/async, buffered SSE, tools, source shims; opt-in concurrent schedule."
+    )
+    console.print(
+        "Replay: recorded responses + best-effort Python socket guard; not an OS sandbox."
+    )
+    console.print(
+        "Fork: exact prefix, intervention, explicit mocks by default; separate live allowlist API."
+    )
+    console.print(
+        "Not captured: pre-existing clients, files, subprocesses, arbitrary global RNG/time."
+    )
+    console.print("Redaction: known patterns and sensitive fields; not complete PII detection.")
+    console.print(
+        "Pinned SDK and LangGraph integrations have local fixture tests; live services need qualification."
+    )
+
+
+@app.command("eval")
+def evaluate(
+    n: Annotated[int, typer.Option(min=1, max=1000)] = 10,
+    output: Annotated[Path | None, typer.Option(help="optional JSON evaluation report")] = None,
+) -> None:
+    """Evaluate a labeled, synthetic corpus including the exact budget threshold."""
+    from .demo import make_demo_run, record_demo, recover_demo
+    from .replay import verify as do_verify
+
+    rows = []
+    for price in (0, 100, 300, 420, 499, 500, 501, 600, 720, 900, 1200, 5000):
+        cassette = record_demo(price)
+        result = do_verify(cassette, make_demo_run(), n)
+        recovered = recover_demo(cassette)
+        original = json.loads(cassette.final_output)
+        correct = original["status"] == ("confirmed" if price <= 500 else "over_budget")
+        rows.append(
+            {
+                "price": price,
+                "replay_pass": result.passed,
+                "replays": result.runs,
+                "outcome_correct": correct,
+                "recovery_pass": json.loads(recovered.final_output)["status"] == "confirmed",
+            }
+        )
+    report = {
+        "corpus": "synthetic travel-budget-v1, 12 price cases; not production evidence",
+        "cases": rows,
+        "passed": all(
+            r["replay_pass"] and r["outcome_correct"] and r["recovery_pass"] for r in rows
+        ),
+    }
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    console.print_json(data=report)
+    raise typer.Exit(0 if report["passed"] else 1)
+
+
+@app.command()
+def similar(
+    run_id: str,
+    db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+    limit: Annotated[int, typer.Option(min=1, max=100)] = 5,
+) -> None:
+    """Rank recordings by cosine similarity of event features (not an ML diagnosis)."""
+    from .inspection import similarity
+
+    target = _load_run(run_id, db)
+    store = RunStore(db)
+    try:
+        scores = sorted(
+            (
+                (similarity(target, store.load(r.id)), r.id)
+                for r in store.list_runs()
+                if r.id != run_id
+            ),
+            reverse=True,
+        )
+    finally:
+        store.close()
+    console.print_json(
+        data=[{"run_id": rid, "similarity": round(score, 4)} for score, rid in scores[:limit]]
+    )
+
+
+@app.command("record-script")
+def record_script_command(
+    source: Annotated[Path, typer.Argument(exists=True, dir_okay=False)],
+    db: Annotated[str, typer.Option()] = DEFAULT_DB,
+    concurrent: Annotated[bool, typer.Option()] = False,
+    sources: Annotated[bool, typer.Option()] = False,
+    redaction_config: Annotated[Path | None, typer.Option(exists=True, dir_okay=False)] = None,
+) -> None:
+    """Execute and record a TRUSTED Python script (new httpx clients + stdout)."""
+    from .redaction import RedactionRules, redaction_rules
+    from .scripts import record_script
+
+    rules = (
+        RedactionRules.from_json(json.loads(redaction_config.read_text()))
+        if redaction_config
+        else RedactionRules()
+    )
+    with redaction_rules(rules):
+        cassette = record_script(source, concurrent=concurrent, sources=sources)
+    store = RunStore(db)
+    try:
+        run_id = store.save(cassette)
+    finally:
+        store.close()
+    console.print(
+        f"Recorded script: {run_id}\nNext: fr verify-script {run_id} {source}", markup=False
+    )
+
+
+@app.command("verify-script")
+def verify_script_command(
+    run_id: str,
+    source: Annotated[Path, typer.Argument(exists=True, dir_okay=False)],
+    n: Annotated[int, typer.Option(min=1)] = 10,
+    db: Annotated[str, typer.Option()] = DEFAULT_DB,
+    timing_scale: Annotated[float, typer.Option(min=0, max=100)] = 0.0,
+    redaction_config: Annotated[Path | None, typer.Option(exists=True, dir_okay=False)] = None,
+) -> None:
+    """Replay a trusted script offline, checking source drift, boundaries and stdout."""
+    from .scripts import verify_script
+
+    try:
+        from .redaction import RedactionRules, redaction_rules
+        from .streaming import stream_playback_timing
+
+        rules = (
+            RedactionRules.from_json(json.loads(redaction_config.read_text()))
+            if redaction_config
+            else RedactionRules()
+        )
+        with redaction_rules(rules), stream_playback_timing(timing_scale):
+            result = verify_script(_load_run(run_id, db), source, n)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print(str(result), markup=False)
+    raise typer.Exit(0 if result.passed else 1)
+
+
+register(app)
 
 if __name__ == "__main__":
     app()

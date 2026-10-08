@@ -13,6 +13,8 @@ from dataclasses import dataclass
 import httpx
 
 from .boundary import Cassette, Divergence, Session
+from .integrity import validate
+from .offline import NetworkBlocked, offline_guard
 
 Run = Callable[[Session, httpx.BaseTransport | None], str]
 
@@ -34,8 +36,16 @@ def record(
 
 def replay_once(cassette: Cassette, run: Run) -> tuple[str, str]:
     """Re-run the agent serving recorded values; returns (output, fingerprint)."""
+    validate(cassette)
+    if cassette.metadata.get("replayable") is False:
+        raise Divergence(0, "trace-only evidence cannot be executed as a replay")
     session = Session("replay", cassette)
-    output = run(session, None)  # inner=None -> network kill-switch
+    with offline_guard() as audit:
+        output = run(session, None)  # inner=None -> network kill-switch
+    if audit.blocked_operations:
+        raise NetworkBlocked(
+            "agent attempted unrecorded network I/O, even though it caught the error"
+        )
     session.assert_fully_consumed()
     return output, session.chain
 
@@ -58,12 +68,14 @@ class VerifyResult:
 
 def verify(cassette: Cassette, run: Run, n: int = 50) -> VerifyResult:
     """Replay ``n`` times; PASS iff every replay is byte-identical to the recording."""
+    if n < 1:
+        raise ValueError("number of replays must be at least 1")
     outputs: set[str] = set()
     fingerprints: set[str] = set()
     for i in range(n):
         try:
             output, fingerprint = replay_once(cassette, run)
-        except Divergence as exc:
+        except (Divergence, NetworkBlocked) as exc:
             return VerifyResult(False, i + 1, len(outputs), len(fingerprints), f"replay {i}: {exc}")
         outputs.add(output)
         fingerprints.add(fingerprint)
