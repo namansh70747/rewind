@@ -51,7 +51,7 @@ free-text claims. Real-fleet relevance and independent human review remain pendi
 
 Live OpenAI/Anthropic/NVIDIA accounts were not used. The original suite uses mock
 provider transports; the teaching demo uses simulated tool/LLM services. Opt-in async completion ordering has controlled tests; arbitrary concurrency,
-native networking, subprocesses, full PII coverage and production workloads are not qualified. The socket guard is not a security sandbox. The configured CI matrix still needs to run remotely for this candidate.
+native networking, subprocesses, full PII coverage and production workloads are not qualified. The socket guard is not a security sandbox. Remote CI is now running on draft PR #43; use the checks on its latest commit for current status.
 
 ## Roadmap expansion checks
 
@@ -115,3 +115,15 @@ The model error remains preserved and is not claimed fixed. Browser checks passe
 for recorded-model/simulated-tool provenance, explicit intervention lineage, final
 output, desktop/mobile layout and offline behavior. See [actual local-model demo](local-model-demo.md)
 and `release-evidence/local-agent-qualification.json`.
+
+## GitHub publication and Windows regression
+
+The candidate is published in [PR #43](https://github.com/namansh70747/rewind/pull/43).
+The first GitHub run passed Linux Python 3.11–3.13, lint, strict docs and CodeQL.
+Its Windows wheel job found that redirected cp1252 output cannot encode help
+arrows. The CLI entry point now preserves the terminal encoding and uses
+backslash escapes for unsupported characters. A subprocess help/demo regression
+reproduces that terminal constraint. Updated local acceptance passes 108 tests,
+lint, formatting, types, strict docs, package build and clean-wheel smoke.
+The platform checks on the current PR revision remain the authoritative remote
+qualification; a successful Linux run alone does not qualify Windows/macOS.
