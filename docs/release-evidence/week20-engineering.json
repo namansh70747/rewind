@@ -1,0 +1,79 @@
+{
+  "local_checks_passed": true,
+  "release_check_passed": false,
+  "checks": [
+    {
+      "check": "lint",
+      "passed": true,
+      "seconds": 0.065,
+      "detail": "see log"
+    },
+    {
+      "check": "format",
+      "passed": true,
+      "seconds": 0.064,
+      "detail": "see log"
+    },
+    {
+      "check": "types",
+      "passed": true,
+      "seconds": 1.82,
+      "detail": "see log"
+    },
+    {
+      "check": "tests",
+      "passed": true,
+      "seconds": 11.66,
+      "detail": "see log"
+    },
+    {
+      "check": "docs",
+      "passed": true,
+      "seconds": 0.867,
+      "detail": "see log"
+    },
+    {
+      "check": "build",
+      "passed": true,
+      "seconds": 0.667,
+      "detail": "see log"
+    },
+    {
+      "check": "wheel",
+      "passed": true,
+      "seconds": 9.444,
+      "detail": "see log"
+    }
+  ],
+  "scope": "Week 1\u201320 engineering pass; local Linux Python 3.13. Human and live-corpus acceptance remain open.",
+  "tests": {
+    "passed": 114,
+    "coverage_percent": 80
+  },
+  "browser_checks": {
+    "passed": true,
+    "viewport_widths": [
+      1440,
+      390
+    ],
+    "checks": [
+      "neighbor navigation",
+      "seven recorded timeline boundaries",
+      "keyboard Space selection",
+      "cluster filtering",
+      "no horizontal mobile overflow",
+      "no JavaScript errors"
+    ],
+    "fixture": "ten synthetic demo runs"
+  },
+  "mcp_check": {
+    "servers": 2,
+    "transport": "stdio",
+    "sdk": "MCP v1",
+    "concurrent_calls": 3,
+    "offline_replays": 50,
+    "persistence": "SQLite",
+    "process_creation_forbidden": true,
+    "side_effects_only_during_recording": true
+  }
+}
