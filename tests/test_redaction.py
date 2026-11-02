@@ -106,3 +106,28 @@ def test_request_url_and_body_secrets_are_redacted(tmp_path: Path) -> None:
     assert secret not in dumped
     assert "<redacted:openai-key>" in dumped
     store.close()
+
+
+def test_short_query_credentials_are_redacted_before_storage_and_replay(tmp_path: Path) -> None:
+    from flightrecorder.boundary import Session
+    from flightrecorder.interceptors.transport import RecordingTransport
+    from flightrecorder.redaction import RedactionRules, redaction_rules
+
+    url = "https://example.test/lookup?token=short&secret=hidden&student_id=1234&ok=yes"
+
+    def run(session: object, inner: httpx.BaseTransport | None) -> str:
+        assert isinstance(session, Session)
+        with httpx.Client(transport=RecordingTransport(session, inner)) as client:
+            return client.get(url).text
+
+    with redaction_rules(RedactionRules(extra_keys=frozenset({"student_id"}))):
+        cassette = record(run, httpx.MockTransport(lambda _: httpx.Response(200, text="ok")))
+        store = RunStore(tmp_path / "runs.db")
+        try:
+            loaded = store.load(store.save(cassette))
+            stored = json.dumps([(b.request, b.response) for b in loaded.boundaries])
+            assert all(value not in stored for value in ("short", "hidden", "1234"))
+            assert "ok=yes" in stored
+            assert verify(loaded, run, n=2).passed
+        finally:
+            store.close()
