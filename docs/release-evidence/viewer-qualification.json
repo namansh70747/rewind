@@ -1,0 +1,134 @@
+{
+  "scope": "synthetic demo; external engine/viewer acceptance, not production corpus",
+  "perfetto": {
+    "engine": "Perfetto TraceProcessor",
+    "accepted_boundaries": 7,
+    "rows": [
+      {
+        "name": "travel_request",
+        "ts": 0,
+        "dur": 0
+      },
+      {
+        "name": "time",
+        "ts": 1000,
+        "dur": 0
+      },
+      {
+        "name": "plan_trip",
+        "ts": 2000,
+        "dur": 0
+      },
+      {
+        "name": "price_lookup",
+        "ts": 3000,
+        "dur": 0
+      },
+      {
+        "name": "agent_state",
+        "ts": 4000,
+        "dur": 0
+      },
+      {
+        "name": "reserve_trip",
+        "ts": 5000,
+        "dur": 0
+      },
+      {
+        "name": "explain_result",
+        "ts": 6000,
+        "dur": 0
+      }
+    ],
+    "time_basis": "ordinal; not measured wall clock"
+  },
+  "phoenix": {
+    "status": 200,
+    "response": "",
+    "projects": {
+      "data": [
+        {
+          "name": "default",
+          "description": "Default project",
+          "id": "UHJvamVjdDox"
+        }
+      ],
+      "next_cursor": null
+    },
+    "persisted_spans": [
+      {
+        "id": "U3Bhbjox",
+        "span_id": "0000000000000001",
+        "parent_id": null,
+        "name": "travel_request",
+        "span_kind": "CHAIN",
+        "status_code": "UNSET",
+        "start_time": "1970-01-01T00:00:01+00:00",
+        "end_time": "1970-01-01T00:00:01+00:00"
+      },
+      {
+        "id": "U3Bhbjoy",
+        "span_id": "0000000000000002",
+        "parent_id": null,
+        "name": "time",
+        "span_kind": "CHAIN",
+        "status_code": "UNSET",
+        "start_time": "1970-01-01T00:00:01.000001+00:00",
+        "end_time": "1970-01-01T00:00:01.000001+00:00"
+      },
+      {
+        "id": "U3Bhbjoz",
+        "span_id": "0000000000000003",
+        "parent_id": null,
+        "name": "plan_trip",
+        "span_kind": "LLM",
+        "status_code": "UNSET",
+        "start_time": "1970-01-01T00:00:01.000002+00:00",
+        "end_time": "1970-01-01T00:00:01.000002+00:00"
+      },
+      {
+        "id": "U3Bhbjo0",
+        "span_id": "0000000000000004",
+        "parent_id": null,
+        "name": "price_lookup",
+        "span_kind": "TOOL",
+        "status_code": "UNSET",
+        "start_time": "1970-01-01T00:00:01.000003+00:00",
+        "end_time": "1970-01-01T00:00:01.000003+00:00"
+      },
+      {
+        "id": "U3Bhbjo1",
+        "span_id": "0000000000000005",
+        "parent_id": null,
+        "name": "agent_state",
+        "span_kind": "CHAIN",
+        "status_code": "UNSET",
+        "start_time": "1970-01-01T00:00:01.000004+00:00",
+        "end_time": "1970-01-01T00:00:01.000004+00:00"
+      },
+      {
+        "id": "U3Bhbjo2",
+        "span_id": "0000000000000006",
+        "parent_id": null,
+        "name": "reserve_trip",
+        "span_kind": "TOOL",
+        "status_code": "UNSET",
+        "start_time": "1970-01-01T00:00:01.000005+00:00",
+        "end_time": "1970-01-01T00:00:01.000005+00:00"
+      },
+      {
+        "id": "U3Bhbjo3",
+        "span_id": "0000000000000007",
+        "parent_id": null,
+        "name": "explain_result",
+        "span_kind": "LLM",
+        "status_code": "UNSET",
+        "start_time": "1970-01-01T00:00:01.000006+00:00",
+        "end_time": "1970-01-01T00:00:01.000006+00:00"
+      }
+    ],
+    "trace_id": "9e1ddb1b173e8c0064c2063669059627",
+    "version": "20.19.0",
+    "payload": "unmodified OTLP protobuf from Rewind"
+  }
+}

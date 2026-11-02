@@ -1,227 +1,246 @@
 # Rewind
 
-**A flight recorder & time-travel debugger for AI agents.**
-_Record-replay (à la Mozilla `rr`) meets `git bisect` — Sentry/Datadog for AI-agent debugging._
+**Record a failure. Replay the evidence. Test a different decision.**
 
-[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](https://github.com/namansh70747/rewind/actions)
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange.svg)](#project-status)
-[![code style: ruff](https://img.shields.io/badge/code%20style-ruff-D7FF64.svg)](https://github.com/astral-sh/ruff)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+A local flight recorder and counterfactual debugger for Python AI agents.
+Rewind captures external responses at supported boundaries, feeds those values back
+into agent code offline, and finds where two recordings first diverge.
 
----
+[![CI](https://github.com/namansh70747/rewind/actions/workflows/ci.yml/badge.svg)](https://github.com/namansh70747/rewind/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](pyproject.toml)
+[![License](https://img.shields.io/badge/License-Apache--2.0-green)](LICENSE)
 
-## Why this exists
+**Status: working local alpha (0.1.0).** The offline investigation workflow is
+implemented and tested. This is not completion of the original six-month research
+roadmap. Capture coverage and safety limits are explicit below.
 
-AI agents are **nondeterministic**. Their behavior depends on LLM sampling, tool
-and network I/O, wall-clock time, random number generators, and unpredictable
-external APIs. When an agent misbehaves in production, that exact run is gone —
-you cannot re-run it and get the same failure. Today's observability tools
-(Langfuse, LangSmith, Arize) are passive trace **viewers**: they show you what
-happened, but none of them can **re-execute** a run.
+## Run the complete demo
 
-Rewind records every nondeterministic input an agent consumes during a run, then
-lets you **replay that run bit-for-bit, fully offline, with zero API calls** —
-and go further: scrub the decision timeline, fork counterfactuals, and
-auto-bisect a passing run against a failing one to pinpoint the first decision
-that diverged.
+Python 3.11+; no API key, account, GPU, or database server needed.
 
-> The one-liner: **record-replay meets `git bisect` for AI agents.**
-
-## Table of contents
-
-<details>
-<summary>Expand</summary>
-
-- [Why this exists](#why-this-exists)
-- [How it works](#how-it-works)
-- [Features](#features)
-- [Project status](#project-status)
-- [Roadmap](#roadmap)
-- [Tech stack](#tech-stack)
-- [Repository layout](#repository-layout)
-- [Quickstart](#quickstart)
-- [Contributing](#contributing)
-- [Security](#security)
-- [License](#license)
-- [Citation](#citation)
-- [Acknowledgements](#acknowledgements)
-
-</details>
-
-## How it works
-
-At the center of Rewind is a single **Boundary Log** and a **uniform
-interceptor**. Every point where an agent touches nondeterminism — an LLM
-completion, a tool call, a clock read, an RNG draw, an external API response — is
-a *boundary*. The interceptor sits on all of these boundaries and runs in one of
-four modes: **RECORD** (capture every boundary as it happens), **PLAYBACK**
-(serve recorded values back, bit-exact and fully offline), **REEXEC_REPLAY**
-(re-run the agent's own logic while feeding it recorded boundary values), and
-**FORK** (replay up to a chosen point, then substitute a *different* boundary
-value to explore a counterfactual). A **network kill-switch** is engaged during
-any replay so that no live call can leak in and silently corrupt the result —
-this is what makes replay *faithful* rather than merely *approximate*. Because
-the log is content-addressed and self-contained, a recording is a portable,
-reproducible artifact you can share, diff, and bisect.
-
-```mermaid
-flowchart TD
-    AG[AI agent run] -->|LLM sampling · tool I/O · wall-clock · RNG · external APIs| INT{{Uniform interceptor}}
-
-    subgraph rec [RECORD]
-        INT -->|capture every boundary| BL[(Boundary Log<br/>SQLite + content-addressed zstd blobs)]
-    end
-
-    BL --> MODE{Replay modes<br/>network kill-switch ON}
-    MODE -->|PLAYBACK| PB[Bit-exact offline replay<br/>zero API calls]
-    MODE -->|REEXEC_REPLAY| RX[Re-run agent logic against<br/>recorded boundaries]
-    MODE -->|FORK| FK[Counterfactual:<br/>what if this tool returned X?]
-
-    PB --> TT[Time-travel<br/>scrub the decision timeline]
-    RX --> BIS[Auto-bisect<br/>passing vs failing run]
-    BIS --> RCA[First diverging decision]
-    FK --> RCA
-    RCA --> ML[Fleet ML:<br/>cluster & root-cause failures]
+```bash
+git clone https://github.com/namansh70747/rewind.git
+cd rewind
+python -m venv .venv
+# macOS / Linux:
+source .venv/bin/activate
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+python -m pip install -e '.[dev]'
+fr demo
 ```
 
-## Features
+Open **`.rewind/demo.html`** in your browser. The HTML is self-contained and makes
+no network requests. The command also creates three SQLite runs and portable JSON
+recordings. Re-running the demo adds new runs; it never deletes prior recordings.
 
-- **Bit-exact replay, fully offline** — replay a recorded run with **zero API
-  calls**. A network kill-switch guarantees no live traffic contaminates the
-  result.
-- **Time-travel debugging** — scrub forward and backward through the agent's
-  decision timeline and inspect state at any boundary.
-- **Counterfactual forks** — ask *"what if this tool had returned X?"*: replay up
-  to a point, substitute a boundary value, and let the run continue from there.
-- **Auto-bisect** — given a passing run and a failing run, automatically narrow
-  down to the **first diverging decision** (`git bisect` for agent behavior).
-- **Fleet failure intelligence** — cluster and root-cause failures across many
-  runs with ML (embeddings + HDBSCAN), with a LoRA "failure-explainer" model
-  planned.
+### What you will see
 
-## Project status
+1. A travel agent receives a stale **720 INR** quote against a **500 INR** budget.
+2. Its simulated reservation fails. Record and replay the failed run **50 times**.
+3. Compare it with a passing run; the first differing response is **boundary #3**.
+4. Fork the failed run at that boundary, replacing the quote with **420 INR**.
+5. Execute the agent logic again using explicit safe mocks for the continuation.
+6. The recomputed state changes and the simulated reservation succeeds.
 
-> [!IMPORTANT]
-> **Rewind is pre-alpha and not yet usable.**
-> The design is complete and this repository currently contains **scaffolding
-> and design documentation only** — there is no working implementation yet.
-> Implementation is just beginning (Phase 0). APIs, CLI, storage formats, and
-> everything else are expected to change. Do not depend on Rewind for anything
-> real yet. The most valuable contributions right now are **design feedback and
-> ADR proposals** — see [Contributing](#contributing).
+All LLM and external tool services in this teaching demo are **simulated**. The
+recording, replay, hash verification, persistence, divergence detection, and fork
+execution are real. The same HTTP capture core is tested with mock HTTP providers;
+live-provider compatibility is not implied by synthetic results.
 
-## Roadmap
+## Features and actual scope
 
-Each phase ends with a working end-to-end slice. Details in
-[`docs/roadmap.md`](./docs/roadmap.md).
+| Capability | Implemented behavior |
+|---|---|
+| Record/replay | Sync and async httpx clients created inside `capture`; serialized by default; opt-in async completion-order capture |
+| Streaming | Buffered UTF-8 SSE, sanitized chunks; optional pacing from recorded offsets |
+| Integrity | BLAKE3 boundary hash chain (legacy BLAKE2b readable), sequence/fingerprint checks, blob verification |
+| Storage | SQLite, zstd-compressed BLAKE3 content-addressed blobs (legacy readable), atomic saves, fork provenance |
+| Time travel | Inspect observed boundaries and explicit agent snapshots without future values |
+| Counterfactuals | Replay exact prefix, intervene once, recompute using explicitly supplied mocks |
+| Compare | Validated hash bisection, sequence alignment, divergence taxonomy |
+| Dashboard | Search, scrubber, snapshots, side-by-side evidence, lineage, mobile layout |
+| Portability | Versioned JSON with SHA-256 envelope checksum; validates before import |
+| Scripts | Trusted `.py` entrypoints, httpx capture, source-file hash and redacted stdout verification |
+| Evaluation | 12 labeled synthetic budget cases, replay and recovery checks |
+| Similarity | Interpretable event-feature cosine similarity; **not** a learned diagnosis |
 
-- **P0 — Walking skeleton:** `record → replay → verify` CLI.
-- **P1 — Faithful recorder:** complete boundary capture + web timeline.
-- **P2 — Time-travel + fork:** timeline scrubbing and counterfactual forks.
-- **P3 — Auto-bisect:** pass-vs-fail bisection to the first diverging decision.
-- **P4 — Fleet + ML:** MCP fleet adapter + ML failure clustering / root-cause.
-- **P5 — LoRA explainer + hardening:** fine-tuned failure-explainer, stabilization.
+## CLI reference
 
-## Tech stack
+Use run IDs printed by `fr demo` or `fr runs`.
 
-- **Language:** Python 3.11+ (tested on 3.11, 3.12, 3.13).
-- **Tooling:** `uv`, `ruff`, `mypy`, `pytest`, `pre-commit`.
-- **Storage:** SQLite + content-addressed `zstd` blobs, DuckDB (analytics),
-  LanceDB (vectors).
-- **ML:** scikit-learn, embeddings, HDBSCAN; a LoRA failure-explainer later.
-- **Standards:** vendor-neutral core built on **OpenTelemetry GenAI**
-  conventions, with a first-class adapter for the author's MCP agent fleet
-  (57 servers / 672 tools / 10-provider LLM router).
-- **Footprint:** free / open source, laptop-first, zero-server.
-
-## Repository layout
-
-```text
-rewind/
-├── README.md               # you are here
-├── LICENSE                 # Apache-2.0
-├── CONTRIBUTING.md         # dev setup, workflow, ADR process
-├── CODE_OF_CONDUCT.md      # Contributor Covenant v2.1
-├── SECURITY.md             # vulnerability reporting + data-handling notes
-├── CHANGELOG.md            # Keep a Changelog / SemVer
-├── GOVERNANCE.md           # roles and decision-making
-├── CITATION.cff            # how to cite Rewind
-├── .gitignore
-├── .gitattributes
-├── pyproject.toml          # packaging + tool config
-├── .github/                # CI workflows, issue/PR templates
-│   └── workflows/
-├── src/
-│   └── flightrecorder/     # the import package (CLI: `fr`)
-├── tests/
-└── docs/
-    ├── roadmap.md
-    └── adr/                # architecture decision records
+```bash
+fr runs
+fr show RUN_ID
+fr show RUN_ID --at 3
+fr verify RUN_ID --n 50
+fr bisect PASS_ID FAIL_ID           # exit 1 means a difference was found
+fr fork FAIL_ID --price 420         # bundled travel scenario; safe mock continuation
+fr dashboard FAIL_ID PASS_ID FORK_ID --output .rewind/investigation.html
+fr export RUN_ID .rewind/run.rewind.json
+fr import .rewind/run.rewind.json
+fr similar RUN_ID
+fr eval --n 10 --output .rewind/evaluation.json
+fr doctor
 ```
 
-## Quickstart
+Every store-oriented command accepts `--db PATH`. `fr verify` rebuilds the bundled
+provider example or travel demo; arbitrary scripts use the explicit script command:
 
-> [!WARNING]
-> 🚧 **Planned — not yet implemented.** The commands below describe the intended
-> developer experience. Nothing here works yet; this section documents the target
-> UX so the design can be reviewed.
-
-Install (coming soon — distributed on PyPI as `rewind`):
-
-```console
-$ pip install rewind      # 🚧 not yet published
+```bash
+fr record-script examples/http_agent.py
+fr verify-script RUN_ID examples/http_agent.py --n 10
 ```
 
-The intended CLI (`fr`):
+Script recording runs **trusted code in your process**. It is not a sandbox.
+There is no arbitrary subprocess command wrapper, and source drift checks cover
+the entrypoint file, not all imported dependencies. Avoid module-global clients.
 
-```console
-# Record an agent run into a portable, self-contained recording
-$ fr record -- python my_agent.py
+### Record a live example
 
-# Inspect a recorded run and scrub its decision timeline
-$ fr show <run>
-
-# Replay bit-exact and offline, then verify it matches the original
-$ fr verify <run>
-
-# Fork a counterfactual: replay to boundary N, then change what happens next
-$ fr fork <run> --at N
-
-# Bisect a passing run against a failing one to the first diverging decision
-$ fr bisect <pass> <fail>
+```bash
+# Set OPENAI_API_KEY in your shell or an untracked .env file first.
+fr record --provider openai
+# Also available: --provider anthropic or --provider nvidia
 ```
 
-## Contributing
+Live recording incurs the provider's usual charges. Offline demo/replay needs no key.
+SOCKS proxy support is included in the runtime dependencies.
 
-Contributions are welcome. Since Rewind is pre-alpha, the highest-impact
-contributions today are **design feedback** and **ADR proposals**. See
-[`CONTRIBUTING.md`](./CONTRIBUTING.md) for local setup with `uv`, linting,
-typing, tests, branch/commit conventions, and the ADR process. All participation
-is governed by our [Code of Conduct](./CODE_OF_CONDUCT.md).
+## Python API
 
-## Security
+```python
+from flightrecorder import capture, verify_run
 
-Rewind records agent traces that may contain **secrets and PII**. Please read
-[`SECURITY.md`](./SECURITY.md) for how to report vulnerabilities privately, our
-redaction-on-export commitments, and why you should **never commit recordings**
-to a repository.
 
-## License
+# Create httpx clients INSIDE this callable.
+def agent():
+    import httpx
 
-Rewind is licensed under the **Apache License 2.0**. See [`LICENSE`](./LICENSE).
+    with httpx.Client() as client:
+        return client.get("https://example.com").text
 
-## Citation
 
-If you use Rewind in academic work, please cite it — see
-[`CITATION.cff`](./CITATION.cff).
+with capture() as cap:
+    agent()
+assert cap.cassette is not None
+result = verify_run(cap.cassette, agent, n=5)
+# verify_run checks boundary fingerprints, not callable return values.
+print(result)
+```
 
-## Acknowledgements
+Explicit `Session` agents can also record `session.now()`, `new_uuid()`, `rand()`,
+and `session.mediate('tool', name, request, producer)`. `record` / `verify` compare
+both the final output and the boundary fingerprint. Record explicit `state`
+boundaries to expose meaningful application snapshots in the timeline.
 
-Rewind stands on the shoulders of prior art. It is directly inspired by
-[Mozilla `rr`](https://rr-project.org/) and the record-replay debugging
-tradition, and it builds on the
-[OpenTelemetry GenAI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
-for a vendor-neutral core. Thanks to the broader AI-agent observability community
-for framing the problem.
+For custom counterfactuals, use `flightrecorder.fork.fork_run(parent, agent, at=N,
+value=replacement, mocks={('tool', 'name'): callback})`. All effects must go through
+Session; unspecified continuation boundaries fail closed. No original producer
+runs after an intervention. See [the API example](examples/session_agent.py).
+
+## Honest guarantees and limitations
+
+- Replay is exact **relative to the sanitized, captured boundary values and the
+  supported agent's output**, not compressed HTTP wire bytes, exact scheduler timing, or arbitrary
+  process memory. JSON is normalized, bodies are UTF-8, headers other than content
+  type are omitted, and known secret patterns are replaced before agent delivery.
+- Redaction changes what the recorded agent sees. Known tokens, emails and named
+  sensitive fields are scrubbed; arbitrary PII/secrets are not guaranteed covered.
+  Explicit Session boundaries and outputs are application-managed. Review exports.
+- Replay adds a best-effort Python socket guard. It is process-wide while active,
+  not an OS sandbox: native networking, cached functions, files and subprocesses
+  are outside it. Only execute trusted agents and trusted fork mock callbacks.
+- Opt-in `capture(concurrent=True)` records async start/completion order; task-start
+  order must remain stable. This is not arbitrary thread or process replay.
+- `capture(sources=True)` instruments selected clock/RNG/UUID calls; cached aliases,
+  independent RNG instances and pre-existing httpx clients remain outside coverage.
+  Binary bodies, arbitrary headers and unwrapped non-httpx I/O are unsupported.
+- “Time travel” inspects recorded evidence; it does not restore Python stacks/heaps.
+- The first divergence is a **candidate explanation**, not causal proof. Sequence alignment uses structured/lexical costs by default and optionally local
+  embedding cosine; neither establishes causality.
+- Hash chains/checksums detect corruption, not malicious rewriting with recomputed
+  hashes. There are no cryptographic signatures or external trust anchors.
+- Optional LangGraph, MCP exchange, Textual, OTLP/Perfetto and offline fleet-analysis
+  modules are implemented. External integrations have controlled local tests, not
+  production fleet qualification. Embedding indexing needs separately installed
+  dependencies and a local model; BGE-small/LanceDB/UMAP has a synthetic CPU smoke test.
+- Real-provider replay gates, human-reviewed fleet evaluation, a prompted-LLM
+  baseline comparison, production hardening and release publication remain open.
+
+## Verification and faculty demo
+
+```bash
+python -m pytest
+python -m ruff check .
+python -m ruff format --check .
+python -m mypy
+fr eval
+```
+
+The suite covers existing capture behavior plus safe forks, tampering, mutation
+isolation, import/export, persistence rollback, script drift, network escape
+attempts, dashboard injection and CLI acceptance. Optional browser checks:
+
+```bash
+npm install --no-save --package-lock=false playwright
+npx playwright install chromium
+fr demo
+node tests/browser/dashboard.cjs
+```
+
+See [demo and viva guide](docs/demo-guide.md), [release validation](docs/validation.md),
+and [implementation architecture](docs/implementation.md). Historical design and
+six-month plans define acceptance gates; see the [week-by-week evidence ledger](docs/roadmap-status.md).
+
+## Contributing and license
+
+Apache-2.0. See [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md), and
+[CITATION.cff](CITATION.cff). Inspired by record/replay debugging and Git bisect;
+this project does not claim to be the first or only agent replay system.
+
+## Roadmap implementation commands
+
+Install tested optional workflows with `pip install -e '.[dev,integrations,tui,ml]'`.
+The `embeddings` extra is separate and needs a local sentence-transformers model.
+
+```bash
+fr diagnose PASS_ID FAIL_ID
+fr hash-bisect PASS_ID FAIL_ID
+fr snapshot RUN_ID --at 3
+fr query RUN_ID 'first response.status >= 400'
+fr trace-export RUN_ID .rewind/trace.json --format perfetto
+fr trace-export RUN_ID .rewind/otlp.json --format otlp
+fr tui RUN_ID
+fr storage-stats
+fr fleet-map --output .rewind/fleet.json
+fr benchmark
+fr record -- python examples/http_agent.py
+```
+
+OTLP imports are explicitly **non-replayable observational traces**. Trace timestamps
+are marked ordinal; exports do not invent measured wall-clock durations. Fleet maps
+use an offline TF-IDF/HDBSCAN baseline. Supervised classification requires reviewed
+`{text, label, group}` rows and uses disjoint train/validation/test groups. It reports
+a majority baseline; superiority to an LLM has not been measured.
+
+See [roadmap status](docs/roadmap-status.md) for every week, evidence and open gates.
+
+Latest integration work: [managed MCP, async graphs, baseline comparison, policy
+manifests and qualified embeddings](docs/integrations.md). The dashboard includes
+aligned inserted/deleted steps. [Synthetic sample gallery](docs/gallery.md).
+
+Release tooling now includes opt-in paced streams, custom redaction rules, local
+Ollama cluster narration, OTLP protobuf export and a fail-closed evidence checklist.
+See the [release execution guide](docs/release-guide.md). Prepared publishing workflows
+require repository access, reviewed evidence and maintainer publisher setup.
+
+### Finish acceptance from the candidate
+
+Run `uv run python scripts/validate_candidate.py` after installing the documented
+dev/docs/integrations/tui/ml extras. See [completion checklist](docs/completion-checklist.md)
+for exact live-provider, real-fleet, review and publication requirements. This local
+pass does not mark the original Week-26 release complete.
+
+An [actual local-model example](docs/local-model-demo.md) now records real Ollama
+inference, preserves an incorrect decision, tests a live price-change fork and
+replays a separately labelled decision intervention with simulated tools.

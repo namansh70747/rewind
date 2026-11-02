@@ -13,7 +13,7 @@ Part of the 6-month plan package. See sibling docs: [README](./README.md) · [te
 1. [Record-replay determinism model](#1-record-replay-determinism-model)
 2. [Boundary matching](#2-boundary-matching)
 3. [Sequence alignment for auto-bisect](#3-sequence-alignment-for-auto-bisect)
-4. [Content-addressed storage & dedup](#4-content-addressed-storage--dedup)
+4. [Content-addressed storage & dedup](#4-content-addressed-storage-dedup)
 5. [Time-travel via replay-to-N with snapshots](#5-time-travel-via-replay-to-n-with-snapshots)
 6. [ML math](#6-ml-math)
 - [Quick reference: library map](#quick-reference-library-map)
@@ -246,7 +246,7 @@ This is the **classic $\sqrt{N}$ space-time balance** — the same result as $O(
 
 ### Refinements
 
-- **Incremental / copy-on-write snapshots:** store the delta since the previous snapshot; pairs with CAS + CDC ([§4](#4-content-addressed-storage--dedup)); drops $c_s$.
+- **Incremental / copy-on-write snapshots:** store the delta since the previous snapshot; pairs with CAS + CDC ([§4](#4-content-addressed-storage-dedup)); drops $c_s$.
 - **Two-tier:** sparse full snapshots + boundary log as the *always* source of truth. Snapshots are **pure accelerators, never authoritative**.
 
 ### State serialization options
@@ -260,7 +260,7 @@ This is the **classic $\sqrt{N}$ space-time balance** — the same result as $O(
 
 **Recommendation:** schema'd serialization of the **logical state** (messages, memory, scratchpad, tool cursors) into CAS — deduped and CDC-chunked — with the boundary log as the deterministic bridge.
 
-**Implement with:** `cloudpickle` / `dill` (<https://github.com/cloudpipe/cloudpickle>) or `msgpack`; store deltas in the [§4](#4-content-addressed-storage--dedup) CAS.
+**Implement with:** `cloudpickle` / `dill` (<https://github.com/cloudpipe/cloudpickle>) or `msgpack`; store deltas in the [§4](#4-content-addressed-storage-dedup) CAS.
 
 **Complexity:** reach any step in $O(k) = O(\sqrt{N})$ boundaries; storage $O(N/k) = O(\sqrt{N})$; snapshot write $O(\lvert \text{state delta} \rvert)$.
 

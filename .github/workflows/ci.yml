@@ -29,7 +29,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --frozen --extra dev --extra docs --extra integrations --extra tui --extra ml
 
       - name: Ruff lint
         run: uv run ruff check .
@@ -60,7 +60,38 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --frozen --python ${{ matrix.python-version }} --extra dev --extra docs --extra integrations --extra tui --extra ml
 
       - name: Run tests
         run: uv run pytest --cov --cov-report=term-missing
+
+      - name: Offline demo and evaluation
+        run: |
+          uv run fr demo --n 5
+          uv run fr eval --n 2
+
+      - name: Build distribution
+        run: uv build
+
+  wheel-smoke:
+    name: Clean wheel (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
+      - run: uv build
+      - name: Install wheel into a clean environment and run demo
+        run: python scripts/wheel_smoke.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wheel-smoke-${{ matrix.os }}
+          path: .rewind/wheel-smoke/
+          include-hidden-files: true

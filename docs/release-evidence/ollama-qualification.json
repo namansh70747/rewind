@@ -1,0 +1,265 @@
+{
+  "runtime": {
+    "version": {
+      "version": "0.40.1"
+    },
+    "models": {
+      "models": [
+        {
+          "name": "rewind-qwen-smoke:latest",
+          "model": "rewind-qwen-smoke:latest",
+          "modified_at": "2026-10-08T15:34:30.410834655+02:00",
+          "size": 491400182,
+          "digest": "ec6611a789c1e3cf43992fad82859c2079de169e93a6c678a040a21a9376b5c4",
+          "details": {
+            "parent_model": "rewind-qwen.gguf",
+            "format": "gguf",
+            "family": "qwen2",
+            "families": [
+              "qwen2"
+            ],
+            "parameter_size": "630.17M",
+            "quantization_level": "Q4_K_M",
+            "context_length": 32768,
+            "embedding_length": 896,
+            "runner": "llamacpp"
+          },
+          "capabilities": [
+            "tools",
+            "completion"
+          ]
+        }
+      ]
+    },
+    "workload": "synthetic fixtures; CPU; local inference"
+  },
+  "model": {
+    "repository": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+    "revision": "9217f5db79a29953eb74d5343926648285ec7e67",
+    "file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+    "sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+    "bytes": 491400032,
+    "license": "Apache-2.0",
+    "verification": "SHA256 matches upstream LFS object at pinned revision"
+  },
+  "qualification": {
+    "points": [
+      {
+        "id": "timeout-0",
+        "cluster": 0,
+        "x": 0,
+        "y": 0
+      },
+      {
+        "id": "timeout-1",
+        "cluster": 0,
+        "x": 1,
+        "y": 1
+      },
+      {
+        "id": "timeout-2",
+        "cluster": 0,
+        "x": 2,
+        "y": 2
+      },
+      {
+        "id": "timeout-3",
+        "cluster": 0,
+        "x": 3,
+        "y": 3
+      },
+      {
+        "id": "timeout-4",
+        "cluster": 0,
+        "x": 4,
+        "y": 4
+      },
+      {
+        "id": "rate-limit-0",
+        "cluster": 1,
+        "x": 5,
+        "y": 0
+      },
+      {
+        "id": "rate-limit-1",
+        "cluster": 1,
+        "x": 6,
+        "y": 1
+      },
+      {
+        "id": "rate-limit-2",
+        "cluster": 1,
+        "x": 7,
+        "y": 2
+      },
+      {
+        "id": "rate-limit-3",
+        "cluster": 1,
+        "x": 8,
+        "y": 3
+      },
+      {
+        "id": "rate-limit-4",
+        "cluster": 1,
+        "x": 9,
+        "y": 4
+      },
+      {
+        "id": "success-0",
+        "cluster": 2,
+        "x": 10,
+        "y": 0
+      },
+      {
+        "id": "success-1",
+        "cluster": 2,
+        "x": 11,
+        "y": 1
+      },
+      {
+        "id": "success-2",
+        "cluster": 2,
+        "x": 12,
+        "y": 2
+      },
+      {
+        "id": "success-3",
+        "cluster": 2,
+        "x": 13,
+        "y": 3
+      },
+      {
+        "id": "success-4",
+        "cluster": 2,
+        "x": 14,
+        "y": 4
+      }
+    ],
+    "qualification": "Actual local inference on synthetic, manually grouped fixtures; not real fleet quality.",
+    "projection": "fixed fixture coordinates, not UMAP",
+    "human_evaluation": "pending",
+    "summaries": {
+      "0": {
+        "title": "Recorded evidence: status:504",
+        "summary": "5 recordings. Selected weighted features: \"status:504\" (weight 10); \"boundary:tool:timeout\" (weight 5); \"kind:tool\" (weight 5). These observations do not establish a root cause.",
+        "selected_feature_ids": [
+          "F0",
+          "F1",
+          "F2"
+        ],
+        "status": "generated",
+        "evidence": {
+          "member_count": 5,
+          "feature_weights": [
+            {
+              "id": "F0",
+              "label": "status:504",
+              "weight": 10
+            },
+            {
+              "id": "F1",
+              "label": "boundary:tool:timeout",
+              "weight": 5
+            },
+            {
+              "id": "F2",
+              "label": "kind:tool",
+              "weight": 5
+            }
+          ],
+          "interpretation": "Weights, not event counts; labels truncated at 256 characters."
+        },
+        "prompt_sha256": "626dba3fcd6ace3326c7b5babccedc322443d078f84765de032437b4f3668f44",
+        "grounding": "Model selects evidence IDs; all displayed prose is deterministic."
+      },
+      "1": {
+        "title": "Recorded evidence: boundary:tool:rate-limit",
+        "summary": "5 recordings. Selected weighted features: \"boundary:tool:rate-limit\" (weight 5); \"kind:tool\" (weight 5). These observations do not establish a root cause.",
+        "selected_feature_ids": [
+          "F1",
+          "F2"
+        ],
+        "status": "generated",
+        "evidence": {
+          "member_count": 5,
+          "feature_weights": [
+            {
+              "id": "F0",
+              "label": "status:429",
+              "weight": 10
+            },
+            {
+              "id": "F1",
+              "label": "boundary:tool:rate-limit",
+              "weight": 5
+            },
+            {
+              "id": "F2",
+              "label": "kind:tool",
+              "weight": 5
+            }
+          ],
+          "interpretation": "Weights, not event counts; labels truncated at 256 characters."
+        },
+        "prompt_sha256": "b64f89db281b8d9a8bfb611e2bae13cc935518a3f898b3d3b0b7d11eff636614",
+        "grounding": "Model selects evidence IDs; all displayed prose is deterministic."
+      },
+      "2": {
+        "title": "Recorded evidence: status:200",
+        "summary": "5 recordings. Selected weighted features: \"status:200\" (weight 10); \"boundary:tool:success\" (weight 5); \"kind:tool\" (weight 5). These observations do not establish a root cause.",
+        "selected_feature_ids": [
+          "F0",
+          "F1",
+          "F2"
+        ],
+        "status": "generated",
+        "evidence": {
+          "member_count": 5,
+          "feature_weights": [
+            {
+              "id": "F0",
+              "label": "status:200",
+              "weight": 10
+            },
+            {
+              "id": "F1",
+              "label": "boundary:tool:success",
+              "weight": 5
+            },
+            {
+              "id": "F2",
+              "label": "kind:tool",
+              "weight": 5
+            }
+          ],
+          "interpretation": "Weights, not event counts; labels truncated at 256 characters."
+        },
+        "prompt_sha256": "af0226d58468ab9cd00b416d8b58e74fb5ed179429a470d10191bb702e258fa2",
+        "grounding": "Model selects evidence IDs; all displayed prose is deterministic."
+      }
+    },
+    "narration": {
+      "provider": "local Ollama",
+      "model": "rewind-qwen-smoke",
+      "review_required": true,
+      "mode": "evidence-selection-v2",
+      "interpretation": "Model-selected recorded features; relevance needs review, no causal diagnosis."
+    }
+  },
+  "previous_free_text_findings": {
+    "reviewer": "automated assistant inspection, not independent human approval",
+    "runtime_schema_passed": true,
+    "semantic_quality_passed": false,
+    "findings": [
+      "Timeout summary invents maintenance and restart actions absent from evidence.",
+      "Rate-limit summary invents high traffic and repeats claims.",
+      "Success summary treats weighted status features as event counts and repeats claims."
+    ],
+    "release_effect": "Human cluster-coherence and grounded-summary acceptance remain pending."
+  },
+  "grounding_check": {
+    "passed": true,
+    "scope": "Selected IDs validated against recorded features; displayed prose rendered by code",
+    "independent_human_coherence_review": "pending"
+  }
+}
