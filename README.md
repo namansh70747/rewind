@@ -244,3 +244,18 @@ pass does not mark the original Week-26 release complete.
 An [actual local-model example](docs/local-model-demo.md) now records real Ollama
 inference, preserves an incorrect decision, tests a live price-change fork and
 replays a separately labelled decision intervention with simulated tools.
+
+## Local Rewind workspace
+
+Start the single-user product console from the repository or an installed environment:
+
+```bash
+uv sync --frozen --extra dev --extra integrations
+uv run fr serve --workspace . --port 8766
+```
+
+Open `http://127.0.0.1:8766/`. Select a **trusted** Python script from the workspace to capture it. Capture runs that script with your current user privileges, including access to files, network and credentials; it is not an OS sandbox. Verification re-runs the matching source with recorded boundaries and an offline Python socket guard. Imports are never treated as executable sources. Jobs run in a separate process; cancellation terminates that process and does not undo any side effects.
+
+To try a real provider capture, configure a **fresh** `NVIDIA_API_KEY` or `GEMINI_API_KEY` in the server process environment before starting it, then select `examples/product_nvidia_agent.py` or `examples/product_gemini_agent.py`. Live captures send the example prompt to the chosen provider and may use quota or incur charges. Replay is offline. The provider catalogue check does not validate inference, streaming, or quota. Previously exposed credentials should be revoked rather than reused. Never place keys in recordings, chat, screenshots or Git.
+
+The console operates on the existing `.rewind/runs.db`, preserves existing runs, and hides identified simulated examples unless explicitly enabled. Imported/exported bundles can contain sensitive prompts and responses; redaction is pattern based, so review before sharing. Captures from real providers, streaming/tool and retry corpora, and the original OpenAI/Anthropic Month 2 gate require separate evidence. The recording-format ADR remains proposed.

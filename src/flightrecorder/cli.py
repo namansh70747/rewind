@@ -569,6 +569,27 @@ def verify_script_command(
 register(app)
 
 
+@app.command("serve")
+def serve_product(
+    workspace: Annotated[
+        Path, typer.Option(help="Trusted directory containing agent scripts")
+    ] = Path(),
+    db: Annotated[Path, typer.Option(help="Local recording database")] = Path(DEFAULT_DB),
+    port: Annotated[int, typer.Option(min=1, max=65535)] = 8766,
+) -> None:
+    """Start the local-only Rewind product workspace."""
+    from .product.server import ProductServer
+
+    server = ProductServer(("127.0.0.1", port), workspace, db)
+    console.print(f"Rewind workspace: http://127.0.0.1:{server.server_port}/")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+
+
 def main() -> None:
     """Keep redirected legacy terminals usable without changing their encoding."""
     for stream in (sys.stdout, sys.stderr):
