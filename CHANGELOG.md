@@ -1,5 +1,57 @@
 # Changelog
 
+## Unpublished actual-model investigation — 2026-10-08
+
+Added a local-model capture and controlled intervention example. Four recordings
+passed 200 server-off replays; the ineffective live quote fork and successful
+explicit decision intervention are separately reported. The dashboard identifies
+recorded model responses with simulated tools. Model accuracy and real-fleet
+release acceptance remain unclaimed.
+
+
+## Unpublished acceptance hardening — 2026-10-08
+
+Replaced model-written cluster claims with validated evidence-ID selection and
+deterministic explanations, qualified against actual local Ollama inference.
+Hardened corpus fixtures against malformed/duplicate manifests, path escapes,
+corrupt chains and runtime failures. Added controlled live-provider capture
+harnesses, a one-command local acceptance runner and exact completion inputs.
+Updated stale source documentation for BLAKE3/zstd compatibility.
+
+
+## Unpublished model qualification and platform preparation — 2026-10-08
+
+Actual local Ollama/Qwen inference with pinned model-digest evidence and explicit
+semantic-quality failures; reproducible smoke example; bounded summary generation;
+portable isolated-wheel smoke and Ubuntu/Windows/macOS CI jobs; frozen lockfile
+installs; recorded/current SHA diagnostics for script drift. No publication claim.
+
+## Unpublished release workflow hardening — 2026-10-08
+
+Added paced stream replay, scoped custom redaction, local Ollama summary contract,
+OTLP protobuf export, actual Perfetto parser qualification, digest-checked release
+evidence, Pages deployment workflow and protected PyPI publishing preparation.
+Missing real-data/review gates still block publication.
+
+
+## Unpublished integration completion — 2026-10-08
+
+Managed MCP v1 stdio/HTTP lifecycle; isolated async LangGraph replay; async error
+and cancellation terminals; source/concurrency script flags; aligned dashboard;
+quoted and escaped SSE credential fixes; safe original chunk bytes; explicit policy
+editor; held-out baseline scoring; actual BGE/LanceDB/HDBSCAN/UMAP smoke; semantic
+alignment and fingerprint-checked vector search; navigable docs and synthetic gallery.
+90 local tests plus separate model/browser checks. Publication gates remain open.
+
+## Unpublished roadmap candidate — 2026-10-08
+
+BLAKE3/zstd with legacy reads; async completion-order capture; tool/source shims;
+transport-failure replay; persisted checkpoints; safe policy/script forks; Textual
+and trace exports; LangGraph/MCP exchange adapters; alignment and query DSL; grouped
+classifier and fleet map. See docs/roadmap-status.md for partial features and gates.
+No tag or public release has been created.
+
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
@@ -11,6 +63,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > initial-development clause.
 
 ## [Unreleased]
+
+### Fixed
+
+- CLI startup preserves legacy terminal encodings while escaping unsupported
+  characters, preventing Windows redirected help/demo UnicodeEncodeError.
+  Added a cp1252 subprocess regression.
 
 ### Added
 
@@ -54,3 +112,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   phase. Advances the auto-bisect pillar (roadmap M4).
 
 [Unreleased]: https://github.com/namansh70747/rewind/commits/main
+
+## Local alpha 0.1.0 (proposed release) - 2026-10-08
+
+### Added
+- Offline failure-to-recovery demo with verified runs and interactive HTML timeline.
+- Safe explicit-mock counterfactual forks with provenance; prefix state inspection.
+- Versioned checksummed JSON import/export and synthetic evaluation harness.
+- Trusted script recording and source/stdout-aware verification; event similarity.
+- Faculty demo/viva guide, acceptance tests and optional browser smoke test.
+
+### Fixed
+- Mutable agent values could corrupt recorded boundaries.
+- Replay validates sequences/fingerprints and guards ordinary Python socket calls.
+- SQLite saves are atomic and content-addressed blobs checked when loaded.
+- UTF-8 split across SSE chunks, content-type preservation, transport closure.
+- Sensitive named JSON fields and token-bearing HTTP path labels are redacted.
+- Identical boundaries with different final outputs now report divergence.
+- README status and guarantees now distinguish implemented features from plans.

@@ -4,12 +4,8 @@ Thanks for your interest in Rewind — a flight recorder & time-travel debugger 
 AI agents. This guide covers how to set up a dev environment, our workflow, and
 how design decisions get made.
 
-> [!IMPORTANT]
-> **Rewind is pre-alpha and not yet implemented.** The design is complete and the
-> repository is currently scaffolding + design docs. The most valuable
-> contributions right now are **design feedback** and **ADR proposals** (see
-> [The ADR process](#the-adr-process)). Code contributions will ramp up as the
-> Phase 0 walking skeleton lands.
+> Rewind is a working local alpha. Start with `fr demo`, then run the test and
+> quality gates below. The wider six-month plan remains future work.
 
 All participation is governed by our [Code of Conduct](./CODE_OF_CONDUCT.md).
 
@@ -29,12 +25,11 @@ All participation is governed by our [Code of Conduct](./CODE_OF_CONDUCT.md).
 ## Ways to contribute
 
 - **Design feedback** — open a discussion or issue on the architecture, CLI UX,
-  storage format, or boundary model. This is the single most useful thing you can
-  do right now.
+  storage format, or boundary model. Include a reproducible example when possible.
 - **ADR proposals** — propose a concrete design decision as an Architecture
   Decision Record (see below).
 - **Docs** — improve the README, roadmap, or design docs.
-- **Code** — once Phase 0 is underway, pick up an issue labeled
+- **Code** — pick up an issue labeled
   `good first issue` or `help wanted`.
 
 ## Local development setup
@@ -48,7 +43,7 @@ $ git clone https://github.com/namansh70747/rewind.git
 $ cd rewind
 
 # Create the environment and install everything (incl. dev + optional extras)
-$ uv sync --all-extras
+$ uv sync --extra dev --extra docs --extra integrations --extra tui --extra ml
 
 # Install pre-commit hooks
 $ uv run pre-commit install

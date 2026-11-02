@@ -3,22 +3,21 @@
 An agent run is a sequence of **boundary reads** — every value the agent gets from the
 outside world (an LLM HTTP response, the clock, a UUID, an RNG draw). ``RECORD`` calls
 the real world and logs the value; ``REPLAY`` serves the recorded value, never calls out,
-and verifies a BLAKE2b **hash-chain** link by link, raising :class:`Divergence` — loud and
+and verifies a BLAKE3 **hash-chain** link by link, raising :class:`Divergence` — loud and
 localized — at the first mismatch.
 
 See ADR-0006 (replay is playback, not re-execution) and ADR-0008 (our own recording
 schema). HTTP capture lives in :mod:`flightrecorder.interceptors.transport` (ADR-0007);
 clock/uuid/rng are shimmed here.
 
-**Phase-0 provisional format (not frozen).** The hash-chain uses stdlib ``blake2b`` to keep
-the walking skeleton dependency-free; the ADR-frozen algorithm will be **BLAKE3**
-(``docs/plan/algorithms-and-math.md`` §1). Because the chain algorithm is part of the
-recording identity, recordings made now are not guaranteed to survive the switch — the
-on-disk recording format is not yet frozen (that happens ~Week 8, per the plan).
+New recordings use BLAKE3; legacy BLAKE2b chains remain readable through the
+explicit chain_algorithm field. Format review and release acceptance remain separate
+from implementation compatibility.
 """
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import random
@@ -26,6 +25,8 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
+
+from blake3 import blake3
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -50,12 +51,16 @@ class Divergence(Exception):
 
 def canon(obj: Any) -> bytes:
     """Canonical JSON bytes (sorted keys, no incidental whitespace) so equal payloads hash equal."""
-    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    return json.dumps(
+        obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+    ).encode()
 
 
-def chain_link(prev_hex: str, request: bytes, response: bytes) -> str:
-    """One hash-chain link: ``h_i = BLAKE2b(h_{i-1} ‖ canon(req_i) ‖ canon(resp_i))``."""
-    h = hashlib.blake2b(digest_size=32)
+def chain_link(prev_hex: str, request: bytes, response: bytes, algorithm: str = "blake3") -> str:
+    """One hash-chain link: ``h_i = H(h_{i-1} ‖ canon(req_i) ‖ canon(resp_i)); H defaults to BLAKE3``."""
+    if algorithm not in {"blake3", "blake2b"}:
+        raise ValueError(f"unsupported chain algorithm: {algorithm}")
+    h = blake3() if algorithm == "blake3" else hashlib.blake2b(digest_size=32)
     h.update(bytes.fromhex(prev_hex))
     h.update(request)
     h.update(response)
@@ -83,12 +88,17 @@ class Cassette:
     final_output: str = ""
     provider: str = ""
     model: str = ""
+    metadata: dict[str, Any] = field(default_factory=dict)
+    chain_algorithm: str = "blake3"
 
 
 class Session:
     """Mediates every boundary in ``record`` or ``replay`` mode."""
 
     def __init__(self, mode: Mode, cassette: Cassette | None = None) -> None:
+        if mode not in ("record", "replay"):
+            raise ValueError(f"unknown session mode: {mode}")
+        self.algorithm = cassette.chain_algorithm if cassette else "blake3"
         self.mode: Mode = mode
         self.boundaries: list[Boundary] = []
         self._recorded: list[Boundary] = cassette.boundaries if cassette else []
@@ -101,9 +111,16 @@ class Session:
         req_bytes = canon([kind, key, request])
         if self.mode == "record":
             response = produce()
-            self.chain = chain_link(self.chain, req_bytes, canon(response))
+            self.chain = chain_link(self.chain, req_bytes, canon(response), self.algorithm)
             self.boundaries.append(
-                Boundary(len(self.boundaries), kind, key, request, response, self.chain)
+                Boundary(
+                    len(self.boundaries),
+                    kind,
+                    key,
+                    copy.deepcopy(request),
+                    copy.deepcopy(response),
+                    self.chain,
+                )
             )
             return response
 
@@ -121,11 +138,11 @@ class Session:
                 f"input diverged — live {kind}/{key} does not match recorded "
                 f"{rec.kind}/{rec.key} (uncaptured nondeterminism or a code change)",
             )
-        self.chain = chain_link(self.chain, req_bytes, canon(rec.response))
+        self.chain = chain_link(self.chain, req_bytes, canon(rec.response), self.algorithm)
         if self.chain != rec.chain_hash:
             raise Divergence(seq, "hash-chain mismatch — the recording was tampered or corrupted")
         self._cursor += 1
-        return rec.response
+        return copy.deepcopy(rec.response)
 
     async def mediate_async(
         self, kind: str, key: str, request: Any, aproduce: Callable[[], Awaitable[Any]]
