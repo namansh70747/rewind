@@ -35,7 +35,7 @@ classifiers = [
 dependencies = [
     "blake3>=1.0",
     "zstandard>=0.23",
-    "httpx[socks]>=0.27",   # transport-layer capture (ADR-0007); OpenAI/Anthropic/NVIDIA ride httpx
+    "httpx[socks]>=0.28.1",   # transport-layer capture (ADR-0007); OpenAI/Anthropic/NVIDIA ride httpx
     "typer>=0.12",   # the `fr` CLI
     "rich>=15.0.0",      # timeline rendering
 ]

@@ -2869,7 +2869,7 @@ tui = [
 requires-dist = [
     { name = "anthropic", marker = "extra == 'integrations'", specifier = ">=0.40,<1" },
     { name = "blake3", specifier = ">=1.0" },
-    { name = "httpx", extras = ["socks"], specifier = ">=0.27" },
+    { name = "httpx", extras = ["socks"], specifier = ">=0.28.1" },
     { name = "lancedb", marker = "extra == 'embeddings'", specifier = ">=0.15" },
     { name = "langgraph", marker = "extra == 'integrations'", specifier = ">=1.0" },
     { name = "mcp", marker = "extra == 'integrations'", specifier = ">=1.20,<2" },
