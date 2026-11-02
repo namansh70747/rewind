@@ -211,7 +211,17 @@ class Handler(BaseHTTPRequestHandler):
                                 else None
                             )
                             data.append(
-                                {**asdict(run), "sample": sample, "verification": verification}
+                                {
+                                    **asdict(run),
+                                    "sample": sample,
+                                    "verification": verification,
+                                    "display_provider": cassette.metadata.get(
+                                        "product_provider", run.provider
+                                    ),
+                                    "display_model": cassette.metadata.get(
+                                        "product_model", run.model
+                                    ),
+                                }
                             )
                 finally:
                     store.close()
@@ -242,6 +252,7 @@ class Handler(BaseHTTPRequestHandler):
                             for n, k, m in [
                                 ("NVIDIA", "NVIDIA_API_KEY", "nvidia/nemotron-3-super-120b-a12b"),
                                 ("Gemini", "GEMINI_API_KEY", "gemini-2.5-flash"),
+                                ("Groq", "GROQ_API_KEY", "openai/gpt-oss-20b"),
                             ]
                         ],
                         "notice": "Configured indicates environment presence only; live access and quota are not verified.",
@@ -363,6 +374,10 @@ class Handler(BaseHTTPRequestHandler):
                         "https://generativelanguage.googleapis.com/v1beta/models",
                     )
                     headers = {"x-goog-api-key": key}
+                elif provider == "groq":
+                    key = os.getenv("GROQ_API_KEY", "")
+                    url = "https://api.groq.com/openai/v1/models"
+                    headers = {"Authorization": f"Bearer {key}"}
                 else:
                     raise ValueError("Unknown provider.")
                 if not key:

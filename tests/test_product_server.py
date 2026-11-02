@@ -19,11 +19,12 @@ from flightrecorder.product.server import ProductServer
 def test_product_capture_verify_and_import(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     source = tmp_path / "agent.py"
     monkeypatch.setenv("NVIDIA_API_KEY", "private-test-key-123")
+    monkeypatch.setenv("GROQ_API_KEY", "private-groq-key-456")
     # No external network needed: this trusted script only uses a controlled local transport.
     source.write_text(
         "import httpx, os\n"
         "with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, text='hello'))) as client:\n"
-        "    print(client.get('https://example.test').text, os.environ['NVIDIA_API_KEY'])\n"
+        "    print(client.get('https://example.test').text, os.environ['NVIDIA_API_KEY'], os.environ['GROQ_API_KEY'])\n"
     )
     server = ProductServer(("127.0.0.1", 0), tmp_path, tmp_path / "runs.db")
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -67,7 +68,7 @@ def test_product_capture_verify_and_import(tmp_path: Path, monkeypatch: pytest.M
             run_id = job["result"]["run_id"]
             assert (
                 client.get("/api/v1/runs/" + run_id).json()["run"]["final_output"]
-                == "hello <redacted:custom>\n"
+                == "hello <redacted:custom> <redacted:custom>\n"
             )
             response = client.post(
                 "/api/v1/verify", headers=headers, json={"run_id": run_id, "replays": 3}
@@ -85,6 +86,7 @@ def test_product_capture_verify_and_import(tmp_path: Path, monkeypatch: pytest.M
                 "/api/v1/export", headers=headers, json={"run_id": run_id}
             ).json()
             assert "private-test-key-123" not in str(exported)
+            assert "private-groq-key-456" not in str(exported)
             assert "product_source" not in exported["run"]["metadata"]
             imported = client.post(
                 "/api/v1/import", headers=headers, json={"recording": exported}
