@@ -82,6 +82,15 @@ _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
 def redact_text(text: str) -> str:
     """Replace any known secret/PII pattern in ``text`` with a deterministic placeholder."""
     rules = _RULES.get()
+    # Query parameters are plain text rather than structured JSON fields. In
+    # particular, short tokens do not necessarily match any provider pattern.
+    query_keys = _SENSITIVE_KEYS | rules.extra_keys
+    keys = "|".join(re.escape(key) for key in sorted(query_keys, key=len, reverse=True))
+    text = re.sub(
+        r"(?i)([?&](?:" + keys + r")=)([^&#\s]*)",
+        lambda match: match.group(1) + "<redacted:field>",
+        text,
+    )
     for literal in sorted(rules.literals, key=len, reverse=True):
         parts = re.split(r"(<redacted:[^>]*>)", text)
         text = "".join(

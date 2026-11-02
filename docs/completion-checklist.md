@@ -77,6 +77,8 @@ Only execute scripts you trust; Python replay isolation is not an OS sandbox.
 
 - HTTP capture covers decoded UTF-8/JSON/SSE, not arbitrary binary/compressed wire
   packets or exact real-time scheduling. Request headers are not part of matching.
+- Named sensitive query parameters and configured extra keys are redacted before
+  storage; this is pattern-based and does not cover every encoding or secret format.
 - Replay reconstructs observable boundary/application state, not arbitrary process
   heaps, threads or existing external checkpoints. Subprocess wrapping is unsupported.
 - Managed MCP supports the qualified v1 lifecycle; server-initiated callbacks and
