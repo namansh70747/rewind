@@ -20,13 +20,32 @@ def main() -> None:
         source = Path(request["source"])
         keys = tuple(
             value
-            for name in ("NVIDIA_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY")
+            for name in (
+                "NVIDIA_API_KEY",
+                "GEMINI_API_KEY",
+                "GROQ_API_KEY",
+                "OPENAI_API_KEY",
+                "ANTHROPIC_API_KEY",
+            )
             if (value := os.environ.get(name))
         )
         with redaction_rules(RedactionRules(literals=keys)):
             if request["action"] == "capture":
                 cassette = record_script(source)
                 cassette.metadata["product_source"] = str(source)
+                known_examples = {
+                    "product_groq_agent.py": ("Groq", "openai/gpt-oss-20b"),
+                    "product_groq_stream.py": ("Groq", "openai/gpt-oss-20b"),
+                    "product_nvidia_agent.py": ("NVIDIA", "nvidia/nemotron-3-super-120b-a12b"),
+                    "product_gemini_agent.py": ("Gemini", "gemini-2.5-flash"),
+                }
+                if (
+                    source.resolve().parent == (Path.cwd() / "examples").resolve()
+                    and source.name in known_examples
+                ):
+                    cassette.metadata["product_provider"], cassette.metadata["product_model"] = (
+                        known_examples[source.name]
+                    )
                 if source.resolve() == (Path.cwd() / "examples/http_agent.py").resolve():
                     cassette.metadata["simulated"] = True
                 run_id = store.save(cassette)
