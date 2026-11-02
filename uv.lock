@@ -2882,7 +2882,7 @@ requires-dist = [
     { name = "opentelemetry-proto", marker = "extra == 'integrations'", specifier = ">=1.25" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.6.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=7.1.0" },
     { name = "rich", specifier = ">=15.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.0" },
     { name = "scikit-learn", marker = "extra == 'embeddings'", specifier = ">=1.3" },
