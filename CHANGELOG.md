@@ -60,4 +60,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   projector-friendly `verify` verdict. Advances the Phase-1 "capture any agent" line; a
   general (non-Python) subprocess wrapper is a later phase.
 
+### Fixed
+
+- Live-demo path: store an **absolute** agent script path on the cassette so `fr verify`
+  survives a cwd change; do not invent an `openai/` label for unmodified agents unless
+  `--provider` is passed; demo runbook wording matches ADR-0006 (playback, not re-execution).
+
 [Unreleased]: https://github.com/namansh70747/rewind/commits/main

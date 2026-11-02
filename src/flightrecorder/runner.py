@@ -9,6 +9,10 @@ rather than a subprocess, so the ``httpx`` patch installed by :func:`flightrecor
 and a clean ``SystemExit(0)`` the agent may raise on completion is swallowed (a non-zero exit
 is a real failure and propagates). Only Python scripts are supported for now; a general
 subprocess wrapper (via a ``sitecustomize`` boot shim) is a later phase.
+
+Note: ``runpy.run_path`` can leave the script cached in ``sys.modules``. That is fine for
+agents whose work lives inside ``main()``; agents with import-time side effects may need a
+fresher isolation story later.
 """
 
 from __future__ import annotations
@@ -27,6 +31,8 @@ def parse_command(argv: list[str]) -> tuple[str, list[str]]:
     """Resolve ``[python, script.py, args…]`` (or ``[script.py, args…]``) to ``(script, argv)``.
 
     The returned ``argv`` is what the agent sees as ``sys.argv`` — script first, then its args.
+    The script path is resolved to an absolute path so ``fr verify`` still finds it if the
+    shell's cwd changed after recording.
     """
     if not argv:
         raise ValueError("no command given to record")
@@ -38,9 +44,11 @@ def parse_command(argv: list[str]) -> tuple[str, list[str]]:
             f"can only record a Python script for now (got {argv!r}); "
             "use: fr record -- python your_agent.py [args]"
         )
-    if not Path(tokens[0]).exists():
+    script = Path(tokens[0]).expanduser().resolve()
+    if not script.is_file():
         raise ValueError(f"agent script not found: {tokens[0]}")
-    return tokens[0], tokens
+    script_argv = [str(script), *tokens[1:]]
+    return str(script), script_argv
 
 
 def make_runner(argv: list[str]) -> Callable[[], None]:
@@ -61,11 +69,22 @@ def make_runner(argv: list[str]) -> Callable[[], None]:
     return run
 
 
+def canonicalize_command(argv: list[str]) -> list[str]:
+    """Return argv with the agent script resolved to an absolute path (for cassette storage)."""
+    _script, script_argv = parse_command(argv)
+    if argv and Path(argv[0]).stem in {"python", "python3"}:
+        return [argv[0], *script_argv]
+    return script_argv
+
+
 def encode_command(argv: list[str]) -> str:
-    """Serialize an agent's argv for storage in the cassette."""
-    return json.dumps(argv)
+    """Serialize an agent's argv for storage in the cassette (script path absolute)."""
+    return json.dumps(canonicalize_command(argv))
 
 
 def decode_command(command: str) -> list[str]:
     """Recover an agent's argv from a cassette so ``verify`` can re-run it."""
-    return list(json.loads(command))
+    raw = json.loads(command)
+    if not isinstance(raw, list) or not all(isinstance(x, str) for x in raw):
+        raise ValueError("cassette command must be a JSON list of strings")
+    return list(raw)

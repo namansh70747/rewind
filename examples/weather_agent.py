@@ -12,7 +12,7 @@ Run it directly:
 
 or record it (unchanged) and replay it bit-exact, offline:
 
-    fr record -- python examples/weather_agent.py "Delhi"
+    fr record --provider nvidia -- python examples/weather_agent.py "Delhi"
     fr verify <run> --n 50
 """
 
@@ -33,7 +33,9 @@ def main() -> None:
     city = sys.argv[1] if len(sys.argv) > 1 else "Delhi"
 
     with httpx.Client(timeout=30.0) as http:
-        geo = http.get(GEOCODE_URL, params={"name": city, "count": 1}).json()
+        geo_resp = http.get(GEOCODE_URL, params={"name": city, "count": 1})
+        geo_resp.raise_for_status()
+        geo = geo_resp.json()
         results = geo.get("results")
         if not results:
             print(f"Could not find a place called {city!r}.")
@@ -41,14 +43,16 @@ def main() -> None:
         place = results[0]
         lat, lon = place["latitude"], place["longitude"]
 
-        weather = http.get(
+        weather_resp = http.get(
             FORECAST_URL,
             params={
                 "latitude": lat,
                 "longitude": lon,
                 "current": "temperature_2m,precipitation",
             },
-        ).json()
+        )
+        weather_resp.raise_for_status()
+        weather = weather_resp.json()
         current = weather["current"]
         temp, precip = current["temperature_2m"], current["precipitation"]
 
@@ -60,7 +64,7 @@ def main() -> None:
         # The key is only needed to talk to the real API while recording; on replay the
         # response is served from the recording, so any placeholder value works.
         api_key = os.environ.get("NVIDIA_API_KEY", "replay-needs-no-key")
-        answer = http.post(
+        answer_resp = http.post(
             LLM_URL,
             headers={"Authorization": f"Bearer {api_key}", "content-type": "application/json"},
             json={
@@ -68,11 +72,13 @@ def main() -> None:
                 "temperature": 0.7,
                 "messages": [{"role": "user", "content": prompt}],
             },
-        ).json()
+        )
+        answer_resp.raise_for_status()
+        answer = answer_resp.json()
         advice = answer["choices"][0]["message"]["content"].strip()
 
-    print(f"\n📍 {place['name']}, {place.get('country', '')} — {temp}°C, precip {precip} mm")
-    print(f"🤖 {advice}\n")
+    print(f"\n{place['name']}, {place.get('country', '')} — {temp}°C, precip {precip} mm")
+    print(f"{advice}\n")
 
 
 if __name__ == "__main__":
