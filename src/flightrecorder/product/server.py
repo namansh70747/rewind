@@ -324,6 +324,10 @@ class Handler(BaseHTTPRequestHandler):
                         )
                     }
                 )
+            elif path == "/api/v1/corpus-audit":
+                from flightrecorder.corpus_audit import audit_corpus
+
+                self._json(audit_corpus(self.server.db))
             elif path == "/api/v1/export":
                 cassette = self._load(body.get("run_id", ""))
                 cassette.metadata.pop("product_source", None)

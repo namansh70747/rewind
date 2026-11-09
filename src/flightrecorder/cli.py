@@ -442,6 +442,26 @@ def doctor() -> None:
     )
 
 
+@app.command("audit-corpus")
+def audit_corpus_command(
+    db: Annotated[Path, typer.Option(help="Existing local run store")] = Path(DEFAULT_DB),
+    output: Annotated[Path | None, typer.Option(help="Optional JSON report path")] = None,
+) -> None:
+    """Scan stored recordings and blobs for integrity and known secret patterns."""
+    from .corpus_audit import audit_corpus
+
+    if not db.is_file():
+        raise typer.BadParameter("Run store does not exist.", param_hint="--db")
+    report = audit_corpus(db)
+    rendered = json.dumps(report, indent=2)
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(rendered + "\n", encoding="utf-8")
+    console.print(rendered, markup=False)
+    if not report["passed"]:
+        raise typer.Exit(1)
+
+
 @app.command("eval")
 def evaluate(
     n: Annotated[int, typer.Option(min=1, max=1000)] = 10,

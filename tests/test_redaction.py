@@ -131,3 +131,14 @@ def test_short_query_credentials_are_redacted_before_storage_and_replay(tmp_path
             assert verify(loaded, run, n=2).passed
         finally:
             store.close()
+
+
+def test_encoded_query_names_and_groq_keys_are_redacted() -> None:
+    key = "gsk_" + "F" * 45
+    url = "https://example.test/?%61pi_key=short-secret&ok=retained"
+    result = redact_text(url + " " + key)
+    assert "short-secret" not in result
+    assert key not in result
+    assert "ok=retained" in result
+    assert "<redacted:groq-key>" in result
+    assert redact_text(result) == result
