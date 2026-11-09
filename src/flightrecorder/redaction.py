@@ -19,6 +19,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+from urllib.parse import unquote_plus
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -64,6 +65,7 @@ _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("anthropic-key", re.compile(r"(?<![A-Za-z0-9_\-])sk-ant-[A-Za-z0-9_\-]{20,}")),
     ("openai-key", re.compile(r"(?<![A-Za-z0-9_\-])sk-(?:proj-)?[A-Za-z0-9_\-]{20,}")),
     ("nvidia-key", re.compile(r"(?<![A-Za-z0-9_\-])nvapi-[A-Za-z0-9_\-]{20,}")),
+    ("groq-key", re.compile(r"(?<![A-Za-z0-9_\-])gsk_[A-Za-z0-9_\-]{20,}")),
     ("google-key", re.compile(r"(?<![A-Za-z0-9_\-])AIza[A-Za-z0-9_\-]{30,}")),
     ("aws-key", re.compile(r"(?<![A-Za-z0-9])AKIA[0-9A-Z]{16}")),
     ("github-token", re.compile(r"(?<![A-Za-z0-9_\-])gh[posru]_[A-Za-z0-9]{20,}")),
@@ -85,12 +87,14 @@ def redact_text(text: str) -> str:
     # Query parameters are plain text rather than structured JSON fields. In
     # particular, short tokens do not necessarily match any provider pattern.
     query_keys = _SENSITIVE_KEYS | rules.extra_keys
-    keys = "|".join(re.escape(key) for key in sorted(query_keys, key=len, reverse=True))
-    text = re.sub(
-        r"(?i)([?&](?:" + keys + r")=)([^&#\s]*)",
-        lambda match: match.group(1) + "<redacted:field>",
-        text,
-    )
+
+    def scrub_query(match: re.Match[str]) -> str:
+        separator, name, value = match.groups()
+        if unquote_plus(name).lower() in query_keys:
+            value = "<redacted:field>"
+        return f"{separator}{name}={value}"
+
+    text = re.sub(r"([?&])([^=&#\s]+)=([^&#\s]*)", scrub_query, text)
     for literal in sorted(rules.literals, key=len, reverse=True):
         parts = re.split(r"(<redacted:[^>]*>)", text)
         text = "".join(
