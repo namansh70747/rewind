@@ -1,7 +1,10 @@
 # Month 3 implementation validation — 12 November 2026
 
-This is implementation evidence for weeks 10–13, not a claim that every live
-production or external-viewer acceptance gate is complete.
+Current status: the supported serialized-agent Month 3 gate is validated with
+live Gemini and NVIDIA parent/fork runs, exact offline replays, state inspection,
+and real Jaeger ingestion/browser checks. The entries below retain the initial
+checks and subsequent closeout evidence chronologically. This does not claim
+arbitrary concurrent forks, heap restoration, or universal production coverage.
 
 | Planner area | Evidence | Scope / limitation |
 | --- | --- | --- |
@@ -87,3 +90,61 @@ after configuring them. No merge is needed to re-run an existing job.
 Month 3 is not declared fully accepted until that live job passes. Concurrent
 fork scheduling and arbitrary heap/checkpointer restoration remain outside the
 documented serialized-agent contract rather than silently claimed as supported.
+
+## Live Gemini acceptance — 13 November 2026 (India time)
+
+A user-supplied credential authenticated successfully with Gemini's models API.
+The credential was used only in the process environment, never committed.
+The old gemini-2.5-flash default returned a model-retirement error. The current
+Flash model returned HTTP 503 with a high-demand message, so validation used
+an available smaller model, gemini-3.5-flash-lite, selected explicitly.
+
+[Live metadata report](gemini-live.json):
+
+- A real Gemini-backed async LangGraph parent and counterfactual fork completed.
+- Parent and fork each passed three exact offline replays (six total), including
+  final-output and full boundary-chain comparisons.
+- Seven boundaries were recorded in the parent; all states were reconstructible.
+- The mutating reservation producer ran zero times in the fork.
+- Both recordings exported as portable recordings, Perfetto, OTLP JSON and OTLP
+  protobuf. Full prompt/response recordings remain local; this committed report
+  contains only provider/model identifiers, fingerprints and validation counts.
+
+This closes the real-provider LangGraph record/replay/fork portion of the Month 3
+core gate using Gemini. Jaeger ingestion/browser validation was completed above.
+NVIDIA live validation is still outstanding because no NVIDIA key is configured.
+GitHub Actions also still needs repository secrets for repeatable live CI runs;
+the session credential has not been stored in GitHub.
+
+Reproduce Gemini independently:
+
+```bash
+uv run python examples/month3_langgraph.py --live --provider gemini --model gemini-3.5-flash-lite --output .rewind/gemini-live
+```
+
+## Final two-provider closeout — 13 November 2026 (India time)
+
+Both credentials were supplied for this session and used only in process memory.
+[Combined live report](live-provider-gate.json) and [NVIDIA report](nvidia-live.json):
+
+| Provider | Successfully exercised model | Exact offline replays | Mutating fork calls |
+| --- | --- | ---: | ---: |
+| Gemini | gemini-3.5-flash-lite | 6 | 0 |
+| NVIDIA | nvidia/nemotron-3.5-bolt-e4b | 6 | 0 |
+
+NVIDIA's previous llama-3.1-8b default returned HTTP 410. Its current model
+catalog and a successful live request confirmed the Bolt model. Provider
+defaults now use the models actually validated in this session. Gemini also
+supports an explicit model override when another model is available to the user.
+
+Each provider completed a real async LangGraph parent and safe live fork,
+three offline replays per recording, state reconstruction and all four export
+formats. Imported parent/fork bundles had valid integrity and actual nonempty
+model text. Changed files and generated recordings were checked for both literal
+credentials; neither appeared. Only metadata reports are committed.
+
+The earlier missing-session-credential blocker is resolved. GitHub Actions still
+needs its own repository secrets for repeatable live CI; session credentials were
+not persisted to GitHub. The existing strict live CI preflight will remain blocked
+until those secrets are configured. Local live acceptance is complete, while that
+CI provisioning status remains separate and explicit.

@@ -1,7 +1,7 @@
 """Month 3: async LangGraph → inspect → fork → verify → viewer traces.
 
-Default uses synthetic HTTP responses. --live requires both NVIDIA_API_KEY and
-GEMINI_API_KEY; credentials are read only from the process environment.
+Default uses synthetic HTTP responses. --live uses the selected providers
+(default: NVIDIA and Gemini); credentials come from the process environment.
 Each provider makes one parent and one allowlisted fork completion request.
 All reservation tools are simulated, and are explicitly mocked in the fork.
 """
@@ -12,6 +12,7 @@ import argparse
 import asyncio
 import json
 import os
+from dataclasses import replace
 from pathlib import Path
 from typing import TypedDict
 
@@ -26,6 +27,7 @@ from flightrecorder.offline import offline_guard
 from flightrecorder.policy import SideEffectPolicy, afork_with_policy
 from flightrecorder.portable import export_run
 from flightrecorder.providers import GEMINI, NVIDIA
+from flightrecorder.redaction import RedactionRules, redaction_rules
 from flightrecorder.snapshots import SnapshotIndex
 from flightrecorder.tools import tool
 
@@ -136,6 +138,7 @@ async def scenario(provider, output: Path, live: bool) -> dict:
             write_trace(cassette, output / f"{provider.name}-{label}.{format}", format)
     return {
         "provider": provider.name,
+        "model": provider.default_model,
         "source": "live" if live else "synthetic",
         "offline_replays": 6,
         "mutating_fork_calls": calls["reservation"] - 1,
@@ -149,15 +152,29 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--output", type=Path, default=Path(".rewind/month3"))
+    parser.add_argument(
+        "--provider",
+        choices=("nvidia", "gemini"),
+        action="append",
+        help="Select a provider; repeat for both (default: both)",
+    )
+    parser.add_argument("--model", help="Override model when exactly one provider is selected")
     args = parser.parse_args()
+    selected = [p for p in (NVIDIA, GEMINI) if not args.provider or p.name in args.provider]
+    if args.model:
+        if len(selected) != 1:
+            parser.error("--model requires exactly one --provider")
+        selected = [replace(selected[0], default_model=args.model)]
     if args.live:
-        missing = [p.key_env for p in (NVIDIA, GEMINI) if not os.environ.get(p.key_env)]
+        missing = [p.key_env for p in selected if not os.environ.get(p.key_env)]
         if missing:
             parser.error("Configure credentials in the environment: " + ", ".join(missing))
     if args.output.exists():
         parser.error("Choose a new output directory to preserve prior evidence")
     args.output.mkdir(parents=True)
-    reports = [asyncio.run(scenario(p, args.output, args.live)) for p in (NVIDIA, GEMINI)]
+    literals = tuple(os.environ[p.key_env] for p in selected if args.live)
+    with redaction_rules(RedactionRules(literals=literals)):
+        reports = [asyncio.run(scenario(p, args.output, args.live)) for p in selected]
     (args.output / "report.json").write_text(json.dumps(reports, indent=2), encoding="utf-8")
     print(json.dumps(reports, indent=2))
 

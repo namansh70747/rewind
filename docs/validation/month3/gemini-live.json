@@ -1,0 +1,13 @@
+[
+  {
+    "provider": "gemini",
+    "source": "live",
+    "offline_replays": 6,
+    "mutating_fork_calls": 0,
+    "boundaries": 7,
+    "parent": "2829c25932ddaba9dc9e8463961658e11c9ae41e769d62e2429579b23bc8f0eb",
+    "fork": "6c66426b0781972f4c5796f1cb7c92de1d4a6a0edcd81757f6dc24ec5e23fe85",
+    "model": "gemini-3.5-flash-lite",
+    "validation_date": "2026-11-13"
+  }
+]

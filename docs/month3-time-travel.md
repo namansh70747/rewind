@@ -76,9 +76,13 @@ uv run python examples/month3_langgraph.py
 # Actual providers, with NVIDIA_API_KEY and GEMINI_API_KEY configured securely
 # in the process environment (not in command arguments or source files):
 uv run python examples/month3_langgraph.py --live --output .rewind/month3-live
+# Validate one provider independently when only its credential is available:
+uv run python examples/month3_langgraph.py --live --provider gemini --output .rewind/month3-gemini-live
 ```
 
-The live example makes two completion requests per provider: one for the parent
+The --provider option can be repeated; without it both providers are selected.
+Only selected providers need credentials. Use --model MODEL with one --provider
+to select another model available to your account. The live example makes two completion requests per provider: one for the parent
 and one for its live fork continuation. Reservations are simulated in the parent
 and explicitly mocked in the fork. It then verifies both recordings three times
 offline, reconstructs all states and exports portable, Perfetto and OTLP files.
