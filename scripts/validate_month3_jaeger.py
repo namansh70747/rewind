@@ -74,7 +74,11 @@ def main() -> None:
                 assert span["operationName"] == original["name"]
                 tags = {tag["key"]: tag["value"] for tag in span.get("tags", [])}
                 attributes = {row["key"]: row["value"] for row in original["attributes"]}
-                for key in ("rewind.chain_hash", "rewind.counterfactual", "rewind.parent_fingerprint"):
+                for key in (
+                    "rewind.chain_hash",
+                    "rewind.counterfactual",
+                    "rewind.parent_fingerprint",
+                ):
                     assert tags[key] == attributes[key]["stringValue"], (key, tags)
             reports.append(
                 {

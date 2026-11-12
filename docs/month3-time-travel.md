@@ -102,7 +102,8 @@ JSON and `*.otlp-protobuf` is its protobuf counterpart; send them to a compatibl
 collector's trace ingestion endpoint to inspect in Jaeger/Phoenix. Timestamps are
 explicitly ordinal, not measured execution durations. Existing trace import is
 observational, non-replayable evidence. Schema-level protobuf parsing is tested;
-an external hosted viewer was not exercised in this implementation session.
+Jaeger ingestion, query round-trip and a Chromium trace-page check now run in the
+Month 3 acceptance workflow. See the validation report for the recorded run.
 
 ## Validation evidence
 

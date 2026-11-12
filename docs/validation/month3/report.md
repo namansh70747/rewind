@@ -38,7 +38,10 @@ Larger/growing state payloads still incur return-copy costs.
 
 ## Live provider status
 
-`NVIDIA_API_KEY` and `GEMINI_API_KEY` are absent from the execution environment.
+`NVIDIA_API_KEY` and `GEMINI_API_KEY` were absent from the development environment.
+The follow-up GitHub Actions credential preflight also found both repository
+secrets unavailable; the live acceptance job correctly fails rather than passing
+on synthetic evidence.
 The `--live` preflight was run and correctly exited before network calls or output
 directory creation, naming both missing variables. No live provider response,
 quota availability, or model access is claimed. Configure both securely in the
@@ -59,3 +62,28 @@ external results and compares the full hash-chain. Rewind's fork changes one
 boundary, then uses explicit mocks or separately authorized live producers.
 Native checkpoint restoration is not implemented by this state-stream adapter;
 recording/replay must start from fresh thread state. Concurrent forks are rejected.
+
+## Follow-up acceptance — 13 November 2026 (India time)
+
+[Acceptance run 43281845138](https://github.com/namansh70747/rewind/actions/runs/43281845138)
+executed the exports against a real Jaeger 1.76 collector and query service:
+
+- Four traces ingested from the existing exports without payload rewriting:
+  two OTLP/HTTP JSON parents and two protobuf forks.
+- Seven spans per trace (28 total) retrieved from Jaeger's query API.
+- Operation names, boundary chain hashes, counterfactual labels and parent
+  fingerprints matched the exports.
+- Chromium opened a trace in Jaeger's UI and found the quote span.
+- A JSON report and browser screenshot are retained in the
+  [viewer evidence artifact](https://github.com/namansh70747/rewind/actions/runs/43281845138/artifacts/13974150506).
+  The trace content is synthetic; the collector and browser are real.
+
+The new Month 3 acceptance workflow repeats this viewer check for PRs. Its
+separate live job reads only repository secrets, never writes credentials into
+recordings, and uploads metadata-only live evidence. It remains blocked until
+both secrets are configured in Actions settings. Re-run the failed live job
+after configuring them. No merge is needed to re-run an existing job.
+
+Month 3 is not declared fully accepted until that live job passes. Concurrent
+fork scheduling and arbitrary heap/checkpointer restoration remain outside the
+documented serialized-agent contract rather than silently claimed as supported.
