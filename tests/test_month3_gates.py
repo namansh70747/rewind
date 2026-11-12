@@ -128,6 +128,17 @@ def test_persisted_snapshot_deltas_schema_gc_and_legacy(tmp_path: Path) -> None:
     assert manifests[1]["base"] is not None
     assert manifests[5]["base"] is None
     assert all(len(m["updates"]) == 1 for m in manifests)
+    # Checkpoints refer to the already-stored state payload, without storing
+    # another full state wrapped in metadata on each snapshot write.
+    row = store.conn.execute(
+        "SELECT state_hash FROM snapshot WHERE run_id=? AND seq=5", (rid,)
+    ).fetchone()
+    state_ref = store._get_blob(row[0])
+    original = store.conn.execute(
+        "SELECT resp_hash FROM boundary WHERE run_id=? AND seq=5", (rid,)
+    ).fetchone()[0]
+    assert state_ref["schema"] == "rewind.snapshot-state-ref"
+    assert state_ref["response_hash"] == original
     assert store.snapshot_at(rid, 99)["agent_snapshot"] == {"step": 99}
     store.garbage_collect()
     store.close()

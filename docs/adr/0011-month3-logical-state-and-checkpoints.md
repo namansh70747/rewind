@@ -21,7 +21,8 @@ The boundary-log contract frozen in Month 2 must remain readable.
 - The existing snapshot table stores CAS manifests with schema
   `rewind.snapshot-delta`, version 1. A manifest contains a base hash, changed
   response references, source fingerprint, sequence and source chain link.
-  Every k checkpoints is a full anchor; intermediate writes contain only changed
+  Logical state sidecars also reference the existing response blob rather than
+  storing another full state payload. Every k checkpoints is a full anchor; intermediate writes contain only changed
   references. Queries apply fewer than k suffix boundaries; delta ancestry is
   also bounded by k. Payload copying still costs O(returned state size).
 - Snapshots are derived accelerators. The boundary log is validated when indexing;

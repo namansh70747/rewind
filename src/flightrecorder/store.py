@@ -194,7 +194,6 @@ class RunStore:
     def index_snapshots(self, run_id: str, interval: int | None = None) -> int:
         """Persist COW checkpoint manifests; response payloads reuse existing CAS blobs."""
         from .integrity import validate
-        from .state import encode_state
 
         cassette = self.load(run_id)
         validate(cassette)
@@ -204,7 +203,7 @@ class RunStore:
         references: dict[str, str] = {}
         pending: dict[str, str] = {}
         base: str | None = None
-        state: Any = None
+        state_digest = self._put_blob(None)
         count = 0
         with self.conn:
             self.conn.execute("DELETE FROM snapshot WHERE run_id = ?", (run_id,))
@@ -214,7 +213,7 @@ class RunStore:
                 if references.get(identity) != digest:
                     references[identity] = pending[identity] = digest
                 if boundary.kind == "state":
-                    state = boundary.response
+                    state_digest = digest
                 if boundary.seq % k:
                     continue
                 # Sparse full anchors bound ancestry; intervening writes contain
@@ -236,7 +235,20 @@ class RunStore:
                 digest = self._put_blob(manifest)
                 self.conn.execute(
                     "INSERT INTO snapshot VALUES (?, ?, ?, ?)",
-                    (run_id, boundary.seq, digest, self._put_blob(encode_state(state))),
+                    (
+                        run_id,
+                        boundary.seq,
+                        digest,
+                        self._put_blob(
+                            {
+                                "schema": "rewind.snapshot-state-ref",
+                                "version": 1,
+                                "response_hash": state_digest,
+                                "run_fingerprint": cassette.fingerprint,
+                                "seq": boundary.seq,
+                            }
+                        ),
+                    ),
                 )
                 base = digest
                 pending.clear()
@@ -306,7 +318,19 @@ class RunStore:
         from .state import decode_state
 
         state = self._get_blob(state_hash)
-        if isinstance(state, dict) and state.get("schema") == "rewind.logical-state":
+        if isinstance(state, dict) and state.get("schema") == "rewind.snapshot-state-ref":
+            if state.get("version") != 1 or set(state) != {
+                "schema",
+                "version",
+                "response_hash",
+                "run_fingerprint",
+                "seq",
+            }:
+                raise ValueError("unsupported snapshot state reference")
+            if state.get("run_fingerprint") != maximum[2] or state.get("seq") != seq:
+                raise ValueError("snapshot state does not belong to this recording boundary")
+            state = self._get_blob(state["response_hash"])
+        elif isinstance(state, dict) and state.get("schema") == "rewind.logical-state":
             state = decode_state(state)
         for kind, key, digest in self.conn.execute(
             "SELECT kind, key, resp_hash FROM boundary WHERE run_id = ? AND seq > ? AND seq <= ? ORDER BY seq",
@@ -362,6 +386,10 @@ class RunStore:
             refs, ancestors = self._snapshot_refs(digest)
             reachable.update(ancestors)
             reachable.update(refs.values())
+        for (digest,) in self.conn.execute("SELECT state_hash FROM snapshot"):
+            state = self._get_blob(digest)
+            if isinstance(state, dict) and state.get("schema") == "rewind.snapshot-state-ref":
+                reachable.add(state["response_hash"])
         garbage = [
             (row[0],)
             for row in self.conn.execute("SELECT hash FROM blob")
