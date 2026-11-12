@@ -1,0 +1,57 @@
+name: Month 4 acceptance
+
+on:
+  pull_request:
+    branches: [main, feat/month-3-time-travel-forks]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: month4-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance:
+    name: Bisect accuracy, real MCP fleet and aligned browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --frozen --extra integrations
+      - name: Labeled accuracy and actual mixed-transport MCP replay
+        run: uv run python scripts/validate_month4.py --output .rewind/month4 --replays 50
+      - name: Install native browser
+        run: uv run --with playwright python -m playwright install --with-deps chromium
+      - name: Aligned side-by-side evidence, keyboard, mobile and offline checks
+        run: uv run --with playwright python scripts/validate_month4_browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: month4-acceptance-evidence
+          path: |
+            .rewind/month4/report.json
+            .rewind/month4-browser/
+          include-hidden-files: true
+
+  embeddings:
+    name: Live NVIDIA synthetic embedding check (opt-in)
+    if: github.event_name == 'workflow_dispatch' || (vars.REWIND_LIVE_VALIDATION == 'true' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --frozen
+      - name: Live embeddings of public synthetic inputs only
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: uv run python scripts/validate_month4_embeddings.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: month4-synthetic-embedding-evidence
+          path: .rewind/month4-embeddings/report.json
+          include-hidden-files: true

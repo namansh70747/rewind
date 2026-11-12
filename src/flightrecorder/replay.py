@@ -20,10 +20,17 @@ Run = Callable[[Session, httpx.BaseTransport | None], str]
 
 
 def record(
-    run: Run, inner: httpx.BaseTransport, *, provider: str = "", model: str = ""
+    run: Run,
+    inner: httpx.BaseTransport | None = None,
+    *,
+    provider: str = "",
+    model: str = "",
+    concurrent: bool = False,
 ) -> Cassette:
     """Run once against the real (or mock) world, capturing every boundary."""
-    session = Session("record")
+    from .concurrency import ConcurrentSession
+
+    session = ConcurrentSession("record") if concurrent else Session("record")
     output = run(session, inner)
     return Cassette(
         boundaries=session.boundaries,
@@ -31,6 +38,7 @@ def record(
         final_output=output,
         provider=provider,
         model=model,
+        metadata={"concurrent": concurrent},
     )
 
 
@@ -39,7 +47,13 @@ def replay_once(cassette: Cassette, run: Run) -> tuple[str, str]:
     validate(cassette)
     if cassette.metadata.get("replayable") is False:
         raise Divergence(0, "trace-only evidence cannot be executed as a replay")
-    session = Session("replay", cassette)
+    from .concurrency import ConcurrentSession
+
+    session = (
+        ConcurrentSession("replay", cassette)
+        if cassette.metadata.get("concurrent")
+        else Session("replay", cassette)
+    )
     with offline_guard() as audit:
         output = run(session, None)  # inner=None -> network kill-switch
     if audit.blocked_operations:

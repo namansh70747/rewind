@@ -237,46 +237,50 @@ def bisect(
     run_a: str,
     run_b: str,
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+    method: Annotated[str, typer.Option(help="auto | hash | align")] = "auto",
+    embeddings: Annotated[
+        Path | None, typer.Option(help="offline vector cache from embed-pair")
+    ] = None,
+    json_output: Annotated[
+        bool, typer.Option("--json", help="emit complete alignment and raw differences")
+    ] = False,
 ) -> None:
-    """Find the first diverging decision between two recorded runs (e.g. a good vs bad run)."""
-    from .bisect import first_divergence
+    """Locate the first decision difference, preserving earlier source/metadata drift."""
+    from .diagnosis import diagnose
+    from .semantic import load_vectors
 
-    store = RunStore(db)
+    left, right = _load_run(run_a, db), _load_run(run_b, db)
     try:
-        cassette_a = store.load(run_a)
-        cassette_b = store.load(run_b)
-    except KeyError as exc:
-        console.print(f"[red]{exc}[/]")
-        raise typer.Exit(1) from None
-    finally:
-        store.close()
-
-    result = first_divergence(cassette_a, cassette_b)
-    if not result.diverged:
-        console.print("[green]no divergence — the two runs are identical[/]")
-        return
-
-    console.print(f"[bold red]first divergence at boundary #{result.index}[/]  {result.reason}")
-    if result.a is not None or result.b is not None:
-        table = Table(show_header=True)
-        table.add_column("run", style="bold")
-        table.add_column("boundary", style="cyan")
-        table.add_column("request")
-        table.add_column("response")
-        # Render each side independently so a length divergence (only one side has the extra
-        # boundary) still shows the lone step, and the request side makes an input diff obvious.
-        for name, boundary in ((run_a, result.a), (run_b, result.b)):
-            if boundary is None:
-                table.add_row(name, "[dim](no boundary — run ended here)[/]", "", "")
-            else:
-                table.add_row(
-                    name,
-                    f"{boundary.kind}:{boundary.key}",
-                    _summarize_request(boundary.request),
-                    _summarize(boundary.kind, boundary.response),
-                )
-        console.print(table)
-    raise typer.Exit(1)  # diverged -> non-zero, useful as a CI gate
+        vectors = (
+            load_vectors(json.loads(embeddings.read_text()), left, right) if embeddings else None
+        )
+        report = diagnose(left, right, vectors=vectors, method=method)
+    except (ValueError, TypeError, OSError) as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    first = report["primary_difference"]
+    if json_output:
+        console.print_json(data=report)
+    elif first is None:
+        console.print("no divergence — the recordings are identical", markup=False)
+    else:
+        console.print(
+            f"first divergence at baseline #{first['a']} / candidate #{first['b']} · {first['category']}",
+            markup=False,
+        )
+        console.print(first["summary"], markup=False)
+        console.print(
+            f"Method: {report['comparison_method']} / {report['alignment_method']}", markup=False
+        )
+        console.print_json(
+            data={
+                "left": first.get("left"),
+                "right": first.get("right"),
+                "raw_diff": first["raw_diff"],
+                "upstream_context": report["upstream_context"],
+            }
+        )
+        console.print(report["interpretation"], markup=False)
+    raise typer.Exit(1 if first is not None else 0)
 
 
 def _load_run(run_id: str, db: str) -> Cassette:

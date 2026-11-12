@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 from .boundary import Cassette, Divergence
 from .capture import capture, replay_run
+from .provenance import check_source, provenance
 from .redaction import redact_text
 from .replay import VerifyResult
 
@@ -47,6 +48,7 @@ def record_script(path: Path, *, concurrent: bool = False, sources: bool = False
     cap.cassette.final_output = output
     cap.cassette.metadata = {
         **cap.cassette.metadata,
+        **provenance(path),
         "source_sha256": digest,
         "source_name": path.name,
         "capture_scope": "httpx + decorated tools + optional sources + redacted stdout",
@@ -57,13 +59,9 @@ def record_script(path: Path, *, concurrent: bool = False, sources: bool = False
 def verify_script(cassette: Cassette, path: Path, n: int = 10) -> VerifyResult:
     if n < 1:
         raise ValueError("number of replays must be at least 1")
-    actual = source_hash(path)
-    expected = cassette.metadata.get("source_sha256")
-    if cassette.provider != "script" or actual != expected:
-        raise ValueError(
-            f"script source differs from the recording: recorded SHA {expected}, "
-            f"current SHA {actual}; restore the original file"
-        )
+    if cassette.provider != "script":
+        raise ValueError("recording is not a script")
+    check_source(cassette.metadata, path)
     outputs: set[str] = set()
     hashes: set[str] = set()
     for index in range(n):
@@ -109,12 +107,7 @@ def fork_script(
     from .replay import Run
     from .sources import deterministic_sources
 
-    actual = source_hash(path)
-    expected = parent.metadata.get("source_sha256")
-    if actual != expected:
-        raise ValueError(
-            f"script source differs from recording: recorded SHA {expected}, current SHA {actual}"
-        )
+    check_source(parent.metadata, path)
     if parent.metadata.get("concurrent"):
         raise ValueError("concurrent forks are not supported; serialize this scenario")
 

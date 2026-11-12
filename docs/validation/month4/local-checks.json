@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-13",
+  "pytest": {
+    "tests": 153,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "month4_targeted_tests_after_final_evidence_changes": 16,
+  "ruff_lint": true,
+  "ruff_format": true,
+  "mypy_source_and_tests": true,
+  "mkdocs_strict": true,
+  "javascript_syntax": true,
+  "browser_local": "blocked by sandbox Unix-socket policy; PR CI required",
+  "human_review": "pending M4.2"
+}

@@ -10,9 +10,9 @@ whose recorded content differs, classifying it:
   agent-logic cause is *upstream* of this boundary (this index is the first symptom, not
   necessarily the root).
 
-This is the step-aligned bisect from ``docs/plan/algorithms-and-math.md`` (§1/§3). It
-assumes the two runs share a prefix; sequence alignment for insert/delete cases
-(Needleman-Wunsch / DTW) is a later phase. See ADR-0006.
+This compatibility API is positional. The CLI and dashboards use the validated
+hash search and insert/delete sequence alignment in ``flightrecorder.diagnosis``.
+Use ``diagnose`` for Month 4 comparisons. See ADR-0012.
 """
 
 from __future__ import annotations

@@ -7,7 +7,6 @@ from dataclasses import asdict
 from importlib.resources import files
 from typing import TYPE_CHECKING, Any
 
-from .bisect import first_divergence
 from .diagnosis import diagnose
 from .integrity import validate
 
@@ -23,6 +22,7 @@ def render_dashboard(
     verification: dict[str, Any] | None = None,
     *,
     alignment_model: Path | None = None,
+    alignment_vectors: tuple[list[list[float]], list[list[float]]] | None = None,
 ) -> None:
     for cassette in runs.values():
         validate(cassette)
@@ -30,19 +30,37 @@ def render_dashboard(
     comparisons = []
     for index, left in enumerate(labels):
         for right in labels[index + 1 :]:
-            result = first_divergence(runs[left], runs[right])
             try:
-                aligned = diagnose(runs[left], runs[right], model_path=alignment_model)
+                aligned = diagnose(
+                    runs[left],
+                    runs[right],
+                    model_path=alignment_model,
+                    vectors=alignment_vectors if len(labels) == 2 else None,
+                )
+                reverse_vectors = (
+                    (alignment_vectors[1], alignment_vectors[0])
+                    if alignment_vectors is not None and len(labels) == 2
+                    else None
+                )
+                reverse = diagnose(
+                    runs[right], runs[left], model_path=alignment_model, vectors=reverse_vectors
+                )
             except ValueError as exc:
-                aligned = {"alignment": [], "unavailable": str(exc)}
+                aligned = reverse = {"alignment": [], "unavailable": str(exc)}
+            first = aligned.get("primary_difference")
             comparisons.append(
                 {
                     "a": left,
                     "b": right,
-                    "index": result.index,
-                    "diverged": result.diverged,
-                    "reason": result.reason,
+                    "index": (first["a"] if first["a"] is not None else first["b"])
+                    if first
+                    else None,
+                    "diverged": first is not None,
+                    "reason": first["summary"]
+                    if first
+                    else aligned.get("unavailable", "identical"),
                     "diagnosis": aligned,
+                    "reverse_diagnosis": reverse,
                 }
             )
     data = {

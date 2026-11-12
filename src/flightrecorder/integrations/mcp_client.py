@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from ..capture import _active_session
 from ..redaction import redact
 from ..sources import suppress_sources
 from .mcp import MCPToolError
+from .mcp_wire import TappedStream, WireTap
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
@@ -28,6 +29,7 @@ class MCPClient:
         self.session, self.server = session, server
         self.initialization: dict[str, Any] = {}
         self._sdk: Any = None
+        self._wire = WireTap()
         self._occurrence = 0
         self._open = True
 
@@ -41,16 +43,18 @@ class MCPClient:
 
         async def produce() -> dict[str, Any]:
             token = _active_session.set(None)
+            operation = self._wire.operation.set(occurrence)
             try:
                 with suppress_sources():
                     try:
                         result = await producer()
-                        return {"ok": True, "value": redact(result.model_dump(mode="json"))}
+                        outcome = {"ok": True, "value": result.model_dump(mode="json")}
                     except Exception as exc:
-                        return dict(
-                            redact({"ok": False, "type": type(exc).__name__, "message": str(exc)})
-                        )
+                        outcome = {"ok": False, "type": type(exc).__name__, "message": str(exc)}
+                    return dict(redact({**outcome, "wire": self._wire.finish(occurrence)}))
             finally:
+                self._wire.finish(occurrence)
+                self._wire.operation.reset(operation)
                 _active_session.reset(token)
 
         outcome = await self.session.mediate_async(
@@ -82,7 +86,7 @@ async def _managed(
     server: str,
     transport: str,
     config: dict[str, Any],
-    connect: Callable[[AsyncExitStack], Awaitable[Any]],
+    connect: Callable[[AsyncExitStack, WireTap], Awaitable[Any]],
 ) -> AsyncIterator[MCPClient]:
     if not server.strip():
         raise ValueError("server identity cannot be empty")
@@ -91,7 +95,7 @@ async def _managed(
     try:
 
         async def initialize() -> Any:
-            client._sdk = await connect(stack)
+            client._sdk = await connect(stack, client._wire)
             return await client._sdk.initialize()
 
         client.initialization = await client._operation(
@@ -126,14 +130,19 @@ async def mcp_stdio(
     are redacted and matched. Only execute trusted commands, as with script capture.
     """
 
-    async def connect(stack: AsyncExitStack) -> Any:
+    async def connect(stack: AsyncExitStack, tap: WireTap) -> Any:
         from mcp import ClientSession, StdioServerParameters
         from mcp.client.stdio import stdio_client
 
         read, write = await stack.enter_async_context(
             stdio_client(StdioServerParameters(command=command, args=args or [], env=env))
         )
-        return await stack.enter_async_context(ClientSession(read, write))
+        return await stack.enter_async_context(
+            ClientSession(
+                cast("Any", TappedStream(read, tap, "response")),
+                cast("Any", TappedStream(write, tap, "request")),
+            )
+        )
 
     async with _managed(
         session, server, "stdio", {"command": command, "args": args or []}, connect
@@ -155,7 +164,7 @@ async def mcp_http(
     Supported SDK contract is mcp>=1.20,<2, not the incompatible v2 client API.
     """
 
-    async def connect(stack: AsyncExitStack) -> Any:
+    async def connect(stack: AsyncExitStack, tap: WireTap) -> Any:
         import httpx
         from mcp import ClientSession
         from mcp.client.streamable_http import streamable_http_client
@@ -164,7 +173,12 @@ async def mcp_http(
         read, write, _ = await stack.enter_async_context(
             streamable_http_client(url, http_client=http)
         )
-        return await stack.enter_async_context(ClientSession(read, write))
+        return await stack.enter_async_context(
+            ClientSession(
+                cast("Any", TappedStream(read, tap, "response")),
+                cast("Any", TappedStream(write, tap, "request")),
+            )
+        )
 
     async with _managed(session, server, "streamable-http", {"url": url}, connect) as client:
         yield client
