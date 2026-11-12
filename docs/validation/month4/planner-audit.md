@@ -12,7 +12,7 @@ This branch stacks on the unmerged Month 3 PR; neither branch is merged by this 
 | 14 / E2 | `fr bisect` uses unified diagnosis; plain-English and JSON modes, explicit method, deterministic exit codes | CLI regression with identical and failing pairs |
 | 14 / E3 | Independent declared edit positions and labels in `examples/month4_pairs.py` | 77 controlled cases, 77 correct localization/category predictions |
 | 15 / E1/E3 | Prefix-anchored bounded Needleman–Wunsch, structured JSON similarity and real cosine-vector cost, explicit NVIDIA vector capture/cache | Insert/delete/repeat tests, semantic-vector choice test, cache binding/reversal/rejection tests, live synthetic NVIDIA embedding check |
-| 15 / E2 | Portable and product side-by-side aligned timelines with gaps, row selection and correct inspector index | Automated Chromium acceptance script in PR CI; local Chromium start blocked by socket permissions |
+| 15 / E2 | Portable and product side-by-side aligned timelines with gaps, row selection and correct inspector index | Native Chromium acceptance passed in GitHub CI; aligned gaps, keyboard selection, inspector jump and responsive layout verified |
 | 16 / E3 | Eight planned taxonomy labels plus metadata/source/final-output distinctions | Controlled taxonomy cases and actual provider pair reports; these are weak labels, not production cause accuracy |
 | 16 / E2 | Plain English with both full raw sides; direction-specific re-diagnosis when swapping portable comparisons | Raw field assertions and reversed cost-label regression; UI acceptance script |
 | 16 / E1 | `input_relation`, earliest raw mismatch vs first logical decision, upstream row context | UUID-before-tool and provider-metadata-only regression cases |
@@ -57,8 +57,17 @@ browser script checks aligned insertion/deletion, reversing baseline/candidate,
 keyboard selection, inspector jump, desktop/mobile width, literal script-breakout
 content, zero portable network requests, and product raw panes. The local sandbox
 rejects Chromium's Unix socket; outside-sandbox execution is unavailable by policy.
-CI is the independent browser execution environment. A failed or missing CI run
-must not be described as a passed browser check.
+CI supplied the independent browser execution environment. The
+[Month 4 acceptance run](https://github.com/namansh70747/rewind/actions/runs/43330409517)
+passed the real mixed-transport fleet and every browser assertion, with zero
+runtime errors. Its [artifact](https://github.com/namansh70747/rewind/actions/runs/43330409517/artifacts/13994572581)
+contains desktop/mobile screenshots, portable synthetic HTML and reports.
+
+The [remote-check snapshot](github-checks.json) records both published source
+commits and their checks. Python 3.11/3.12/3.13, lint/types, strict docs, clean wheels
+on Linux/macOS/Windows, CodeQL, Month 3 viewer acceptance, and Month 4 acceptance
+all passed. Provider-key CI jobs were opt-in skips; actual session API evidence
+is reported separately above. Both PRs remain open and unmerged.
 
 ## Exit gates
 

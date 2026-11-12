@@ -1,0 +1,209 @@
+{
+  "date": "2026-11-13",
+  "scope": "Verified remote source commits before this documentation-only evidence update; skipped opt-in live jobs are not live validation.",
+  "pull_requests": [
+    {
+      "pr": 63,
+      "source_commit": "e0fa4f83c47671811f0453591ff6eb0bf119b1e1",
+      "url": "https://github.com/namansh70747/rewind/pull/63",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "CodeQL",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/runs/131443140737"
+        },
+        {
+          "name": "deploy",
+          "status": "completed",
+          "conclusion": "skipped",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650333/job/131442785282"
+        },
+        {
+          "name": "Live NVIDIA and Gemini replay",
+          "status": "completed",
+          "conclusion": "skipped",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650360/job/131442631338"
+        },
+        {
+          "name": "Clean wheel (macos-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650364/job/131442629819"
+        },
+        {
+          "name": "Test (Python 3.12)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650364/job/131442629807"
+        },
+        {
+          "name": "Test (Python 3.13)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650364/job/131442629772"
+        },
+        {
+          "name": "Clean wheel (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650364/job/131442629669"
+        },
+        {
+          "name": "Clean wheel (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650364/job/131442629594"
+        },
+        {
+          "name": "Test (Python 3.11)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650364/job/131442629429"
+        },
+        {
+          "name": "Jaeger OTLP ingestion and viewer",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650360/job/131442629117"
+        },
+        {
+          "name": "Lint & type-check",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650364/job/131442629082"
+        },
+        {
+          "name": "Build docs (strict)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650333/job/131442628308"
+        },
+        {
+          "name": "Analyze (python)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292650298/job/131442627679"
+        },
+        {
+          "name": "Apply labels",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43292646247/job/131442618182"
+        }
+      ]
+    },
+    {
+      "pr": 64,
+      "source_commit": "b8124f6055daf47ac4a4879ccaf218931e79ad66",
+      "url": "https://github.com/namansh70747/rewind/pull/64",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "CodeQL",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/runs/131573800700"
+        },
+        {
+          "name": "deploy",
+          "status": "completed",
+          "conclusion": "skipped",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409451/job/131573482410"
+        },
+        {
+          "name": "Live NVIDIA synthetic embedding check (opt-in)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409517/job/131573384108"
+        },
+        {
+          "name": "Live NVIDIA and Gemini replay",
+          "status": "completed",
+          "conclusion": "skipped",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409269/job/131573382133"
+        },
+        {
+          "name": "Bisect accuracy, real MCP fleet and aligned browser",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409517/job/131573382097"
+        },
+        {
+          "name": "Apply labels",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330408072/job/131573381738"
+        },
+        {
+          "name": "Test (Python 3.13)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409293/job/131573381665"
+        },
+        {
+          "name": "Build docs (strict)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409451/job/131573381659"
+        },
+        {
+          "name": "Test (Python 3.12)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409293/job/131573381473"
+        },
+        {
+          "name": "Clean wheel (macos-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409293/job/131573381407"
+        },
+        {
+          "name": "Clean wheel (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409293/job/131573381367"
+        },
+        {
+          "name": "Test (Python 3.11)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409293/job/131573381360"
+        },
+        {
+          "name": "Clean wheel (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409293/job/131573381350"
+        },
+        {
+          "name": "Lint & type-check",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409293/job/131573381104"
+        },
+        {
+          "name": "Jaeger OTLP ingestion and viewer",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409269/job/131573380921"
+        },
+        {
+          "name": "Analyze (python)",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/namansh70747/rewind/actions/runs/43330409410/job/131573380484"
+        }
+      ]
+    }
+  ],
+  "human_review": {
+    "gate": "M4.2",
+    "status": "pending",
+    "reason": "Implementation instructions are not a recorded answer agreeing with the observed divergence."
+  }
+}
