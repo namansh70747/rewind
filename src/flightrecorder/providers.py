@@ -63,4 +63,11 @@ ANTHROPIC = Provider(
     dialect="anthropic",
 )
 
-PROVIDERS: dict[str, Provider] = {p.name: p for p in (OPENAI, NVIDIA, ANTHROPIC)}
+GEMINI = Provider(
+    name="gemini",
+    url="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    default_model="gemini-2.5-flash",
+    key_env="GEMINI_API_KEY",
+)
+
+PROVIDERS: dict[str, Provider] = {p.name: p for p in (OPENAI, NVIDIA, ANTHROPIC, GEMINI)}

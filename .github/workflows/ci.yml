@@ -70,6 +70,11 @@ jobs:
           uv run fr demo --n 5
           uv run fr eval --n 2
 
+      - name: Month 3 async LangGraph and snapshot gates
+        run: |
+          uv run python examples/month3_langgraph.py --output .rewind/month3-ci
+          uv run python scripts/benchmark_month3.py --output .rewind/month3-benchmark-ci.json
+
       - name: Build distribution
         run: uv build
 

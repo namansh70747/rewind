@@ -7,8 +7,6 @@ from collections import Counter
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
-from .integrity import validate
-
 if TYPE_CHECKING:
     from .boundary import Cassette
 
@@ -19,19 +17,10 @@ def state_at(cassette: Cassette, at: int) -> dict[str, Any]:
     This is boundary-observable state, not a Python heap/process snapshot.
     Agents can emit explicit `state` boundaries for application snapshots.
     """
-    validate(cassette)
-    if not 0 <= at < len(cassette.boundaries):
-        raise ValueError("boundary index is outside the recording")
-    prefix = cassette.boundaries[: at + 1]
-    latest = {f"{b.kind}:{b.key}": b.response for b in prefix}
-    snapshots = [b.response for b in prefix if b.kind == "state"]
-    return {
-        "at": at,
-        "boundary": asdict(prefix[-1]),
-        "observed": latest,
-        "agent_snapshot": snapshots[-1] if snapshots else None,
-        "final_output": cassette.final_output if at == len(cassette.boundaries) - 1 else None,
-    }
+    from .snapshots import SnapshotIndex
+
+    index = SnapshotIndex(cassette)
+    return {**index.at(at), "boundary": asdict(index.cassette.boundaries[at])}
 
 
 def features(cassette: Cassette) -> Counter[str]:

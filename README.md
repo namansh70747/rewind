@@ -261,3 +261,5 @@ To try a real provider capture, configure a **fresh** `NVIDIA_API_KEY`, `GEMINI_
 The console operates on the existing `.rewind/runs.db`, preserves existing runs, and hides identified simulated examples unless explicitly enabled. Imported/exported bundles can contain sensitive prompts and responses; redaction is pattern based, so review before sharing. Captures from real providers, streaming/tool and retry corpora, and the original OpenAI/Anthropic Month 2 gate require separate evidence. The recording-format ADR remains proposed.
 
 To inspect logical recordings and stored blobs for integrity and known credential patterns, run `fr audit-corpus --db .rewind/runs.db` or select **Settings → Audit stored corpus** in the local workspace. This is a limited heuristic scan; it does not cover every secret, SQLite free pages, exports or backups. See `docs/month2-verification.md` for the local provider evidence and outstanding Month 2 gates.
+
+Month 3 workflow: [time travel, async forks, LangGraph and provider validation](docs/month3-time-travel.md).

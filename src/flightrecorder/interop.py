@@ -35,6 +35,9 @@ def perfetto(cassette: Cassette) -> dict[str, Any]:
                     "response": b.response,
                     "chain_hash": b.chain_hash,
                     "time_basis": "ordinal (not wall time)",
+                    "counterfactual": bool(cassette.metadata.get("counterfactual")),
+                    "parent_fingerprint": cassette.metadata.get("parent_fingerprint", ""),
+                    "fork_at": cassette.metadata.get("fork_at"),
                 },
             }
             for b in cassette.boundaries
@@ -52,6 +55,9 @@ def otlp(cassette: Cassette) -> dict[str, Any]:
             "rewind.chain_hash": b.chain_hash,
             "rewind.kind": b.kind,
             "rewind.time_basis": "ordinal",
+            "rewind.counterfactual": str(bool(cassette.metadata.get("counterfactual"))).lower(),
+            "rewind.parent_fingerprint": cassette.metadata.get("parent_fingerprint", ""),
+            "rewind.fork_at": str(cassette.metadata.get("fork_at", "")),
             "input.value": json.dumps(b.request),
             "output.value": json.dumps(b.response),
             "openinference.span.kind": {"llm": "LLM", "tool": "TOOL"}.get(b.kind, "CHAIN"),

@@ -27,6 +27,8 @@ class TimelineApp(App[None]):
         super().__init__()
         self.index = SnapshotIndex(cassette)
         self.position = 0
+        if cassette.metadata.get("counterfactual"):
+            self.title = "Rewind · QUARANTINED what-if · best-effort exploration"
 
     def compose(self) -> ComposeResult:
         yield Header()

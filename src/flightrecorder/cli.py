@@ -81,7 +81,7 @@ def _summarize_request(request: Any) -> str:
 
 @app.command()
 def record(
-    provider: Annotated[str, typer.Option(help="openai | nvidia | anthropic")] = "openai",
+    provider: Annotated[str, typer.Option(help="openai | nvidia | anthropic | gemini")] = "openai",
     model: Annotated[str | None, typer.Option(help="override the provider's default model")] = None,
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
     concurrent: Annotated[
@@ -161,6 +161,8 @@ def show(
             raise typer.BadParameter(str(exc)) from exc
         return
 
+    if cassette.metadata.get("counterfactual"):
+        console.print("QUARANTINED what-if · best-effort exploration", markup=False)
     table = Table(title=f"run {run_id}  ·  {cassette.provider}/{cassette.model}", show_lines=False)
     table.add_column("#", justify="right", style="dim")
     table.add_column("boundary", style="cyan")
@@ -346,21 +348,50 @@ def fork(
     run_id: str,
     price: Annotated[int, typer.Option(min=0, help="replacement price for the demo quote")] = 420,
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
+    source: Annotated[Path | None, typer.Option(help="trusted recorded Python script")] = None,
+    at: Annotated[int | None, typer.Option(min=0, help="boundary to replace")] = None,
+    value: Annotated[Path | None, typer.Option(help="replacement response JSON file")] = None,
+    mocks: Annotated[Path | None, typer.Option(help="JSON mapping: kind/key to response")] = None,
 ) -> None:
-    """Safely fork a travel demo. Custom agents use the fork_run Python API."""
+    """Fork a trusted recorded script, or recover the bundled travel demo."""
     from .demo import recover_demo
 
     cassette = _load_run(run_id, db)
     try:
-        recovered = recover_demo(cassette, price)
-    except ValueError as exc:
+        if any(option is not None for option in (source, at, value, mocks)):
+            if source is None or at is None or value is None or mocks is None:
+                raise ValueError("script forks require --source, --at, --value and --mocks")
+            from .scripts import fork_script
+
+            mapping = json.loads(mocks.read_text(encoding="utf-8"))
+            if not isinstance(mapping, dict) or any(
+                not isinstance(key, str) or "/" not in key or not all(key.split("/", 1))
+                for key in mapping
+            ):
+                raise ValueError("mocks must be a JSON object with kind/key keys")
+            recovered = fork_script(
+                cassette,
+                source,
+                at=at,
+                value=json.loads(value.read_text(encoding="utf-8")),
+                mocks={
+                    (key.split("/", 1)[0], key.split("/", 1)[1]): result
+                    for key, result in mapping.items()
+                },
+            )
+        else:
+            recovered = recover_demo(cassette, price)
+    except (OSError, ValueError) as exc:
         raise typer.BadParameter(str(exc)) from exc
     store = RunStore(db)
     try:
         child_id = store.save(recovered)
     finally:
         store.close()
-    console.print(f"Counterfactual run: {child_id}\n{recovered.final_output}", markup=False)
+    console.print(
+        f"Counterfactual run (quarantined, best-effort): {child_id}\n{recovered.final_output}",
+        markup=False,
+    )
 
 
 @app.command("export")

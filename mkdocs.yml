@@ -55,6 +55,8 @@ nav:
       - Tech Stack & OSS Map: plan/tech-stack-and-oss-map.md
       - Algorithms & Math: plan/algorithms-and-math.md
       - Competitive Landscape: plan/competitive-landscape.md
+  - Month 3 workflow: month3-time-travel.md
+  - Month 3 validation: validation/month3/report.md
   - Glossary: glossary.md
   - FAQ: faq.md
   - Decisions:
