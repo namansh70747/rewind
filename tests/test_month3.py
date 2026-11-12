@@ -213,6 +213,10 @@ def test_tui_scrubs_without_future_state() -> None:
             assert state_at(cassette, app.position)["agent_snapshot"] == {"step": 1}
             await pilot.press("left", "left")
             assert app.position == 0
+            await pilot.press("end")
+            assert app.position == 3
+            await pilot.press("home")
+            assert app.position == 0
 
     asyncio.run(scenario())
 

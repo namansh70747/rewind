@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import sqlite3
 import uuid
 import zlib
@@ -192,25 +193,91 @@ class RunStore:
 
     def index_snapshots(self, run_id: str, interval: int | None = None) -> int:
         """Persist COW checkpoint manifests; response payloads reuse existing CAS blobs."""
-        from .snapshots import SnapshotIndex
+        from .integrity import validate
+        from .state import encode_state
 
-        index = SnapshotIndex(self.load(run_id), interval)
+        cassette = self.load(run_id)
+        validate(cassette)
+        k = max(1, math.isqrt(len(cassette.boundaries))) if interval is None else interval
+        if type(k) is not int or k < 1:
+            raise ValueError("snapshot interval must be a positive integer")
+        references: dict[str, str] = {}
+        pending: dict[str, str] = {}
+        base: str | None = None
+        state: Any = None
+        count = 0
         with self.conn:
             self.conn.execute("DELETE FROM snapshot WHERE run_id = ?", (run_id,))
-            for seq, (observed, state) in index.checkpoints.items():
-                references = {key: self._put_blob(value) for key, value in observed.items()}
+            for boundary in cassette.boundaries:
+                identity = f"{boundary.kind}:{boundary.key}"
+                digest = self._put_blob(boundary.response)
+                if references.get(identity) != digest:
+                    references[identity] = pending[identity] = digest
+                if boundary.kind == "state":
+                    state = boundary.response
+                if boundary.seq % k:
+                    continue
+                # Sparse full anchors bound ancestry; intervening writes contain
+                # only changed references, never the whole observed map.
+                if count % k == 0:
+                    base = None
+                    updates = references.copy()
+                else:
+                    updates = pending.copy()
+                manifest = {
+                    "schema": "rewind.snapshot-delta",
+                    "version": 1,
+                    "base": base,
+                    "updates": updates,
+                    "run_fingerprint": cassette.fingerprint,
+                    "seq": boundary.seq,
+                    "chain_hash": boundary.chain_hash,
+                }
+                digest = self._put_blob(manifest)
                 self.conn.execute(
                     "INSERT INTO snapshot VALUES (?, ?, ?, ?)",
-                    (run_id, seq, self._put_blob(references), self._put_blob(state)),
+                    (run_id, boundary.seq, digest, self._put_blob(encode_state(state))),
                 )
-        return len(index.checkpoints)
+                base = digest
+                pending.clear()
+                count += 1
+        return count
+
+    def _snapshot_refs(self, digest: str) -> tuple[dict[str, str], set[str]]:
+        """Resolve bounded delta ancestry; also read pre-envelope legacy snapshots."""
+        manifests = []
+        visited: set[str] = set()
+        while digest:
+            if digest in visited:
+                raise ValueError("cyclic snapshot manifest")
+            visited.add(digest)
+            manifest = self._get_blob(digest)
+            if manifest.get("schema") != "rewind.snapshot-delta":
+                manifests.append(manifest)
+                break
+            if manifest.get("version") != 1 or set(manifest) != {
+                "schema",
+                "version",
+                "base",
+                "updates",
+                "run_fingerprint",
+                "seq",
+                "chain_hash",
+            }:
+                raise ValueError("unsupported snapshot manifest")
+            manifests.append(manifest["updates"])
+            digest = manifest["base"]
+        refs: dict[str, str] = {}
+        for updates in reversed(manifests):
+            refs.update(updates)
+        return refs, visited
 
     def snapshot_at(self, run_id: str, at: int) -> dict[str, Any]:
         """Load nearest persisted checkpoint and at most one interval of boundaries."""
         maximum = self.conn.execute(
-            "SELECT n_boundaries FROM run WHERE id = ?", (run_id,)
+            "SELECT n_boundaries, final_output, fingerprint FROM run WHERE id = ?", (run_id,)
         ).fetchone()
-        if maximum is None or not 0 <= at < maximum[0]:
+        if type(at) is not int or maximum is None or not 0 <= at < maximum[0]:
             raise ValueError("boundary index is outside recording")
         row = self.conn.execute(
             "SELECT seq, observed_hash, state_hash FROM snapshot "
@@ -221,9 +288,26 @@ class RunStore:
             self.index_snapshots(run_id)
             return self.snapshot_at(run_id, at)
         seq, observed_hash, state_hash = row
-        refs = self._get_blob(observed_hash)
+        manifest = self._get_blob(observed_hash)
+        if manifest.get("schema") == "rewind.snapshot-delta":
+            expected_chain = self.conn.execute(
+                "SELECT chain_hash FROM boundary WHERE run_id=? AND seq=?", (run_id, seq)
+            ).fetchone()[0]
+            if (
+                manifest.get("run_fingerprint") != maximum[2]
+                or manifest.get("seq") != seq
+                or manifest.get("chain_hash") != expected_chain
+            ):
+                raise ValueError(
+                    "snapshot does not belong to this recording boundary; rebuild its index"
+                )
+        refs, _ = self._snapshot_refs(observed_hash)
         observed = {key: self._get_blob(value) for key, value in refs.items()}
+        from .state import decode_state
+
         state = self._get_blob(state_hash)
+        if isinstance(state, dict) and state.get("schema") == "rewind.logical-state":
+            state = decode_state(state)
         for kind, key, digest in self.conn.execute(
             "SELECT kind, key, resp_hash FROM boundary WHERE run_id = ? AND seq > ? AND seq <= ? ORDER BY seq",
             (run_id, seq, at),
@@ -232,7 +316,21 @@ class RunStore:
             observed[f"{kind}:{key}"] = value
             if kind == "state":
                 state = value
+        boundary = self.conn.execute(
+            "SELECT kind, key, req_hash, resp_hash, chain_hash FROM boundary WHERE run_id=? AND seq=?",
+            (run_id, at),
+        ).fetchone()
         return {
+            "schema_version": 1,
+            "boundary": {
+                "seq": at,
+                "kind": boundary[0],
+                "key": boundary[1],
+                "request": self._get_blob(boundary[2]),
+                "response": self._get_blob(boundary[3]),
+                "chain_hash": boundary[4],
+            },
+            "final_output": maximum[1] if at == maximum[0] - 1 else None,
             "at": at,
             "checkpoint": seq,
             "replayed_events": at - seq,
@@ -261,7 +359,9 @@ class RunStore:
             )
         }
         for (digest,) in self.conn.execute("SELECT observed_hash FROM snapshot"):
-            reachable.update(self._get_blob(digest).values())
+            refs, ancestors = self._snapshot_refs(digest)
+            reachable.update(ancestors)
+            reachable.update(refs.values())
         garbage = [
             (row[0],)
             for row in self.conn.execute("SELECT hash FROM blob")

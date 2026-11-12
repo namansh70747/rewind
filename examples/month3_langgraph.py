@@ -17,11 +17,12 @@ from pathlib import Path
 from typing import TypedDict
 
 import httpx
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import StateGraph
 
 from flightrecorder.boundary import Cassette, Session
 from flightrecorder.fork import afork_run
-from flightrecorder.integrations.langgraph import arun_graph
+from flightrecorder.integrations.langgraph import acapture_checkpoint, arun_graph
 from flightrecorder.interop import write_trace
 from flightrecorder.offline import offline_guard
 from flightrecorder.policy import SideEffectPolicy, afork_with_policy
@@ -90,19 +91,40 @@ async def scenario(provider, output: Path, live: bool) -> dict:
     builder.add_edge("quote", "explain")
     builder.add_edge("explain", "reserve")
     builder.set_finish_point("reserve")
-    graph = builder.compile()
+    config = {"configurable": {"thread_id": f"month3-{provider.name}"}}
 
     async def run(session: Session) -> str:
-        return await arun_graph(graph, {"price": 0, "explanation": "", "reservation": ""}, session)
+        graph = builder.compile(checkpointer=InMemorySaver())
+        result = await arun_graph(
+            graph,
+            {"price": 0, "explanation": "", "reservation": ""},
+            session,
+            config,
+            callbacks=True,
+        )
+        checkpoint = await acapture_checkpoint(graph, config, session)
+        assert checkpoint["values"] == json.loads(result)
+        return result
 
     session = Session("record")
     text = await run(session)
     parent = Cassette(
-        session.boundaries, session.chain, text, provider.name, provider.default_model
+        session.boundaries,
+        session.chain,
+        text,
+        provider.name,
+        provider.default_model,
+        metadata={
+            "langgraph_thread": config["configurable"]["thread_id"],
+            "checkpointer": "InMemorySaver",
+            "callbacks": True,
+        },
     )
     target = next(b.seq for b in parent.boundaries if b.key == "month3.quote")
     mocks = {
-        ("state", b.key): lambda request: request for b in parent.boundaries if b.kind == "state"
+        (b.kind, b.key): lambda request: request
+        for b in parent.boundaries
+        if b.kind in {"state", "callback", "checkpoint"}
     }
     mocks[("tool", "month3.reserve")] = lambda request: {"ok": True, "value": "mock reservation"}
     http_event = next(b for b in parent.boundaries if b.kind == "http")
@@ -143,6 +165,8 @@ async def scenario(provider, output: Path, live: bool) -> dict:
         "offline_replays": 6,
         "mutating_fork_calls": calls["reservation"] - 1,
         "boundaries": len(parent.boundaries),
+        "callback_boundaries": sum(b.kind == "callback" for b in parent.boundaries),
+        "checkpoint_captured": any(b.kind == "checkpoint" for b in parent.boundaries),
         "parent": parent.fingerprint,
         "fork": child.fingerprint,
     }

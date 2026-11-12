@@ -145,21 +145,18 @@ def show(
     """Print a recorded run's decision timeline."""
     store = RunStore(db)
     try:
+        if at is not None:
+            try:
+                console.print_json(data=store.snapshot_at(run_id, at))
+            except ValueError as exc:
+                raise typer.BadParameter(str(exc)) from exc
+            return
         cassette = store.load(run_id)
     except KeyError:
         console.print(f"[red]run {run_id} not found[/]")
         raise typer.Exit(1) from None
     finally:
         store.close()
-
-    if at is not None:
-        from .inspection import state_at
-
-        try:
-            console.print_json(data=state_at(cassette, at))
-        except ValueError as exc:
-            raise typer.BadParameter(str(exc)) from exc
-        return
 
     if cassette.metadata.get("counterfactual"):
         console.print("QUARANTINED what-if · best-effort exploration", markup=False)
@@ -352,13 +349,16 @@ def fork(
     at: Annotated[int | None, typer.Option(min=0, help="boundary to replace")] = None,
     value: Annotated[Path | None, typer.Option(help="replacement response JSON file")] = None,
     mocks: Annotated[Path | None, typer.Option(help="JSON mapping: kind/key to response")] = None,
+    policy: Annotated[
+        Path | None, typer.Option(help="explicit per-tool live/classification manifest")
+    ] = None,
 ) -> None:
     """Fork a trusted recorded script, or recover the bundled travel demo."""
     from .demo import recover_demo
 
     cassette = _load_run(run_id, db)
     try:
-        if any(option is not None for option in (source, at, value, mocks)):
+        if any(option is not None for option in (source, at, value, mocks, policy)):
             if source is None or at is None or value is None or mocks is None:
                 raise ValueError("script forks require --source, --at, --value and --mocks")
             from .scripts import fork_script
@@ -369,11 +369,15 @@ def fork(
                 for key in mapping
             ):
                 raise ValueError("mocks must be a JSON object with kind/key keys")
+            from .policy import policy_from_manifest
+
+            parsed_policy = policy_from_manifest(json.loads(policy.read_text())) if policy else None
             recovered = fork_script(
                 cassette,
                 source,
                 at=at,
                 value=json.loads(value.read_text(encoding="utf-8")),
+                policy=parsed_policy,
                 mocks={
                     (key.split("/", 1)[0], key.split("/", 1)[1]): result
                     for key, result in mapping.items()

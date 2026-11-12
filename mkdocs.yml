@@ -57,6 +57,7 @@ nav:
       - Competitive Landscape: plan/competitive-landscape.md
   - Month 3 workflow: month3-time-travel.md
   - Month 3 validation: validation/month3/report.md
+  - Month 3 planner audit: validation/month3/planner-audit.md
   - Glossary: glossary.md
   - FAQ: faq.md
   - Decisions:
@@ -73,6 +74,7 @@ nav:
       - "ADR-0009: Local alpha safe counterfactuals": adr/0009-local-alpha-safe-counterfactuals.md
 
   - "Storage and scope ADR": adr/0010-roadmap-storage-and-scope.md
+  - "Month 3 state and checkpoints ADR": adr/0011-month3-logical-state-and-checkpoints.md
 
 markdown_extensions:
   - admonition

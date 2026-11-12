@@ -31,6 +31,14 @@ jobs:
       - run: uv sync --frozen --extra integrations
       - name: Generate record-fork-replay exports
         run: uv run python examples/month3_langgraph.py --output .rewind/month3-viewer
+      - name: Load exports with the official Perfetto trace processor
+        run: >-
+          uv run --with perfetto python scripts/validate_month3_perfetto.py
+          .rewind/month3-viewer/*.perfetto --output .rewind/month3-evidence/perfetto.json
+      - name: Inspect the generated corpus in the terminal
+        run: >-
+          uv run --with textual python scripts/month3_corpus_review.py
+          .rewind/month3-viewer/*.rewind.json --output .rewind/month3-terminal-review
       - name: Install browser for viewer verification
         run: uv run --with playwright python -m playwright install --with-deps chromium
       - name: Verify collector, stored spans and browser
@@ -47,7 +55,7 @@ jobs:
 
   live:
     name: Live NVIDIA and Gemini replay
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch' || (vars.REWIND_LIVE_VALIDATION == 'true' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

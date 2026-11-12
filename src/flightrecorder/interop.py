@@ -24,8 +24,8 @@ def perfetto(cassette: Cassette) -> dict[str, Any]:
             {
                 "name": b.key,
                 "cat": b.kind,
-                "ph": "i",
-                "s": "t",
+                "ph": "X",
+                "dur": 1,
                 "ts": b.seq,
                 "pid": 1,
                 "tid": 1,
@@ -50,6 +50,12 @@ def otlp(cassette: Cassette) -> dict[str, Any]:
     trace = hashlib.sha256(canon([cassette.fingerprint, cassette.final_output])).hexdigest()[:32]
     spans = []
     for b in cassette.boundaries:
+        is_llm = b.kind == "llm" or (
+            b.kind == "http"
+            and any(
+                marker in b.key for marker in ("chat/completions", "/messages", ":generateContent")
+            )
+        )
         attributes: dict[str, Any] = {
             "rewind.sequence": b.seq,
             "rewind.chain_hash": b.chain_hash,
@@ -58,9 +64,11 @@ def otlp(cassette: Cassette) -> dict[str, Any]:
             "rewind.counterfactual": str(bool(cassette.metadata.get("counterfactual"))).lower(),
             "rewind.parent_fingerprint": cassette.metadata.get("parent_fingerprint", ""),
             "rewind.fork_at": str(cassette.metadata.get("fork_at", "")),
+            "input.mime_type": "application/json",
+            "output.mime_type": "application/json",
             "input.value": json.dumps(b.request),
             "output.value": json.dumps(b.response),
-            "openinference.span.kind": {"llm": "LLM", "tool": "TOOL"}.get(b.kind, "CHAIN"),
+            "openinference.span.kind": "LLM" if is_llm else {"tool": "TOOL"}.get(b.kind, "CHAIN"),
         }
         spans.append(
             {

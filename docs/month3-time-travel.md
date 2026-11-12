@@ -1,8 +1,9 @@
-# Month 3 — time travel and counterfactual forks
+# Month 3: time travel and counterfactual forks
 
-Scope: weeks 10–13 of [the execution plan](plan/roadmap-6-months.md).
-This builds on the existing snapshot store, Textual scrubber, LangGraph state
-adapter and OTLP/Perfetto exporters rather than replacing the recording format.
+The [planner audit](validation/month3/planner-audit.md) maps every week 10–13
+requirement to implementation, tests and evidence. [ADR-0011](adr/0011-month3-logical-state-and-checkpoints.md)
+defines the logical-state and derived-checkpoint contracts without changing the
+frozen boundary-log format.
 
 ## Inspect and scrub
 
@@ -16,103 +17,122 @@ uv run fr trace-export RUN_ID trace.otlp.json --format otlp
 uv run fr trace-export RUN_ID trace.pb --format otlp-protobuf
 ```
 
-`show --at` uses the snapshot reconstruction API and includes the boundary's
-request, response and chain hash. State is boundary-observable evidence plus the
-latest explicit `state` boundary, not an arbitrary Python heap. No future state
-or final output is revealed before the last boundary. Left/right step through
-the terminal view. Forks are visibly quarantined in the timeline and terminal;
-trace exports carry counterfactual, parent and intervention provenance too.
+Inspection schema version 1 includes the boundary's request, response and chain
+hash, observed values, the latest explicit logical agent state, and reconstruction
+counters. Final output is hidden until the last boundary. The terminal pins the
+step and chain above a scrollable JSON view; left/right navigate, Home/End jump
+to the first/last step, and PageUp/PageDown scroll details. Forks are prominently
+quarantined as best-effort what-if experiments.
 
-SnapshotIndex builds once in O(N), then applies fewer than `k` suffix events per
-query; its default interval is floor(sqrt(N)). Cold CLI invocations still build
-an index. Returning state requires copying its payload; bounded suffix work is
-not a claim of constant overall latency. The persisted `snapshot` command reuses
-CAS-backed checkpoints across invocations.
+`show --at` reuses CAS checkpoints across invocations. The first inspection of an
+unindexed run validates and indexes the log in O(N); later queries restore the
+nearest checkpoint and apply fewer than k suffix events. The default k is
+floor(sqrt(N)), at least 1. CAS manifests store changed references with sparse
+full anchors and bounded delta ancestry. Returning a large state still incurs
+its copy cost. In-memory SnapshotIndex similarly builds once and serves repeated
+queries. State means declared logical values, not an arbitrary Python heap.
 
 ```bash
 uv run python scripts/benchmark_month3.py
+uv run python scripts/month3_corpus_review.py recording1.json recording2.json --output .rewind/corpus-review
+uv run --with perfetto python scripts/validate_month3_perfetto.py .rewind/corpus-review/*.perfetto
 ```
 
-The benchmark compares intervals 1, sqrt(N), and N, reporting cold index cost,
-warm p50/p95, checkpoint count, exactness and maximum suffix length. It uses a
-synthetic long run; it does not claim production-corpus performance.
+The corpus review compares intervals 1, sqrt(N) and N with a separate sequential
+state reference. It inspects all steps in both directions in the terminal.
+Benchmarks report cold builds separately from warm queries and do not impose
+machine-dependent CI latency thresholds. See the audit for results on real
+provider recordings and the long-run fixture.
 
-## Fork a recorded Python script
+## Fork a recorded script
 
 ```bash
 uv run fr record -- python agent.py
-# value.json is the complete replacement boundary response.
-# For @tool outcomes: {"ok": true, "value": 420}
-# mocks.json maps remaining boundary identities to JSON responses, for example:
-# {"tool/reserve": {"ok": true, "value": "simulated"}}
+# value.json contains the whole replacement boundary response.
+# @tool example: {"ok": true, "value": 420}
+# mocks.json contains optional explicit fixtures: {"tool/reserve": RESPONSE}
 uv run fr fork RUN_ID --source agent.py --at 3 --value value.json --mocks mocks.json
 ```
 
-The original source hash must match. The prefix replays exactly, one response is
-replaced, and every subsequent external boundary needs an explicit mock. Missing
-mocks fail closed. The child is saved separately with parent fingerprint and
-intervention step, and can be verified with `fr verify-script`. The original
-`fr fork RUN_ID --price 420` travel-demo interface remains available.
+The original source hash must match. Rewind replays the prefix, replaces exactly
+one response, simulates later known tools from their recorded outcomes by
+occurrence, and saves a separate quarantined child. Recorded tool outcomes are
+simulations even when new arguments differ; they do not establish that a real
+reservation/charge succeeded. Explicit mock values override these fixtures.
+Unknown tools, exhausted fixtures and unspecified external I/O fail closed.
 
-For async agents, `afork_run(parent, async_run, at=..., value=..., mocks=...)`
-awaits a callable accepting a Session. `afork_with_policy` additionally permits
-explicitly allowlisted live producers. A supplied mock wins over an allowlist;
-classifying a tool as read-only does not itself authorize execution. Unknown and
-mutating tools remain blocked unless mocked or individually authorized live.
-Async producers are serialized; concurrent recordings are rejected for forks.
-Live continuation errors abort the fork rather than create a successful recording.
-
-The policy covers mediated producers in trusted Python code. The Python socket
-guard is not an OS sandbox, and filesystem/subprocess side effects outside
-instrumented tools are outside its guarantee. Run trusted agents in isolation.
-A fork is best-effort exploration, never a claim that the original future would
-have happened. Its saved boundary log can still replay exactly.
-
-## LangGraph + NVIDIA and Gemini
+For a selected live continuation, edit a manifest and pass it explicitly:
 
 ```bash
-# Synthetic HTTP responses, no credentials or outbound calls:
-uv run python examples/month3_langgraph.py
-# Actual providers, with NVIDIA_API_KEY and GEMINI_API_KEY configured securely
-# in the process environment (not in command arguments or source files):
-uv run python examples/month3_langgraph.py --live --output .rewind/month3-live
-# Validate one provider independently when only its credential is available:
-uv run python examples/month3_langgraph.py --live --provider gemini --output .rewind/month3-gemini-live
+uv run fr policy-set policy.json http /v1/chat/completions --no-mutating --live
+uv run fr fork RUN_ID --source agent.py --at 3 --value value.json --mocks mocks.json --policy policy.json
 ```
 
-The --provider option can be repeated; without it both providers are selected.
-Only selected providers need credentials. Use --model MODEL with one --provider
-to select another model available to your account. The live example makes two completion requests per provider: one for the parent
-and one for its live fork continuation. Reservations are simulated in the parent
-and explicitly mocked in the fork. It then verifies both recordings three times
-offline, reconstructs all states and exports portable, Perfetto and OTLP files.
-The output directory must be new so prior evidence is preserved. Recordings can
-contain prompt and response content; inspect before sharing.
+Every live entry authorizes the named producer. Classification as read-only
+alone does not authorize execution; unknown tools default to no live execution.
+Mutating tools need an explicit per-tool live entry to run. The existing
+`fr fork RUN_ID --price 420` travel demo remains supported. Verify script children
+with `fr verify-script`; their boundary logs are replayable even though forks
+are best-effort exploration of changed behavior.
 
-Gemini uses its [documented OpenAI-compatible endpoint](https://ai.google.dev/gemini-api/docs/openai).
-The ordinary CLI also accepts `fr record --provider gemini`.
+Python APIs: `fork_run`/`afork_run` require explicit continuation mocks;
+`fork_with_policy`/`afork_with_policy` additionally accept SideEffectPolicy.
+`recorded_tool_mocks` constructs fresh occurrence-aware simulation fixtures.
+`evaluate_forks` changes one intervention at a time, recreates fixtures per
+trial, verifies every child and records an application-defined score with parent
+provenance. See [experiment evidence](validation/month3/fork-experiments.json).
 
-The adapter runs inside LangGraph's async event loop, capturing decorated tools,
-httpx requests and streamed state snapshots. Use fresh graph/checkpointer thread
-state for record/replay; arbitrary existing checkpoint memory is not restored.
-Unlike native LangGraph checkpoint resume, Rewind replay serves external results
-from its recording rather than calling models or tools again. A policy fork
-replays the prefix and permits only selected producers after the intervention.
-Parallel fork scheduling and native checkpoint restoration remain outside this
-serialized adapter contract.
+The policy mediates trusted producers. It is not an OS sandbox for arbitrary
+filesystem/subprocess/native-extension side effects. Concurrent capture is
+supported through ConcurrentSession; fork execution is serialized.
 
-Perfetto opens the `*.perfetto` JSON as a Trace Event file. `*.otlp` is OTLP/HTTP
-JSON and `*.otlp-protobuf` is its protobuf counterpart; send them to a compatible
-collector's trace ingestion endpoint to inspect in Jaeger/Phoenix. Timestamps are
-explicitly ordinal, not measured execution durations. Existing trace import is
-observational, non-replayable evidence. Schema-level protobuf parsing is tested;
-Jaeger ingestion, query round-trip and a Chromium trace-page check now run in the
-Month 3 acceptance workflow. See the validation report for the recorded run.
+## LangGraph checkpoints and callbacks
 
-## Validation evidence
+`run_graph` and `arun_graph` accept `callbacks=True` and a native thread config.
+RewindCallback records declared completion/error outputs, preserving thread and
+node labels while excluding random framework run IDs. The handlers run inline
+inside the async event loop.
 
-See [the session report](validation/month3/report.md). Offline coverage runs in
-CI, including an async LangGraph record→fork→replay, a terminal scrubber pilot,
-script CLI intervention, policy precedence/cancellation and provider transport
-round trips. Live validation requires configured credentials and is reported
-separately from synthetic evidence.
+`capture_checkpoint` / `acapture_checkpoint` read logical values and the next-node
+frontier from an existing graph checkpointer. `restore_checkpoint` /
+`arestore_checkpoint` can seed a fresh native checkpointer from this evidence;
+the caller supplies `as_node`, and the resulting frontier must match before any
+continuation executes. Supply `inputs=None` when resuming a native checkpoint.
+Opaque framework IDs and arbitrary runtime objects are not serialized.
+
+The tests compare native checkpoint resume with Rewind replay: native resume
+re-executes the later external producer, while six exact Rewind replays and the
+safe fork invoke no producers. [Measured comparison](validation/month3/native-resume-comparison.json).
+A real two-branch async LangGraph test records fast-before-slow completion and
+replays that schedule without executing either async producer.
+
+## Live NVIDIA/Gemini gate and trace viewers
+
+```bash
+uv run python examples/month3_langgraph.py
+# With provider keys configured in the process environment:
+uv run python examples/month3_langgraph.py --live --output .rewind/month3-live
+# One provider/model can be selected independently:
+uv run python examples/month3_langgraph.py --live --provider gemini --model gemini-3.5-flash-lite --output .rewind/gemini-live
+```
+
+The example uses a fresh InMemorySaver thread per execution, native callbacks,
+logical checkpoint capture, a changed quote, allowlisted live model continuation
+and an explicitly mocked reservation. Both parent and child replay three times
+offline. Both real providers passed this expanded gate; metadata-only reports
+are committed, and credentials/full model recordings are excluded.
+
+Perfetto opens the complete-slice JSON directly; the official trace processor
+loads these files unchanged and checks every slice with zero parser errors.
+OTLP JSON/protobuf are submitted unchanged to Jaeger's collector; its query API
+and browser validate stored spans, chain hashes and fork provenance. HTTP model
+boundaries are classified as OpenInference LLM spans with JSON input/output.
+Trace import retains external spans as observational, non-replayable evidence.
+Timestamps in these exports are explicitly ordinal.
+
+PR CI runs deterministic tests, corpus navigation, Perfetto and Jaeger/browser
+checks. Repeated paid live runs are opt-in with repository variable
+`REWIND_LIVE_VALIDATION=true` plus the two Actions secrets, or an explicit manual
+workflow run. Missing credentials fail a requested live run; a skipped live job
+is never counted as new live evidence. Local two-provider acceptance evidence is
+linked in the planner audit.

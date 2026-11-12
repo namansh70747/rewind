@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
     from .boundary import Cassette, Session
     from .fork import Mock
+    from .replay import Run
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,10 @@ class PolicyForkSession(ForkSession):
     policy: SideEffectPolicy = SideEffectPolicy()
 
     def mediate(self, kind: str, key: str, request: Any, produce: Callable[[], Any]) -> Any:
+        if self._in_flight:
+            from .boundary import Divergence
+
+            raise Divergence(len(self.boundaries), "concurrent policy forks are unsupported")
         if (
             len(self.boundaries) > self.at
             and (kind, key) not in self.mocks
@@ -86,8 +91,14 @@ class PolicyForkSession(ForkSession):
 
 
 def fork_with_policy(
-    parent: Any, run: Any, *, at: int, value: Any, mocks: Any, policy: SideEffectPolicy
-) -> Any:
+    parent: Cassette,
+    run: Run,
+    *,
+    at: int,
+    value: Any,
+    mocks: Mapping[tuple[str, str], Mock],
+    policy: SideEffectPolicy,
+) -> Cassette:
     """Explicit application-authorized live continuation, with quarantined provenance.
 
     Network guarding is retained outside allowlisted producers. This is a trusted

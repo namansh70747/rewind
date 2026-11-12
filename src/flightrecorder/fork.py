@@ -135,3 +135,34 @@ async def afork_run(
         },
         parent.chain_algorithm,
     )
+
+
+def recorded_tool_mocks(
+    parent: Cassette, *, at: int, exclude: frozenset[tuple[str, str]] = frozenset()
+) -> dict[tuple[str, str], Mock]:
+    """Create fresh occurrence-aware simulation fixtures for known tool outcomes.
+
+    These are explicit simulations even when fork arguments differ from the
+    parent. Unknown tools and exhausted fixture queues still fail closed. Call
+    once per experiment so one run cannot consume another run's mock results.
+    """
+    queues: dict[tuple[str, str], list[Any]] = {}
+    for boundary in parent.boundaries[at + 1 :]:
+        identity = (boundary.kind, boundary.key)
+        if boundary.kind == "tool" and identity not in exclude:
+            queues.setdefault(identity, []).append(copy.deepcopy(boundary.response))
+
+    def fixture(values: list[Any]) -> Mock:
+        cursor = 0
+
+        def respond(request: Any) -> Any:
+            nonlocal cursor
+            if cursor >= len(values):
+                raise ValueError("recorded tool mock exhausted; supply an explicit fixture")
+            result = copy.deepcopy(values[cursor])
+            cursor += 1
+            return result
+
+        return respond
+
+    return {identity: fixture(values) for identity, values in queues.items()}

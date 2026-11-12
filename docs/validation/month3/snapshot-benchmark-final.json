@@ -1,0 +1,35 @@
+{
+  "source": "synthetic",
+  "steps": 1024,
+  "queries_per_interval": 200,
+  "default_interval": 32,
+  "results": [
+    {
+      "interval": 1,
+      "checkpoints": 1024,
+      "cold_build_ms": 16.476858,
+      "warm_p50_us": 13.746,
+      "warm_p95_us": 21.641,
+      "max_suffix_events": 0,
+      "exact_state": true
+    },
+    {
+      "interval": 32,
+      "checkpoints": 32,
+      "cold_build_ms": 20.07934,
+      "warm_p50_us": 16.601,
+      "warm_p95_us": 26.349,
+      "max_suffix_events": 31,
+      "exact_state": true
+    },
+    {
+      "interval": 1024,
+      "checkpoints": 1,
+      "cold_build_ms": 20.28719,
+      "warm_p50_us": 112.6865,
+      "warm_p95_us": 536.857,
+      "max_suffix_events": 969,
+      "exact_state": true
+    }
+  ]
+}

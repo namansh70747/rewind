@@ -78,6 +78,8 @@ Legend: 🚦 = go/no-go gate · 🔒 = a contract is frozen this week · ⭐ = t
 
 **Milestone M3 goal:** make recordings *navigable* (scrub to any step, inspect state) and *interrogable* (fork a counterfactual) — safely.
 
+**Implementation / evidence:** [Month 3 planner audit](../validation/month3/planner-audit.md) maps every target below to code and validation, including the live NVIDIA/Gemini checkpointed runs. The implementation PR remains unmerged.
+
 ### Week 10 — Replay-to-N + snapshots
 - **E1:** Reconstruct agent state at step N via replay-to-nearest-snapshot-then-forward; periodic snapshots at the √N-optimal interval, COW/incremental deltas into the CAS ([`algorithms-and-math.md`](./algorithms-and-math.md) §5); schema'd state serialization.
 - **E2:** `fr show <run> --at N` renders state at any step; groundwork for the scrubber.
