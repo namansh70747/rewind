@@ -109,7 +109,7 @@ Legend: 🚦 = go/no-go gate · 🔒 = a contract is frozen this week · ⭐ = t
 ## Month 4 — Auto-Bisect & Fleet Capture (Weeks 14–18)
 
 Implementation and measured evidence: [Month 4 audit](../validation/month4/planner-audit.md).
-Automated acceptance is tracked there; M4.2 human agreement remains pending.
+Automated acceptance is tracked there; M4.2 human agreement was recorded on 2026-11-13.
 
 **Milestone M4 goal:** given a passing and a failing run, pinpoint and *name* the first diverging decision; capture across a multi-server MCP fleet.
 

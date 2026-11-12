@@ -20,7 +20,7 @@ This branch stacks on the unmerged Month 3 PR; neither branch is merged by this 
 | 17 / E3 | Multi-server concurrent corpus generator and portable fleet recording | Two transports, two servers, three tool calls, 50 offline replays; corpus generated privately, metadata report committed |
 | 18 / E1 | Persist concurrent mode through generic APIs, recorded completion order and bounded mismatch failure | gather/as_completed completion tests, async error/cancel replay, incomplete fan-out timeout, actual fleet replay |
 | 18 / E2 | Stable bisect/embedding/HTML commands; script Git SHA plus main/imported-local source hashes | CLI tests, imported helper drift fails before execution with recorded/replaying SHA diagnostics |
-| 18 / E3 | Accuracy/faithfulness report, real pair review and explicit acceptance statuses | Reports linked below; M4.2 human agreement is pending |
+| 18 / E3 | Accuracy/faithfulness report, real pair review and explicit acceptance statuses | Reports linked below; M4.2 agreement recorded in human-review.json |
 
 The planner lists Biopython/RapidFuzz as possible alignment libraries. This
 implementation uses a bounded custom global aligner and recursive structured
@@ -74,7 +74,7 @@ is reported separately above. Both PRs remain open and unmerged.
 | Gate | Status | Evidence / remaining action |
 |---|---|---|
 | M4.1 first diverging decision, aligned and insert/delete | Automated implementation and regression checks complete | Validated hash search, bounded semantic alignment, 77 controlled cases, both actual provider pairs |
-| M4.2 named cause, raw diff, human agreement on a real pair | **Pending human agreement** | Review below; machine assertions cannot establish human agreement |
+| M4.2 named cause, raw diff, human agreement on a real pair | **PASS — human agreement recorded** | Repository owner agreed on 2026-11-13; see human-review.json |
 | M4.3 actual multi-server MCP bit-exact replay | Automated acceptance complete | Real mixed transports, matching protocol frames, 50 replays and zero repeated effects |
 | M4.4 documented concurrent-tool replay guarantees | Automated acceptance complete | Completion/error/cancel/mismatch tests, persisted concurrent mode, real fleet replay |
 
@@ -92,9 +92,12 @@ Both actual Gemini/NVIDIA pairs show the same reviewable facts:
 
 Question for the reviewer: **Does “the same tool input returned a different result”
 correctly name this first difference?** The proposed label describes the observed
-change, not why a real external service would change its result. Reviewer identity,
-response and date have not been invented. No signed-off or wholly complete Month 4
-claim is made until this response exists.
+change, not why a real external service would change its result. The repository owner, Naman Sharma, responded **“yes i agree”** in this chat on
+**2026-11-13**, after the observed tool-result drift was explained. The
+[review record](human-review.json) preserves the response and exact scope. This
+is assisted review of the displayed evidence, not an independent blind review
+or proof of an external root cause. With this agreement, all four Month 4 exit
+gates are satisfied within the documented guarantees. Both PRs remain unmerged.
 
 Automatic approval review rejected the optional export of private recording inputs
 to NVIDIA embeddings: key use did not by itself authorize disclosure of recording

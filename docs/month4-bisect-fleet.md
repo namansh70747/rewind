@@ -153,4 +153,4 @@ The actual provider pair review script defaults to offline diagnosis. Its option
 `--embed` flag discloses recorded inputs and needs separate approval. No private
 recordings, vector caches, raw prompts, or keys belong in committed evidence.
 See the [planner audit](validation/month4/planner-audit.md) for measured results and
-the remaining human review gate.
+the recorded human agreement and acceptance status.

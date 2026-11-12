@@ -13,5 +13,5 @@
   "mkdocs_strict": true,
   "javascript_syntax": true,
   "browser_local": "blocked by sandbox Unix-socket policy; PR CI required",
-  "human_review": "pending M4.2"
+  "human_review": "agreed M4.2 on 2026-11-13; see human-review.json"
 }
