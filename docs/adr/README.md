@@ -47,6 +47,7 @@ follows the same sections, defined by the [template](0000-template.md):
 | [0007](0007-capture-at-http-transport-layer.md) | Capture at the HTTP transport layer | Accepted | 2026-08-08 |
 | [0008](0008-internal-recording-schema-otel-as-export.md) | Own the recording schema; OTel as export | Accepted | 2026-08-08 |
 | [0013](0013-month5-failure-intelligence.md) | Synthetic failure intelligence before a real fleet | Accepted for the software path | 2026-11-13 |
+| [0014](0014-month6-lora-explainer-stub.md) | Month 6 — LoRA explainer stub, concurrent replay, and retention | Accepted | 2026-11-14 |
 
 New ADRs should copy [`0000-template.md`](0000-template.md), take the next number in
 sequence, and be linked into the table above.

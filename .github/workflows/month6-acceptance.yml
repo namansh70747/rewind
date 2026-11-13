@@ -1,0 +1,84 @@
+name: Month 6 acceptance
+
+on:
+  pull_request:
+    branches:
+      - main
+      - feat/month-5-ml-intelligence
+      - feat/month-6-lora-explainer
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: month6-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  acceptance:
+    name: Explainer, concurrent replay, GC, and benchmark gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (ml extra for classifier)
+        run: uv sync --frozen --extra dev --extra ml
+
+      - name: Month 6 unit tests
+        run: uv run pytest tests/test_month6.py -v --tb=short
+
+      - name: Confirm explain schema on synthetic corpus
+        run: |
+          uv run python - <<'EOF'
+          import json
+          from flightrecorder.month5 import record_failure
+          from flightrecorder.month6 import explain
+
+          for family in ("tool-error", "transport-timeout", "context-budget"):
+              cassette = record_failure(family)
+              report = explain(
+                  cassette,
+                  classifier_report={"label": family, "probabilities": {family: 0.9}},
+                  run_id=f"ci-{family}",
+              )
+              assert report["schema"] == "rewind.explain.v1", f"bad schema for {family}"
+              assert report["label"] == family, f"wrong label for {family}"
+              assert report["lora_status"].startswith("deferred"), "lora_status missing"
+              print(f"  {family}: ok — {report['cause'][:60]}...")
+
+          print("Month 6 explain gate: PASS")
+          EOF
+
+      - name: Concurrent replay throughput gate
+        run: |
+          uv run python - <<'EOF'
+          from flightrecorder.boundary import Cassette, Session
+          from flightrecorder.month6 import concurrent_replay
+
+          def _run_fn(session, _t):
+              session.mediate("tool", "ping", {}, lambda: {"ok": True})
+              return "pong"
+
+          session = Session("record")
+          session.mediate("tool", "ping", {}, lambda: {"ok": True})
+          cassette = Cassette(session.boundaries, session.chain, "pong", "", "", {})
+
+          result = concurrent_replay(cassette, _run_fn, n=10, max_workers=4)
+          assert result.passed == 10, f"expected 10 passed, got {result.passed}"
+          print(f"Concurrent replay gate: PASS — {result}")
+          EOF
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: month6-acceptance-evidence
+          path: |
+            docs/validation/month6/
+            docs/adr/0014-month6-lora-explainer-stub.md
+          include-hidden-files: true
