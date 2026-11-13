@@ -505,6 +505,12 @@ def audit_corpus_command(
 def evaluate(
     n: Annotated[int, typer.Option(min=1, max=1000)] = 10,
     output: Annotated[Path | None, typer.Option(help="optional JSON evaluation report")] = None,
+    budget: Annotated[
+        int | None,
+        typer.Option(
+            help="Candidate budget. Offline replay fails if this changes a recorded outcome."
+        ),
+    ] = None,
 ) -> None:
     """Evaluate a labeled, synthetic corpus including the exact budget threshold."""
     from .demo import make_demo_run, record_demo, recover_demo
@@ -526,13 +532,18 @@ def evaluate(
                 "recovery_pass": json.loads(recovered.final_output)["status"] == "confirmed",
             }
         )
-    report = {
+    passed = all(r["replay_pass"] and r["outcome_correct"] and r["recovery_pass"] for r in rows)
+    report: dict[str, Any] = {
         "corpus": "synthetic travel-budget-v1, 12 price cases; not production evidence",
         "cases": rows,
-        "passed": all(
-            r["replay_pass"] and r["outcome_correct"] and r["recovery_pass"] for r in rows
-        ),
+        "passed": passed,
     }
+    if budget is not None:
+        from .month5 import policy_gate
+
+        gate = policy_gate(budget, repeats=n)
+        report["policy_gate"] = gate
+        report["passed"] = passed and bool(gate["passed"])
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(report, indent=2), encoding="utf-8")

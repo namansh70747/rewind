@@ -32,7 +32,8 @@ def _json(value: Any, output: Path | None = None) -> None:
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(rendered, encoding="utf-8")
-    console.print(rendered, markup=False)
+    # Keep JSON on one logical line per row so a narrow terminal cannot split a string.
+    console.print(rendered, markup=False, soft_wrap=True)
 
 
 def register(app: typer.Typer) -> None:
@@ -117,7 +118,7 @@ def register(app: typer.Typer) -> None:
 
     @app.command("query")
     def query_command(run_id: str, expression: str, db: str = DEFAULT_DB) -> None:
-        """Query boundary fields: fr query RUN 'first response.status >= 400'."""
+        """Query a timeline: field comparisons, tool errors, retries, or context size."""
         from .query import query
 
         try:
@@ -288,6 +289,29 @@ def register(app: typer.Typer) -> None:
         from .fleet import predict_cause
 
         _json(predict_cause(json.loads(model.read_text()), _load(run_id, db)))
+
+    @app.command("match")
+    def match_command(
+        run_id: str,
+        db: str = DEFAULT_DB,
+        limit: Annotated[int, typer.Option(min=1, max=50)] = 5,
+    ) -> None:
+        """Match one saved run to the nearest cluster and a weak cause label."""
+        from .month5 import match_failure
+
+        store = RunStore(db)
+        try:
+            runs = {run.id: store.load(run.id) for run in store.list_runs()}
+            try:
+                target = runs.pop(run_id)
+            except KeyError as exc:
+                raise typer.BadParameter(f"unknown run: {run_id}") from exc
+        finally:
+            store.close()
+        try:
+            _json(match_failure(target, runs, limit))
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
 
     @app.command("weak-labels")
     def labels_command(run_id: str, db: str = DEFAULT_DB) -> None:
