@@ -1,5 +1,12 @@
 # Roadmap evidence ledger — weeks 1–26
 
+Current hardening update (2026-11-14): the [Month 5 audit](validation/month5/planner-audit.md)
+and [Month 6 audit](validation/month6/planner-audit.md) are the current gate records.
+Month 6 now checks worker outputs as well as fingerprints and keeps overlapping
+replay guards active across threads. The controlled capture-overhead report is
+measured; production fleet, baseline and publisher inputs remain missing. The
+older ledger below is historical and is not a claim that those inputs exist.
+
 Updated 2026-10-08. This is an implementation candidate, **not a declaration that
 all 26 weekly exit criteria passed**. The original roadmap requires CI evidence and
 real recordings. Local synthetic tests cannot substitute for those gates.
@@ -37,6 +44,10 @@ remain open. Evidence applies to the cited commit, not automatically to future c
 | 20 | Failure map | Offline TF-IDF map plus actual BGE/HDBSCAN/UMAP runtime; cluster/run navigation, keyboard controls and bounded redacted boundary timeline drilldown. Synthetic three-family HDBSCAN purity is checked in `tests/test_month5.py` | Actual Ollama/Qwen evidence-selection contract passes on 15 synthetic runs; deterministic rendering replaces unsupported free prose; real feature relevance and human coherence review remain open |
 | 21 | Classifier / eval | Grouped classifier, JSON weights, fixture gate, exact held-out baseline comparison command. The synthetic classifier beats its majority-class baseline, and `policy_gate` rejects a changed budget with replay only | Reviewed real labels and a prompted-LLM baseline collected before held-out answers were known |
 | 22 | Real fleet / DSL | Safe boundary-query DSL, including `every tool error`, `every retry` and `first context > N tokens`; `fr match` reports a neighbor cluster and weak cause | 672-tool/10-provider fleet access and hundreds of real runs |
+| 23 | Performance / package | Concurrent replay (`month6.concurrent_replay`), structured `rewind.benchmark.v1` evidence record, `fr benchmark-replay` command | Production throughput on real hardware and fleet cassettes |
+| 24 | Demo / docs | `fr explain` returns deterministic plain-English narration from classifier label; `fr gc` manages retention; both commands covered by `tests/test_month6.py` | Real failing-agent demo and docs-site publication |
+| 25 | Stretch decision / hardening | LoRA cut documented in ADR-0014, `lora_status` field in `rewind.explain.v1`, replay safety and typing hardened | No model-training claim; decision recorded for maintainer review |
+| 26 | Release | PR candidate on `feat/month-6-lora-explainer`; CHANGELOG entry; CI workflow updated; Month 6 acceptance workflow added | Code Owner review, CI tag, and final real-data Definition of Done |
 | 23 | Performance / package | Synthetic benchmark, wheel/sdist, console entrypoint; Linux Python 3.11/3.12/3.13 tests and demos | Production budget, PyPI name/credentials/publication |
 | 24 | Demo / docs / gallery | Offline recovery demo plus actual local-model capture/live-fork/decision-intervention qualification (200 server-off replays); examples, gallery and strict docs build | Real failing-agent demo and publication of gallery/docs site |
 | 25 | Stretch decision | LoRA cut documented; replay safety, compatibility and typing hardened | No model-training claim; retain decision for maintainer review |

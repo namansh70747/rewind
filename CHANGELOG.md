@@ -1,5 +1,41 @@
 # Changelog
 
+## Acceptance hardening — 2026-11-14
+
+- Concurrent replay rejects wrong final outputs and fingerprints.
+- Overlapping socket guards share a thread-safe lifetime; explicit live access is context-local.
+- Candidate explanations no longer assert that sampling or hallucination is proven by a weak label.
+- Blinded baseline export excludes answers; synthetic classifier inputs no longer include target family labels.
+- Strict docs links, original release-gate mapping and measured capture-overhead evidence are corrected.
+
+
+## Unpublished Month 6 (P5) — 2026-11-14
+
+Shipped weeks 23–26 on the `feat/month-6-lora-explainer` branch stacked on Month 5.
+
+- **`fr explain <run_id>`** — deterministic plain-English root-cause narration from
+  the classifier label, bisect divergence class, or weak label.  No model is called;
+  every sentence is a fixed template keyed on the nine-class taxonomy.  The
+  `lora_status` field records the LoRA deferral decision (ADR-0014).
+- **`fr gc`** — delete old runs by `--keep-last N` or `--max-age-days D`, then sweep
+  unreachable blobs via `store.garbage_collect()`.  `--dry-run` previews without
+  changing state.
+- **`fr benchmark-replay`** — measure replay throughput for a saved run; structured
+  `rewind.benchmark.v1` evidence record.
+- **Concurrent replay** (`month6.concurrent_replay`) — replay a cassette N times in
+  parallel threads; `ConcurrentReplayResult` reports `passed`, `failed`, elapsed time,
+  and throughput.
+- **ADR-0014** — documents the Month 6 scope, the LoRA deferral rationale, and the
+  retention / GC design.
+- **`tests/test_month6.py`** — 20 unit tests covering `explain`, `concurrent_replay`,
+  `retention_gc`, `benchmark_replay`, and the `fr explain` / `fr gc` CLI commands.
+- **Month 6 acceptance workflow** (`.github/workflows/month6-acceptance.yml`) — CI
+  gate for the explainer schema, concurrent-replay pass rate, and GC correctness.
+
+No claim of research priority is made.  LoRA fine-tuning remains deferred pending a
+reviewed labeled corpus.  Code Owner review, CI tag, and final real-data gates remain
+open.
+
 ## Unpublished actual-model investigation — 2026-10-08
 
 Added a local-model capture and controlled intervention example. Four recordings

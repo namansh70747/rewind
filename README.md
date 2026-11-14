@@ -269,3 +269,16 @@ The console operates on the existing `.rewind/runs.db`, preserves existing runs,
 To inspect logical recordings and stored blobs for integrity and known credential patterns, run `fr audit-corpus --db .rewind/runs.db` or select **Settings → Audit stored corpus** in the local workspace. This is a limited heuristic scan; it does not cover every secret, SQLite free pages, exports or backups. See `docs/month2-verification.md` for the local provider evidence and outstanding Month 2 gates.
 
 Month 3 workflow: [time travel, async forks, LangGraph and provider validation](docs/month3-time-travel.md).
+
+## Month 6 — P5: LoRA explainer stub, concurrent replay, and GC
+
+New in `feat/month-6-lora-explainer` (stacked on Month 5):
+
+| Command | What it does |
+|---|---|
+| `fr explain <run_id>` | Deterministic plain-English root-cause narration from the classifier label, bisect divergence class, or weak label.  No model called. |
+| `fr gc --keep-last N` | Delete all but the N most-recent runs; sweep orphaned blobs. |
+| `fr gc --max-age-days D` | Delete runs older than D days; sweep orphaned blobs. |
+| `fr benchmark-replay <run_id>` | Measure replay throughput; structured `rewind.benchmark.v1` evidence. |
+
+The LoRA fine-tuning path is documented in [ADR-0014](docs/adr/0014-month6-lora-explainer-stub.md) and recorded in the `lora_status` field of every `fr explain` report.  Actual training is deferred until a reviewed labeled corpus exists.

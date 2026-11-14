@@ -1,0 +1,13 @@
+{
+  "schema": "rewind.capture-benchmark.v1",
+  "source": "controlled CPU-bound 12-tool workload, not production fleet",
+  "samples": 20,
+  "python": "3.12.14",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "baseline_p50_ms": 4.28458800001863,
+  "capture_p50_ms": 4.413203500007512,
+  "capture_to_baseline_p50_ratio": 1.0300181721062383,
+  "capture_added_p50_ms": 0.12861549998888222,
+  "replay_passed": 50,
+  "production_acceptance": "pending target fleet measurements and an agreed overhead budget"
+}

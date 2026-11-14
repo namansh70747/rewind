@@ -44,5 +44,6 @@ tests:
       - any-glob-to-any-file:
           - "src/flightrecorder/ml/**"
           - "src/flightrecorder/month5.py"
+          - "src/flightrecorder/month6.py"
           - "src/flightrecorder/fleet.py"
           - "src/flightrecorder/run_features.py"

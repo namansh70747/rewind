@@ -416,3 +416,81 @@ def register(app: typer.Typer) -> None:
             raise typer.BadParameter(str(exc)) from exc
         _json(report, output)
         raise typer.Exit(0 if report["checklist_complete"] else 1)
+
+    # -----------------------------------------------------------------------
+    # Month 6 — P5 commands
+    # -----------------------------------------------------------------------
+
+    @app.command("explain")
+    def explain_command(
+        run_id: str,
+        db: str = DEFAULT_DB,
+        output: Path | None = None,
+        classifier: Path | None = None,
+        cluster_report: Path | None = None,
+    ) -> None:
+        """Produce a plain-English root-cause explanation from recorded evidence.
+
+        No model is called.  Every sentence is deterministic template text keyed
+        on the classifier label, bisect divergence class, or weak label.  The
+        LoRA fine-tuned explainer is deferred until a reviewed labeled corpus
+        exists (ADR-0005, ADR-0014).
+        """
+        from .month6 import explain
+
+        cassette = _load(run_id, db)
+        classifier_report: Any = json.loads(classifier.read_text()) if classifier else None
+        cluster: Any = json.loads(cluster_report.read_text()) if cluster_report else None
+        try:
+            report = explain(
+                cassette, classifier_report=classifier_report, cluster_report=cluster, run_id=run_id
+            )
+        except (ValueError, KeyError) as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        _json(report, output)
+
+    @app.command("gc")
+    def gc_command(
+        db: str = DEFAULT_DB,
+        keep_last: int | None = None,
+        max_age_days: float | None = None,
+        dry_run: bool = False,
+    ) -> None:
+        """Delete old runs and unreachable blobs.
+
+        Specify --keep-last N to retain only the N most recent runs, or
+        --max-age-days D to remove runs older than D days.  Both may be
+        combined.  Use --dry-run to preview without making changes.
+        """
+        from .month6 import retention_gc
+
+        try:
+            report = retention_gc(
+                db, keep_last=keep_last, max_age_days=max_age_days, dry_run=dry_run
+            )
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        note = " (dry run)" if dry_run else ""
+        console.print(str(report) + note, markup=False)
+
+    @app.command("benchmark-replay")
+    def benchmark_replay_command(
+        run_id: str,
+        db: str = DEFAULT_DB,
+        n: Annotated[int, typer.Option(min=1, max=200)] = 20,
+        workers: Annotated[int, typer.Option(min=1, max=64)] = 4,
+        output: Path | None = None,
+    ) -> None:
+        """Measure replay throughput for a recorded run (n replays, parallel workers).
+
+        Uses the demo agent as the replay function so no live provider is called.
+        """
+        from .demo import make_demo_run
+        from .month6 import benchmark_replay
+
+        cassette = _load(run_id, db)
+        try:
+            report = benchmark_replay(cassette, make_demo_run, n=n, max_workers=workers)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        _json(report, output)
