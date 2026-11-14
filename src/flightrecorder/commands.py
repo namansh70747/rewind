@@ -36,6 +36,39 @@ def _json(value: Any, output: Path | None = None) -> None:
 
 
 def register(app: typer.Typer) -> None:
+    @app.command("embed-pair")
+    def embed_pair_command(run_a: str, run_b: str, output: Path, db: str = DEFAULT_DB) -> None:
+        """Explicitly send boundary inputs to NVIDIA, then save an offline vector cache."""
+        import os
+
+        from .semantic import embed_pair
+
+        if output.exists():
+            raise typer.BadParameter("choose a new output file to preserve evidence")
+        data = embed_pair(_load(run_a, db), _load(run_b, db), os.environ.get("NVIDIA_API_KEY", ""))
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(data), encoding="utf-8")
+        console.print(f"Saved private vector cache: {output}", markup=False)
+
+    @app.command("compare-html")
+    def compare_html(
+        run_a: str, run_b: str, output: Path, db: str = DEFAULT_DB, embeddings: Path | None = None
+    ) -> None:
+        """Export an offline aligned diff with named evidence and full raw JSON."""
+        from .dashboard import render_dashboard
+        from .semantic import load_vectors
+
+        left, right = _load(run_a, db), _load(run_b, db)
+        vectors = (
+            load_vectors(json.loads(embeddings.read_text()), left, right) if embeddings else None
+        )
+        render_dashboard(
+            {"Passing baseline": left, "Failing candidate": right},
+            output,
+            alignment_vectors=vectors,
+        )
+        console.print(str(output.resolve()), markup=False)
+
     @app.command("trace-export")
     def trace_export(
         run_id: str, output: Path, format: str = "perfetto", db: str = DEFAULT_DB

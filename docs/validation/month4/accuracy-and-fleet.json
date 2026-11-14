@@ -1,0 +1,1342 @@
+{
+  "dataset_source": "controlled synthetic edits, not production root-cause accuracy",
+  "cases": [
+    {
+      "case": "identical",
+      "expected": {
+        "category": null,
+        "a": null,
+        "b": null,
+        "final_only": false
+      },
+      "observed": {
+        "category": null,
+        "a": null,
+        "b": null
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 1
+    },
+    {
+      "case": "tool-result",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 1,
+        "b": 1,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 1,
+        "b": 1
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 2
+    },
+    {
+      "case": "tool-argument",
+      "expected": {
+        "category": "arg-hallucination",
+        "a": 1,
+        "b": 1,
+        "final_only": false
+      },
+      "observed": {
+        "category": "arg-hallucination",
+        "a": 1,
+        "b": 1
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 2
+    },
+    {
+      "case": "insert",
+      "expected": {
+        "category": "step-inserted",
+        "a": null,
+        "b": 1,
+        "final_only": false
+      },
+      "observed": {
+        "category": "step-inserted",
+        "a": null,
+        "b": 1
+      },
+      "passed": true,
+      "method": "sequence-alignment",
+      "hash_comparisons": 0
+    },
+    {
+      "case": "delete",
+      "expected": {
+        "category": "step-removed",
+        "a": 1,
+        "b": null,
+        "final_only": false
+      },
+      "observed": {
+        "category": "step-removed",
+        "a": 1,
+        "b": null
+      },
+      "passed": true,
+      "method": "sequence-alignment",
+      "hash_comparisons": 0
+    },
+    {
+      "case": "tool-choice",
+      "expected": {
+        "category": "tool-choice",
+        "a": 0,
+        "b": 0,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-choice",
+        "a": 0,
+        "b": 0
+      },
+      "passed": true,
+      "method": "sequence-alignment",
+      "hash_comparisons": 0
+    },
+    {
+      "case": "retrieval",
+      "expected": {
+        "category": "retrieval-drift",
+        "a": 0,
+        "b": 0,
+        "final_only": false
+      },
+      "observed": {
+        "category": "retrieval-drift",
+        "a": 0,
+        "b": 0
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 1
+    },
+    {
+      "case": "repeat",
+      "expected": {
+        "category": "loop",
+        "a": null,
+        "b": 1,
+        "final_only": false
+      },
+      "observed": {
+        "category": "loop",
+        "a": null,
+        "b": 1
+      },
+      "passed": true,
+      "method": "sequence-alignment",
+      "hash_comparisons": 0
+    },
+    {
+      "case": "sampling",
+      "expected": {
+        "category": "sampling-flake",
+        "a": 0,
+        "b": 0,
+        "final_only": false
+      },
+      "observed": {
+        "category": "sampling-flake",
+        "a": 0,
+        "b": 0
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 1
+    },
+    {
+      "case": "truncation",
+      "expected": {
+        "category": "truncation",
+        "a": 0,
+        "b": 0,
+        "final_only": false
+      },
+      "observed": {
+        "category": "truncation",
+        "a": 0,
+        "b": 0
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 1
+    },
+    {
+      "case": "cost",
+      "expected": {
+        "category": "cost-blowup",
+        "a": 0,
+        "b": 0,
+        "final_only": false
+      },
+      "observed": {
+        "category": "cost-blowup",
+        "a": 0,
+        "b": 0
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 1
+    },
+    {
+      "case": "uuid-before-decision",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 1,
+        "b": 1,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 1,
+        "b": 1
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 2
+    },
+    {
+      "case": "output-only",
+      "expected": {
+        "category": "agent-logic-drift",
+        "a": null,
+        "b": null,
+        "final_only": true
+      },
+      "observed": {
+        "category": "agent-logic-drift",
+        "a": null,
+        "b": null
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 1
+    },
+    {
+      "case": "hash-0",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 0,
+        "b": 0,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 0,
+        "b": 0
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 7
+    },
+    {
+      "case": "hash-1",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 1,
+        "b": 1,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 1,
+        "b": 1
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 7
+    },
+    {
+      "case": "hash-2",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 2,
+        "b": 2,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 2,
+        "b": 2
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-3",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 3,
+        "b": 3,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 3,
+        "b": 3
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-4",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 4,
+        "b": 4,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 4,
+        "b": 4
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-5",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 5,
+        "b": 5,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 5,
+        "b": 5
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-6",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 6,
+        "b": 6,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 6,
+        "b": 6
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-7",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 7,
+        "b": 7,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 7,
+        "b": 7
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-8",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 8,
+        "b": 8,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 8,
+        "b": 8
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-9",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 9,
+        "b": 9,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 9,
+        "b": 9
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-10",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 10,
+        "b": 10,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 10,
+        "b": 10
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-11",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 11,
+        "b": 11,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 11,
+        "b": 11
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-12",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 12,
+        "b": 12,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 12,
+        "b": 12
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-13",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 13,
+        "b": 13,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 13,
+        "b": 13
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-14",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 14,
+        "b": 14,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 14,
+        "b": 14
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-15",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 15,
+        "b": 15,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 15,
+        "b": 15
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-16",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 16,
+        "b": 16,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 16,
+        "b": 16
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-17",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 17,
+        "b": 17,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 17,
+        "b": 17
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-18",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 18,
+        "b": 18,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 18,
+        "b": 18
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-19",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 19,
+        "b": 19,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 19,
+        "b": 19
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-20",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 20,
+        "b": 20,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 20,
+        "b": 20
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-21",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 21,
+        "b": 21,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 21,
+        "b": 21
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-22",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 22,
+        "b": 22,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 22,
+        "b": 22
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-23",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 23,
+        "b": 23,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 23,
+        "b": 23
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-24",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 24,
+        "b": 24,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 24,
+        "b": 24
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-25",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 25,
+        "b": 25,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 25,
+        "b": 25
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-26",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 26,
+        "b": 26,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 26,
+        "b": 26
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-27",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 27,
+        "b": 27,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 27,
+        "b": 27
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-28",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 28,
+        "b": 28,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 28,
+        "b": 28
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-29",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 29,
+        "b": 29,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 29,
+        "b": 29
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-30",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 30,
+        "b": 30,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 30,
+        "b": 30
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-31",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 31,
+        "b": 31,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 31,
+        "b": 31
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-32",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 32,
+        "b": 32,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 32,
+        "b": 32
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-33",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 33,
+        "b": 33,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 33,
+        "b": 33
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-34",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 34,
+        "b": 34,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 34,
+        "b": 34
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-35",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 35,
+        "b": 35,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 35,
+        "b": 35
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-36",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 36,
+        "b": 36,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 36,
+        "b": 36
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-37",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 37,
+        "b": 37,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 37,
+        "b": 37
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-38",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 38,
+        "b": 38,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 38,
+        "b": 38
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-39",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 39,
+        "b": 39,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 39,
+        "b": 39
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-40",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 40,
+        "b": 40,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 40,
+        "b": 40
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-41",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 41,
+        "b": 41,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 41,
+        "b": 41
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-42",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 42,
+        "b": 42,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 42,
+        "b": 42
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-43",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 43,
+        "b": 43,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 43,
+        "b": 43
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-44",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 44,
+        "b": 44,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 44,
+        "b": 44
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-45",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 45,
+        "b": 45,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 45,
+        "b": 45
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-46",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 46,
+        "b": 46,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 46,
+        "b": 46
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-47",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 47,
+        "b": 47,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 47,
+        "b": 47
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-48",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 48,
+        "b": 48,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 48,
+        "b": 48
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-49",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 49,
+        "b": 49,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 49,
+        "b": 49
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-50",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 50,
+        "b": 50,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 50,
+        "b": 50
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-51",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 51,
+        "b": 51,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 51,
+        "b": 51
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-52",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 52,
+        "b": 52,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 52,
+        "b": 52
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-53",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 53,
+        "b": 53,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 53,
+        "b": 53
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-54",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 54,
+        "b": 54,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 54,
+        "b": 54
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-55",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 55,
+        "b": 55,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 55,
+        "b": 55
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-56",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 56,
+        "b": 56,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 56,
+        "b": 56
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-57",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 57,
+        "b": 57,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 57,
+        "b": 57
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-58",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 58,
+        "b": 58,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 58,
+        "b": 58
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-59",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 59,
+        "b": 59,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 59,
+        "b": 59
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-60",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 60,
+        "b": 60,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 60,
+        "b": 60
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-61",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 61,
+        "b": 61,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 61,
+        "b": 61
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-62",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 62,
+        "b": 62,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 62,
+        "b": 62
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    },
+    {
+      "case": "hash-63",
+      "expected": {
+        "category": "tool-result-drift",
+        "a": 63,
+        "b": 63,
+        "final_only": false
+      },
+      "observed": {
+        "category": "tool-result-drift",
+        "a": 63,
+        "b": 63
+      },
+      "passed": true,
+      "method": "hash-chain",
+      "hash_comparisons": 6
+    }
+  ],
+  "case_count": 77,
+  "correct": 77,
+  "accuracy": 1.0,
+  "fleet": {
+    "source": "actual local MCP servers",
+    "transports": [
+      "stdio",
+      "streamable-http"
+    ],
+    "servers": 2,
+    "replays": 50,
+    "passed": true,
+    "wire_tool_calls": 3,
+    "wire_ids_match": true,
+    "zero_replay_network_or_processes": true,
+    "replay_effects": 0,
+    "boundaries": 10,
+    "fingerprint": "35f95ef1a820511a40a4e8188cbf33fcd75d8b3238424f0364ae1b61358559ad"
+  },
+  "human_review": {
+    "status": "agreed",
+    "required_by": "M4.2",
+    "reviewer": "Naman Sharma (repository owner, via this chat)",
+    "date": "2026-11-13",
+    "response": "yes i agree",
+    "record": "human-review.json",
+    "scope": "Assisted review of the recorded quote comparison presented in this chat; not an independent blind review or a claim about the external cause."
+  }
+}

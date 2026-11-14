@@ -1,0 +1,23 @@
+{
+  "gate": "M4.2",
+  "status": "agreed",
+  "reviewer": "Naman Sharma (repository owner, via this chat)",
+  "date": "2026-11-13",
+  "response": "yes i agree",
+  "agreed_observation": "The same tool input returned a different result: 420 versus 720, against a budget of 500; tool-result-drift correctly names this observed difference.",
+  "scope": "Assisted review of the recorded quote comparison presented in this chat; not an independent blind review or a claim about the external cause.",
+  "providers": [
+    "nvidia",
+    "gemini"
+  ],
+  "boundary": 1,
+  "evidence": [
+    "nvidia-real-pair.json",
+    "gemini-real-pair.json"
+  ],
+  "implementation_commit": "b8124f6055daf47ac4a4879ccaf218931e79ad66",
+  "does_not_authorize": [
+    "merging either PR",
+    "sending private recording inputs to an external embedding API"
+  ]
+}

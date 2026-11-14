@@ -1,0 +1,36 @@
+{
+  "source": "actual provider parent and controlled live counterfactual fork",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "passing_fingerprint": "d859f57ca90287743883ad259440fafa328405549f2c75c788c9e4576ca5bcfe",
+  "failing_fingerprint": "25fa39a86a6ec5f4aba13f5313dbe449d1cbd519f8b742de7cc6e94055b7d461",
+  "embedding_provider": null,
+  "embedding_model": null,
+  "vectors": null,
+  "dimensions": null,
+  "private_input_embedding": "not sent; offline comparison",
+  "alignment_method": "structured + lexical",
+  "first_decision": {
+    "a": 1,
+    "b": 1,
+    "category": "tool-result-drift",
+    "input_relation": "same-input",
+    "summary": "The same tool input returned a different result."
+  },
+  "review_case": {
+    "same_tool_input": true,
+    "passing_quote": 420,
+    "failing_quote": 720,
+    "budget": 500,
+    "proposed_name": "Tool result changed before the model continuation"
+  },
+  "human_review": {
+    "status": "agreed",
+    "required_by": "M4.2",
+    "reviewer": "Naman Sharma (repository owner, via this chat)",
+    "date": "2026-11-13",
+    "response": "yes i agree",
+    "record": "human-review.json",
+    "scope": "Assisted review of the recorded quote comparison presented in this chat; not an independent blind review or a claim about the external cause."
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "source": "live NVIDIA embeddings of hand-authored synthetic inputs only",
+  "private_recording_inputs_sent": false,
+  "provider": "nvidia",
+  "model": "nvidia/nemotron-3.5-embed-1b",
+  "vectors": [
+    2,
+    3
+  ],
+  "dimensions": 2048,
+  "alignment_method": "structured + embedding cosine",
+  "observed": {
+    "a": null,
+    "b": 1,
+    "category": "step-inserted"
+  },
+  "passed": true
+}
