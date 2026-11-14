@@ -79,7 +79,13 @@ fr dashboard FAIL_ID PASS_ID FORK_ID --output .rewind/investigation.html
 fr export RUN_ID .rewind/run.rewind.json
 fr import .rewind/run.rewind.json
 fr similar RUN_ID
+fr query RUN_ID "every tool error"
+fr query RUN_ID "every retry"
+fr query RUN_ID "first context > 400 tokens"
+fr match RUN_ID
+fr fleet-map --output .rewind/fleet.json
 fr eval --n 10 --output .rewind/evaluation.json
+fr eval --n 1 --budget 400
 fr doctor
 ```
 

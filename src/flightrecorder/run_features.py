@@ -25,6 +25,10 @@ def run_features(cassette: Cassette) -> dict[str, Any]:
     kinds: Counter[str] = Counter()
     tokens: Counter[str] = Counter()
     usage_boundaries = 0
+    retries = 0
+    saw_attempt = False
+    cost_usd = 0.0
+    saw_cost = False
     for b in cassette.boundaries:
         kinds[b.kind] += 1
         response = b.response
@@ -37,6 +41,10 @@ def run_features(cassette: Cassette) -> dict[str, Any]:
             kind = str(b.request.get("kind", kind))
             key = str(b.request.get("key", key))
             request = b.request.get("request", {})
+        if isinstance(request, dict) and type(request.get("attempt")) is int:
+            saw_attempt = True
+            if request["attempt"] > 1:
+                retries += 1
         if kind == "tool" or (kind == "mcp" and key.endswith("/tools/call")):
             if kind == "mcp" and isinstance(request, dict):
                 params = request.get("params", {})
@@ -45,6 +53,10 @@ def run_features(cassette: Cassette) -> dict[str, Any]:
             tools[str(redact(key))] += 1
         if not isinstance(response, dict):
             continue
+        cost = response.get("cost_usd")
+        if isinstance(cost, int | float) and not isinstance(cost, bool) and cost >= 0:
+            cost_usd += float(cost)
+            saw_cost = True
         if isinstance(response.get("status"), (str, int)):
             statuses[str(response["status"])] += 1
         body = response.get("body", {})
@@ -80,12 +92,16 @@ def run_features(cassette: Cassette) -> dict[str, Any]:
         "finish_reasons": dict(sorted(finishes.items())),
         "tokens": dict(tokens) if usage_boundaries else None,
         "usage_boundaries": usage_boundaries,
-        "retry_count": None,
-        "cost_usd": None,
-        "divergence_class": None,
+        "retry_count": retries if saw_attempt else None,
+        "cost_usd": cost_usd if saw_cost else None,
+        "divergence_class": (
+            cassette.metadata["divergence_class"]
+            if isinstance(cassette.metadata.get("divergence_class"), str)
+            else None
+        ),
         "measurement_notes": [
             "Tokens include only captured non-stream JSON usage; absent fields are not zero.",
-            "Retries need explicit attempt metadata; repeated calls are not automatically retries.",
-            "Cost requires a supplied price schedule; divergence requires a comparison run.",
+            "Retries count only when a request records attempt > 1; repeated calls are not retries.",
+            "Cost sums captured cost_usd fields; missing prices stay null. Divergence is metadata.",
         ],
     }

@@ -72,6 +72,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Month 5 failure intelligence on local recordings: named timeline queries
+  (`every tool error`, `every retry`, `first context > N tokens`), explicit
+  retry/cost features, `fr match` for nearest cluster plus a similarity-weighted
+  weak cause, and `fr eval --budget` which fails when a candidate budget changes
+  recorded outcomes.
+  Synthetic corpus checks live in `tests/test_month5.py`. The real 672-tool fleet
+  and a prompted-LLM baseline are still required before the Month 5 gate is closed.
 - Repository scaffolding, governance, CI, and complete design documentation.
 - **Phase-0 walking skeleton**: the `flightrecorder` core (Session/boundary hash-chain,
   httpx transport capture, deterministic replay with a network kill-switch),

@@ -2,7 +2,7 @@ name: Month 4 acceptance
 
 on:
   pull_request:
-    branches: [main, feat/month-3-time-travel-forks]
+    branches: [main, feat/month-3-time-travel-forks, feat/month-4-bisect-fleet]
   workflow_dispatch:
 
 permissions:
