@@ -1,0 +1,25 @@
+name: Month 5 acceptance
+on:
+  pull_request:
+    branches: [main, feat/month-5-ml-intelligence, feat/month-6-lora-explainer]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --frozen --extra dev --extra ml
+      - run: uv run pytest tests/test_month5.py -v
+      - name: Synthetic clustering and zero-cost policy regression
+        run: |
+          mkdir -p .rewind/month5
+          uv run python examples/month5_failure_intelligence.py > .rewind/month5/software-validation.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: month5-software-evidence
+          path: .rewind/month5/
+          include-hidden-files: true

@@ -119,3 +119,28 @@ def test_match_command_reads_the_local_store(tmp_path: Path) -> None:
     payload = json.loads(result.output)
     assert payload["likely_cause"] == "tool-error"
     assert "672-tool" in payload["qualification"]
+
+
+def test_classifier_fixture_does_not_embed_its_target_label() -> None:
+    from flightrecorder.month5 import classifier_rows
+
+    for row in classifier_rows(12):
+        assert row["label"] not in row["text"]
+        assert "family-" not in row["text"]
+
+
+def test_blinded_baseline_inputs_are_bound_and_exclude_answers() -> None:
+    from flightrecorder.baseline import prepare_inputs
+    from flightrecorder.fleet import train_classifier
+    from flightrecorder.month5 import classifier_rows
+
+    rows = classifier_rows(12)
+    trained = train_classifier(rows)
+    public = prepare_inputs(rows, trained)
+    assert {r["id"] for r in public["inputs"]} == {r["id"] for r in trained["held_out"]}
+    assert all(set(r) == {"id", "text"} for r in public["inputs"])
+    assert "expected" not in public and "predicted" not in public
+    altered = [dict(row) for row in rows]
+    altered[0]["text"] += " changed"
+    with pytest.raises(ValueError, match="dataset differs"):
+        prepare_inputs(altered, trained)

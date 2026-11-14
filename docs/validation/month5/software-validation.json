@@ -1,0 +1,81 @@
+{
+  "corpus_runs": 24,
+  "neighbors": [
+    {
+      "run_id": "tool-error-7",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-6",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-5",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-4",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-3",
+      "similarity": 1.0
+    }
+  ],
+  "clusters": {
+    "runs": 24,
+    "clusters": 3,
+    "noise": 0,
+    "purity": 1.0,
+    "members": {
+      "0": {
+        "transport-timeout": 8
+      },
+      "1": {
+        "tool-error": 8
+      },
+      "2": {
+        "context-budget": 8
+      }
+    },
+    "human_evaluation": "not performed",
+    "qualification": "Synthetic symptom families, not a reviewed production corpus."
+  },
+  "fresh_failure": {
+    "cluster": 0,
+    "likely_cause": "provider-error",
+    "cause_votes": {
+      "provider-error": 5.0,
+      "transport-timeout": 5.0
+    },
+    "neighbors": [
+      {
+        "run_id": "transport-timeout-7",
+        "similarity": 1.0
+      },
+      {
+        "run_id": "transport-timeout-6",
+        "similarity": 1.0
+      },
+      {
+        "run_id": "transport-timeout-5",
+        "similarity": 1.0
+      },
+      {
+        "run_id": "transport-timeout-4",
+        "similarity": 1.0
+      },
+      {
+        "run_id": "transport-timeout-3",
+        "similarity": 1.0
+      }
+    ],
+    "qualification": "Neighbor majority on the supplied recordings. Not evidence from a 672-tool production fleet."
+  },
+  "tool_errors": 1,
+  "classifier_macro_f1": 1.0,
+  "majority_baseline_macro_f1": 0.13333333333333333,
+  "prompted_llm_baseline": "NOT MEASURED: roadmap Week 21 gate remains open",
+  "recorded_policy_gate": true,
+  "changed_policy_gate": false
+}
