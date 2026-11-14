@@ -46,7 +46,7 @@ jobs:
           uv run --with playwright python scripts/validate_month3_jaeger.py
           .rewind/month3-viewer --output .rewind/month3-evidence/jaeger.json
           --screenshot .rewind/month3-evidence/jaeger.png
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: month3-viewer-evidence
@@ -108,7 +108,7 @@ jobs:
           if not status["live_validated"]:
               raise SystemExit("Live Month 3 acceptance is blocked by missing repository secrets.")
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: month3-live-evidence

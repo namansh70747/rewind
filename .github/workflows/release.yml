@@ -19,7 +19,7 @@ jobs:
       - run: uv run mkdocs build --strict
       - run: uv run fr demo --n 50
       - run: uv build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: candidate-dist
           path: dist/*

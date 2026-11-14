@@ -94,7 +94,7 @@ jobs:
       - run: uv build
       - name: Install wheel into a clean environment and run demo
         run: python scripts/wheel_smoke.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: wheel-smoke-${{ matrix.os }}
