@@ -1,0 +1,10 @@
+{
+  "framework": "LangGraph with InMemorySaver",
+  "thread_id": "existing-thread",
+  "rewind_exact_replays": 6,
+  "rewind_replay_producer_calls": 0,
+  "safe_fork_producer_calls": 0,
+  "native_checkpoint_resume_producer_calls": 1,
+  "callback_boundaries": 3,
+  "checkpoint_captured": true
+}

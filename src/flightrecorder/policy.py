@@ -9,7 +9,11 @@ from .fork import ForkSession
 from .offline import authorized_network
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable, Mapping
+
+    from .boundary import Cassette, Session
+    from .fork import Mock
+    from .replay import Run
 
 
 @dataclass(frozen=True)
@@ -32,6 +36,10 @@ class PolicyForkSession(ForkSession):
     policy: SideEffectPolicy = SideEffectPolicy()
 
     def mediate(self, kind: str, key: str, request: Any, produce: Callable[[], Any]) -> Any:
+        if self._in_flight:
+            from .boundary import Divergence
+
+            raise Divergence(len(self.boundaries), "concurrent policy forks are unsupported")
         if (
             len(self.boundaries) > self.at
             and (kind, key) not in self.mocks
@@ -52,10 +60,45 @@ class PolicyForkSession(ForkSession):
                 self.mocks = original
         return super().mediate(kind, key, request, produce)
 
+    async def mediate_async(
+        self, kind: str, key: str, request: Any, aproduce: Callable[[], Awaitable[Any]]
+    ) -> Any:
+        # Serialize live producers. Opening the Python socket guard is process-wide;
+        # overlapping producers are explicitly outside this fork contract.
+        if self._in_flight:
+            from .boundary import Divergence
+
+            raise Divergence(len(self.boundaries), "concurrent policy forks are unsupported")
+        if (
+            len(self.boundaries) > self.at
+            and (kind, key) not in self.mocks
+            and self.policy.permits(kind, key)
+        ):
+            self._in_flight = True
+            try:
+                with authorized_network():
+                    result = await aproduce()
+                # Commit through the same intervention/hash-chain path as sync I/O.
+                original = self.mocks
+                self.mocks = {**original, (kind, key): lambda _: result}
+                try:
+                    return super().mediate(kind, key, request, lambda: result)
+                finally:
+                    self.mocks = original
+            finally:
+                self._in_flight = False
+        return super().mediate(kind, key, request, lambda: None)
+
 
 def fork_with_policy(
-    parent: Any, run: Any, *, at: int, value: Any, mocks: Any, policy: SideEffectPolicy
-) -> Any:
+    parent: Cassette,
+    run: Run,
+    *,
+    at: int,
+    value: Any,
+    mocks: Mapping[tuple[str, str], Mock],
+    policy: SideEffectPolicy,
+) -> Cassette:
     """Explicit application-authorized live continuation, with quarantined provenance.
 
     Network guarding is retained outside allowlisted producers. This is a trusted
@@ -115,3 +158,46 @@ def policy_from_manifest(data: Any) -> SideEffectPolicy:
         if row["live"]:
             live.add(identity)
     return SideEffectPolicy(frozenset(read_only), frozenset(live))
+
+
+async def afork_with_policy(
+    parent: Cassette,
+    run: Callable[[Session], Awaitable[str]],
+    *,
+    at: int,
+    value: Any,
+    mocks: Mapping[tuple[str, str], Mock],
+    policy: SideEffectPolicy,
+) -> Cassette:
+    """Async live continuation with exact prefix and explicit producer authorization.
+
+    Unlisted boundaries fail closed. Mutating tools require mocks unless individually
+    allowlisted. Use only trusted agents in an isolated process, as with sync forks.
+    """
+    from .boundary import Cassette, Divergence
+    from .offline import NetworkBlocked, offline_guard
+
+    session = PolicyForkSession(parent, at, value, mocks)
+    session.policy = policy
+    with offline_guard() as audit:
+        output = await run(session)
+    if audit.blocked_operations:
+        raise NetworkBlocked("fork attempted unmediated network I/O, even if the error was caught")
+    if len(session.boundaries) <= at:
+        raise Divergence(len(session.boundaries), "fork target was not reached")
+    return Cassette(
+        session.boundaries,
+        session.chain,
+        output,
+        parent.provider,
+        parent.model,
+        {
+            **parent.metadata,
+            "counterfactual": True,
+            "parent_fingerprint": parent.fingerprint,
+            "fork_at": at,
+            "continuation_policy": "explicit-allowlist",
+            "live_allowlist": [list(item) for item in sorted(policy.live_allowlist)],
+        },
+        parent.chain_algorithm,
+    )

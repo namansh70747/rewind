@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import math
+from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
 from .integrity import validate
@@ -38,7 +39,7 @@ class SnapshotIndex:
                 self.checkpoints[b.seq] = (observed.copy(), state)
 
     def at(self, at: int) -> dict[str, Any]:
-        if not 0 <= at < len(self.cassette.boundaries):
+        if type(at) is not int or not 0 <= at < len(self.cassette.boundaries):
             raise ValueError("boundary index is outside recording")
         start = at // self.interval * self.interval
         observed, state = self.checkpoints[start]
@@ -49,6 +50,8 @@ class SnapshotIndex:
                 state = b.response
         return copy.deepcopy(
             {
+                "schema_version": 1,
+                "boundary": asdict(self.cassette.boundaries[at]),
                 "at": at,
                 "checkpoint": start,
                 "replayed_events": at - start,

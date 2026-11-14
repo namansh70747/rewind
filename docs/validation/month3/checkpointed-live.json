@@ -1,0 +1,26 @@
+[
+  {
+    "provider": "nvidia",
+    "model": "nvidia/nemotron-3.5-bolt-e4b",
+    "source": "live",
+    "offline_replays": 6,
+    "mutating_fork_calls": 0,
+    "boundaries": 12,
+    "callback_boundaries": 4,
+    "checkpoint_captured": true,
+    "parent": "bdc64765b0df7103e7ed40f5b3cec51c66c5243aa04e4fb67daf94cdd0821a1b",
+    "fork": "8082a4c1e4b3458026d36416270bc9aea2b3460ad11fe6e3245945a22fbaeee2"
+  },
+  {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "source": "live",
+    "offline_replays": 6,
+    "mutating_fork_calls": 0,
+    "boundaries": 12,
+    "callback_boundaries": 4,
+    "checkpoint_captured": true,
+    "parent": "25fa39a86a6ec5f4aba13f5313dbe449d1cbd519f8b742de7cc6e94055b7d461",
+    "fork": "d859f57ca90287743883ad259440fafa328405549f2c75c788c9e4576ca5bcfe"
+  }
+]

@@ -1,0 +1,254 @@
+[
+  {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "fingerprint": "25fa39a86a6ec5f4aba13f5313dbe449d1cbd519f8b742de7cc6e94055b7d461",
+    "boundaries": 12,
+    "counterfactual": false,
+    "scrub_positions": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "rendered_state_exact": true,
+    "all_io_and_hashes_visible": true,
+    "benchmarks": [
+      {
+        "interval": 1,
+        "checkpoints": 12,
+        "cold_build_us": 645.425,
+        "warm_p50_us": 66.906,
+        "warm_p95_us": 232.007,
+        "max_suffix_events": 0,
+        "exact_states": true
+      },
+      {
+        "interval": 3,
+        "checkpoints": 4,
+        "cold_build_us": 707.682,
+        "warm_p50_us": 67.277,
+        "warm_p95_us": 232.708,
+        "max_suffix_events": 2,
+        "exact_states": true
+      },
+      {
+        "interval": 12,
+        "checkpoints": 1,
+        "cold_build_us": 412.386,
+        "warm_p50_us": 58.8805,
+        "warm_p95_us": 93.666,
+        "max_suffix_events": 11,
+        "exact_states": true
+      }
+    ]
+  },
+  {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash-lite",
+    "fingerprint": "d859f57ca90287743883ad259440fafa328405549f2c75c788c9e4576ca5bcfe",
+    "boundaries": 12,
+    "counterfactual": true,
+    "scrub_positions": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "rendered_state_exact": true,
+    "all_io_and_hashes_visible": true,
+    "benchmarks": [
+      {
+        "interval": 1,
+        "checkpoints": 12,
+        "cold_build_us": 702.914,
+        "warm_p50_us": 59.217,
+        "warm_p95_us": 134.614,
+        "max_suffix_events": 0,
+        "exact_states": true
+      },
+      {
+        "interval": 3,
+        "checkpoints": 4,
+        "cold_build_us": 421.403,
+        "warm_p50_us": 60.278,
+        "warm_p95_us": 192.162,
+        "max_suffix_events": 2,
+        "exact_states": true
+      },
+      {
+        "interval": 12,
+        "checkpoints": 1,
+        "cold_build_us": 440.219,
+        "warm_p50_us": 62.4625,
+        "warm_p95_us": 282.863,
+        "max_suffix_events": 11,
+        "exact_states": true
+      }
+    ]
+  },
+  {
+    "provider": "nvidia",
+    "model": "nvidia/nemotron-3.5-bolt-e4b",
+    "fingerprint": "bdc64765b0df7103e7ed40f5b3cec51c66c5243aa04e4fb67daf94cdd0821a1b",
+    "boundaries": 12,
+    "counterfactual": false,
+    "scrub_positions": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "rendered_state_exact": true,
+    "all_io_and_hashes_visible": true,
+    "benchmarks": [
+      {
+        "interval": 1,
+        "checkpoints": 12,
+        "cold_build_us": 1435.567,
+        "warm_p50_us": 65.203,
+        "warm_p95_us": 195.438,
+        "max_suffix_events": 0,
+        "exact_states": true
+      },
+      {
+        "interval": 3,
+        "checkpoints": 4,
+        "cold_build_us": 410.08,
+        "warm_p50_us": 62.3575,
+        "warm_p95_us": 280.016,
+        "max_suffix_events": 2,
+        "exact_states": true
+      },
+      {
+        "interval": 12,
+        "checkpoints": 1,
+        "cold_build_us": 457.95,
+        "warm_p50_us": 69.62100000000001,
+        "warm_p95_us": 240.622,
+        "max_suffix_events": 11,
+        "exact_states": true
+      }
+    ]
+  },
+  {
+    "provider": "nvidia",
+    "model": "nvidia/nemotron-3.5-bolt-e4b",
+    "fingerprint": "8082a4c1e4b3458026d36416270bc9aea2b3460ad11fe6e3245945a22fbaeee2",
+    "boundaries": 12,
+    "counterfactual": true,
+    "scrub_positions": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      10,
+      9,
+      8,
+      7,
+      6,
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ],
+    "rendered_state_exact": true,
+    "all_io_and_hashes_visible": true,
+    "benchmarks": [
+      {
+        "interval": 1,
+        "checkpoints": 12,
+        "cold_build_us": 352.192,
+        "warm_p50_us": 66.0395,
+        "warm_p95_us": 163.126,
+        "max_suffix_events": 0,
+        "exact_states": true
+      },
+      {
+        "interval": 3,
+        "checkpoints": 4,
+        "cold_build_us": 820.491,
+        "warm_p50_us": 61.571,
+        "warm_p95_us": 213.942,
+        "max_suffix_events": 2,
+        "exact_states": true
+      },
+      {
+        "interval": 12,
+        "checkpoints": 1,
+        "cold_build_us": 452.661,
+        "warm_p50_us": 82.31899999999999,
+        "warm_p95_us": 203.201,
+        "max_suffix_events": 11,
+        "exact_states": true
+      }
+    ]
+  }
+]

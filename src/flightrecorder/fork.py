@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from typing import TYPE_CHECKING, Any
 
 from .boundary import Boundary, Cassette, Divergence, Session, canon, chain_link
 from .integrity import validate
 from .offline import NetworkBlocked, offline_guard
+from .redaction import redact
 
 if TYPE_CHECKING:
     from .replay import Run
@@ -23,6 +24,10 @@ class ForkSession(Session):
         self, parent: Cassette, at: int, value: Any, mocks: Mapping[tuple[str, str], Mock]
     ) -> None:
         validate(parent)
+        if parent.metadata.get("concurrent"):
+            raise ValueError("concurrent forks are not supported; serialize this scenario")
+        if parent.metadata.get("replayable") is False:
+            raise ValueError("trace-only evidence cannot be forked")
         if not 0 <= at < len(parent.boundaries):
             raise ValueError("fork index is outside the recording")
         super().__init__("replay", parent)
@@ -48,6 +53,7 @@ class ForkSession(Session):
             if mock is None:
                 raise Divergence(index, f"safe fork needs an explicit mock for {kind}/{key}")
             result = mock(copy.deepcopy(request))
+        result = redact(result)
         self.chain = chain_link(
             self.chain, canon([kind, key, request]), canon(result), self.algorithm
         )
@@ -92,3 +98,71 @@ def fork_run(
         },
         parent.chain_algorithm,
     )
+
+
+async def afork_run(
+    parent: Cassette,
+    run: Callable[[Session], Awaitable[str]],
+    *,
+    at: int,
+    value: Any,
+    mocks: Mapping[tuple[str, str], Mock] | None = None,
+) -> Cassette:
+    """Await a serialized async agent; every continuation boundary needs a mock.
+
+    Async producers are never awaited. This supports LangGraph's async event loop
+    without nesting asyncio.run() or allowing network I/O during replay.
+    """
+    session = ForkSession(parent, at, value, mocks or {})
+    with offline_guard() as audit:
+        output = await run(session)
+    if audit.blocked_operations:
+        raise NetworkBlocked("fork attempted unmediated network I/O, even if the error was caught")
+    if len(session.boundaries) <= at:
+        raise Divergence(len(session.boundaries), "agent stopped before fork target")
+    return Cassette(
+        session.boundaries,
+        session.chain,
+        output,
+        parent.provider,
+        parent.model,
+        {
+            **parent.metadata,
+            "counterfactual": True,
+            "parent_fingerprint": parent.fingerprint,
+            "fork_at": at,
+            "continuation_policy": "explicit-mocks-only",
+        },
+        parent.chain_algorithm,
+    )
+
+
+def recorded_tool_mocks(
+    parent: Cassette, *, at: int, exclude: frozenset[tuple[str, str]] = frozenset()
+) -> dict[tuple[str, str], Mock]:
+    """Create fresh occurrence-aware simulation fixtures for known tool outcomes.
+
+    These are explicit simulations even when fork arguments differ from the
+    parent. Unknown tools and exhausted fixture queues still fail closed. Call
+    once per experiment so one run cannot consume another run's mock results.
+    """
+    queues: dict[tuple[str, str], list[Any]] = {}
+    for boundary in parent.boundaries[at + 1 :]:
+        identity = (boundary.kind, boundary.key)
+        if boundary.kind == "tool" and identity not in exclude:
+            queues.setdefault(identity, []).append(copy.deepcopy(boundary.response))
+
+    def fixture(values: list[Any]) -> Mock:
+        cursor = 0
+
+        def respond(request: Any) -> Any:
+            nonlocal cursor
+            if cursor >= len(values):
+                raise ValueError("recorded tool mock exhausted; supply an explicit fixture")
+            result = copy.deepcopy(values[cursor])
+            cursor += 1
+            return result
+
+        return respond
+
+    return {identity: fixture(values) for identity, values in queues.items()}

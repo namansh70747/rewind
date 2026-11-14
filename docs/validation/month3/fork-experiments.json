@@ -1,0 +1,24 @@
+{
+  "parent_fingerprint": "d1739c70784f6dcf56029a2cd1a417f589b4c42eac5be5d6b9646febd32c4010",
+  "fork_at": 0,
+  "trials": [
+    {
+      "intervention": 420,
+      "fingerprint": "8a79e4b352d04a081e8dc37dc4d4df86f52c3ef785e78ffd0328e8434905b5ca",
+      "run_id": "f809192adaf4",
+      "score": 1.0,
+      "replays": 3,
+      "counterfactual": true,
+      "interpretation": "controlled best-effort exploration"
+    },
+    {
+      "intervention": 600,
+      "fingerprint": "822a554d7800f2635d145a8c6cf19a3346274e6dd627486bb9cd63f81b5440d7",
+      "run_id": "1f74b52ed85c",
+      "score": 0.0,
+      "replays": 3,
+      "counterfactual": true,
+      "interpretation": "controlled best-effort exploration"
+    }
+  ]
+}

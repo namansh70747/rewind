@@ -1,0 +1,13 @@
+[
+  {
+    "provider": "nvidia",
+    "model": "nvidia/nemotron-3.5-bolt-e4b",
+    "source": "live",
+    "offline_replays": 6,
+    "mutating_fork_calls": 0,
+    "boundaries": 7,
+    "parent": "87ebb06dd7a9e8f66060d56382d18c1fb41b3db1e3665afbfd5082a59726aff2",
+    "fork": "9a127d63feeeb9660fcc0779bebd3708085e261b212769a7569179b28dc0f6ae",
+    "validation_date": "2026-11-13"
+  }
+]

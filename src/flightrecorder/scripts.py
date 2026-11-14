@@ -17,6 +17,8 @@ from .replay import VerifyResult
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from .policy import SideEffectPolicy
+
 
 def source_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -89,7 +91,13 @@ def verify_script(cassette: Cassette, path: Path, n: int = 10) -> VerifyResult:
 
 
 def fork_script(
-    parent: Cassette, path: Path, *, at: int, value: Any, mocks: dict[tuple[str, str], Any]
+    parent: Cassette,
+    path: Path,
+    *,
+    at: int,
+    value: Any,
+    mocks: dict[tuple[str, str], Any],
+    policy: SideEffectPolicy | None = None,
 ) -> Cassette:
     """Replay a trusted recorded script with one intervention and JSON-value mocks."""
     from contextlib import nullcontext
@@ -118,12 +126,21 @@ def fork_script(
             return _execute(path)
 
     run: Run = execute
-    return fork_run(
-        parent,
-        run,
-        at=at,
-        value=value,
-        mocks={
-            key: partial(lambda result, request: result, result) for key, result in mocks.items()
-        },
+    from .fork import recorded_tool_mocks
+
+    resolved = recorded_tool_mocks(
+        parent, at=at, exclude=policy.live_allowlist if policy else frozenset()
     )
+    resolved.update(
+        {key: partial(lambda result, request: result, result) for key, result in mocks.items()}
+    )
+    if policy is not None:
+        from .policy import fork_with_policy
+
+        child = fork_with_policy(parent, run, at=at, value=value, mocks=resolved, policy=policy)
+    else:
+        child = fork_run(parent, run, at=at, value=value, mocks=resolved)
+    child.metadata["tool_mock_policy"] = (
+        "recorded outcomes by occurrence; unknown tools fail closed"
+    )
+    return child

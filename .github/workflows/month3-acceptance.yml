@@ -1,0 +1,116 @@
+name: Month 3 acceptance
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: month3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  viewer:
+    name: Jaeger OTLP ingestion and viewer
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      jaeger:
+        image: jaegertracing/all-in-one:1.76.0
+        env:
+          COLLECTOR_OTLP_ENABLED: "true"
+        ports:
+          - 4318:4318
+          - 16686:16686
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --frozen --extra integrations
+      - name: Generate record-fork-replay exports
+        run: uv run python examples/month3_langgraph.py --output .rewind/month3-viewer
+      - name: Load exports with the official Perfetto trace processor
+        run: >-
+          uv run --with perfetto python scripts/validate_month3_perfetto.py
+          .rewind/month3-viewer/*.perfetto --output .rewind/month3-evidence/perfetto.json
+      - name: Inspect the generated corpus in the terminal
+        run: >-
+          uv run --with textual python scripts/month3_corpus_review.py
+          .rewind/month3-viewer/*.rewind.json --output .rewind/month3-terminal-review
+      - name: Install browser for viewer verification
+        run: uv run --with playwright python -m playwright install --with-deps chromium
+      - name: Verify collector, stored spans and browser
+        run: >-
+          uv run --with playwright python scripts/validate_month3_jaeger.py
+          .rewind/month3-viewer --output .rewind/month3-evidence/jaeger.json
+          --screenshot .rewind/month3-evidence/jaeger.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: month3-viewer-evidence
+          path: .rewind/month3-evidence/
+          include-hidden-files: true
+
+  live:
+    name: Live NVIDIA and Gemini replay
+    if: github.event_name == 'workflow_dispatch' || (vars.REWIND_LIVE_VALIDATION == 'true' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --frozen --extra integrations
+      - name: Check credential availability
+        id: credentials
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          missing = [name for name in ("NVIDIA_API_KEY", "GEMINI_API_KEY") if not os.environ.get(name)]
+          ready = not missing
+          Path(".rewind/month3-live-evidence").mkdir(parents=True)
+          Path(".rewind/month3-live-evidence/status.json").write_text(
+              json.dumps({"live_validated": False, "missing_credentials": missing}, indent=2)
+          )
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"ready={str(ready).lower()}\n")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("Live validation blocked: configure " + ", ".join(missing) if missing else "Both provider credentials are configured.")
+          PY
+      - name: Live parent and safe fork, followed by offline replay
+        if: steps.credentials.outputs.ready == 'true'
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          uv run python examples/month3_langgraph.py --live --output .rewind/month3-live
+          cp .rewind/month3-live/report.json .rewind/month3-live-evidence/report.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          Path(".rewind/month3-live-evidence/status.json").write_text(
+              json.dumps({"live_validated": True, "missing_credentials": []}, indent=2)
+          )
+          PY
+      - name: Require live acceptance evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          status = json.loads(Path(".rewind/month3-live-evidence/status.json").read_text())
+          if not status["live_validated"]:
+              raise SystemExit("Live Month 3 acceptance is blocked by missing repository secrets.")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: month3-live-evidence
+          path: .rewind/month3-live-evidence/
+          include-hidden-files: true

@@ -52,7 +52,7 @@ OPENAI = Provider(
 NVIDIA = Provider(
     name="nvidia",
     url="https://integrate.api.nvidia.com/v1/chat/completions",
-    default_model="meta/llama-3.1-8b-instruct",
+    default_model="nvidia/nemotron-3.5-bolt-e4b",
     key_env="NVIDIA_API_KEY",
 )
 ANTHROPIC = Provider(
@@ -63,4 +63,11 @@ ANTHROPIC = Provider(
     dialect="anthropic",
 )
 
-PROVIDERS: dict[str, Provider] = {p.name: p for p in (OPENAI, NVIDIA, ANTHROPIC)}
+GEMINI = Provider(
+    name="gemini",
+    url="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    default_model="gemini-3.5-flash-lite",
+    key_env="GEMINI_API_KEY",
+)
+
+PROVIDERS: dict[str, Provider] = {p.name: p for p in (OPENAI, NVIDIA, ANTHROPIC, GEMINI)}
