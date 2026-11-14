@@ -60,6 +60,8 @@ nav:
   - Month 3 planner audit: validation/month3/planner-audit.md
   - Month 4 workflow: month4-bisect-fleet.md
   - Month 4 planner audit: validation/month4/planner-audit.md
+  - Month 5 planner audit: validation/month5/planner-audit.md
+  - Month 6 planner audit: validation/month6/planner-audit.md
   - Glossary: glossary.md
   - FAQ: faq.md
   - Decisions:
@@ -78,6 +80,8 @@ nav:
   - "Storage and scope ADR": adr/0010-roadmap-storage-and-scope.md
   - "Month 3 state and checkpoints ADR": adr/0011-month3-logical-state-and-checkpoints.md
   - "Month 4 bisect and fleet ADR": adr/0012-month4-bisect-and-fleet.md
+  - "Month 5 failure intelligence ADR": adr/0013-month5-failure-intelligence.md
+  - "Month 6 hardening ADR": adr/0014-month6-lora-explainer-stub.md
 
 markdown_extensions:
   - admonition

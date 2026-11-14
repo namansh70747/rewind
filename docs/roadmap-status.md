@@ -1,5 +1,12 @@
 # Roadmap evidence ledger — weeks 1–26
 
+Current hardening update (2026-11-14): the [Month 5 audit](validation/month5/planner-audit.md)
+and [Month 6 audit](validation/month6/planner-audit.md) are the current gate records.
+Month 6 now checks worker outputs as well as fingerprints and keeps overlapping
+replay guards active across threads. The controlled capture-overhead report is
+measured; production fleet, baseline and publisher inputs remain missing. The
+older ledger below is historical and is not a claim that those inputs exist.
+
 Updated 2026-10-08. This is an implementation candidate, **not a declaration that
 all 26 weekly exit criteria passed**. The original roadmap requires CI evidence and
 real recordings. Local synthetic tests cannot substitute for those gates.

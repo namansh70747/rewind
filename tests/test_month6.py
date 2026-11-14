@@ -322,3 +322,87 @@ def test_fr_gc_missing_criterion_exits_nonzero(tmp_path: Path) -> None:
     db = str(tmp_path / "runs.db")
     result = runner.invoke(app, ["gc", "--db", db])
     assert result.exit_code != 0
+
+
+def test_concurrent_verifier_rejects_wrong_final_output() -> None:
+    def wrong(session: Session, transport: object) -> str:
+        _replay_fn(session, transport)
+        return "wrong output"
+
+    result = concurrent_replay(_make_simple_run(), wrong, n=8, max_workers=4)
+    assert result.passed == 0
+    assert result.failed == 8
+    assert len(result.errors) == 8
+
+
+def test_concurrent_verifier_rejects_invalid_workers() -> None:
+    with pytest.raises(ValueError, match="max_workers"):
+        concurrent_replay(_make_simple_run(), _replay_fn, n=1, max_workers=0)
+
+
+def test_overlapping_guards_do_not_restore_each_others_patches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import socket
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from flightrecorder.offline import NetworkBlocked, offline_guard
+
+    def original(*args: object, **kwargs: object) -> list[object]:
+        return []
+
+    monkeypatch.setattr(socket, "getaddrinfo", original)
+    entered, first_exited = Event(), Event()
+
+    def second() -> None:
+        with offline_guard() as audit:
+            entered.set()
+            assert first_exited.wait(2)
+            with pytest.raises(NetworkBlocked):
+                socket.getaddrinfo("fixture.invalid", 80)
+            assert audit.blocked_operations == ["getaddrinfo"]
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with offline_guard():
+            future = pool.submit(second)
+            assert entered.wait(2)
+        first_exited.set()
+        future.result(timeout=3)
+    assert socket.getaddrinfo is original
+
+
+def test_authorized_network_does_not_unblock_other_contexts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import socket
+    from concurrent.futures import ThreadPoolExecutor
+
+    import flightrecorder.offline as offline
+
+    def fake_dns(*args: object, **kwargs: object) -> list[object]:
+        return []
+
+    monkeypatch.setattr(offline, "_DNS_ORIGINAL", fake_dns)
+    with offline.offline_guard() as audit, offline.authorized_network():
+        assert socket.getaddrinfo("fixture.invalid", 80) == []
+        with ThreadPoolExecutor(max_workers=1) as pool, pytest.raises(offline.NetworkBlocked):
+            pool.submit(socket.getaddrinfo, "fixture.invalid", 80).result(timeout=2)
+    assert audit.blocked_operations == ["getaddrinfo"]
+
+
+def test_explanation_does_not_turn_weak_labels_into_proven_causes() -> None:
+    report = explain(_make_simple_run(), classifier_report={"label": "sampling-flake"})
+    assert "not a proven cause" in report["cause"]
+    report = explain(_make_simple_run(), classifier_report={"label": "arg-hallucination"})
+    assert "not proof of hallucination" in report["cause"]
+
+
+def test_explicit_guard_overrides_an_outer_live_authorization() -> None:
+    import socket
+
+    from flightrecorder.offline import NetworkBlocked, authorized_network, offline_guard
+
+    with authorized_network(), offline_guard() as audit, pytest.raises(NetworkBlocked):
+        socket.getaddrinfo("fixture.invalid", 80)
+    assert audit.blocked_operations == ["getaddrinfo"]
