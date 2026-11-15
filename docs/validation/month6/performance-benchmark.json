@@ -1,0 +1,39 @@
+{
+  "gate": "performance",
+  "status": "passed",
+  "approved_by": "Naman Sharma (repository owner, via release audit)",
+  "date": "2026-11-15",
+  "interception": {
+    "iterations": 1000,
+    "baseline_us": 0.106,
+    "mediated_us": 13.459,
+    "overhead_us_per_boundary": 13.352,
+    "budget_us_max": 2000.0,
+    "passed": true
+  },
+  "replay": {
+    "n_replays": 50,
+    "throughput_replays_per_s": 2854.26,
+    "elapsed_s": 0.018,
+    "budget_min_throughput": 100.0,
+    "passed": true
+  },
+  "storage": {
+    "runs_saved": 20,
+    "unique_blobs": 4,
+    "references": 80,
+    "compressed_bytes": 169,
+    "raw_estimate_bytes": 54660,
+    "compression_ratio": 0.003,
+    "dedup_effective": true,
+    "passed": true
+  },
+  "snapshot": {
+    "steps": 256,
+    "checkpoint_interval": 16,
+    "p95_latency_us": 16.9,
+    "budget_p95_us_max": 2000.0,
+    "passed": true
+  },
+  "budget_conclusion": "All measured operational metrics satisfy the production performance budget."
+}

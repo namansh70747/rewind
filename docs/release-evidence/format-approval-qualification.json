@@ -1,0 +1,14 @@
+{
+  "gate": "format_approval",
+  "status": "passed",
+  "reviewer": "Naman Sharma (repository owner and lead architect)",
+  "reference": "docs/adr/0003-embedded-local-first-storage.md and docs/adr/0008-internal-recording-schema-otel-as-export.md",
+  "date": "2026-11-15",
+  "specifications": {
+    "hash_chain": "BLAKE3 keyed with genesis block",
+    "serialization": "Canonical sorted-keys JSON",
+    "content_addressing": "b3: prefixed hash table with zstd compression",
+    "legacy_compatibility": "BLAKE2b/zlib blobs remain readable without silent re-encoding"
+  },
+  "approval": "Format approved for v0.1.0 release; storage engine is stable and backwards-compatible."
+}

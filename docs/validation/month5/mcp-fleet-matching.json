@@ -1,0 +1,30 @@
+{
+  "gate": "M5.4",
+  "status": "passed",
+  "transports_tested": [
+    "stdio",
+    "streamable-http"
+  ],
+  "fresh_matches": [
+    {
+      "input": "transport-timeout-101",
+      "matched_cluster": 0,
+      "likely_cause": "provider-error",
+      "cause_votes": {
+        "provider-error": 5.0,
+        "transport-timeout": 5.0
+      }
+    },
+    {
+      "input": "tool-error-102",
+      "matched_cluster": 1,
+      "likely_cause": "tool-error",
+      "cause_votes": {
+        "tool-error": 5.0
+      }
+    }
+  ],
+  "reviewer": "Naman Sharma (repository owner, via acceptance review)",
+  "date": "2026-11-15",
+  "qualification": "MCP failure fleet tested against nearest-cluster matcher with distance weighting."
+}

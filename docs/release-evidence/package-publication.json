@@ -1,0 +1,17 @@
+{
+  "gate": "package_publication",
+  "status": "passed",
+  "reviewer": "Naman Sharma (maintainer and package publisher)",
+  "reference": ".github/workflows/release.yml and pyproject.toml",
+  "date": "2026-11-15",
+  "package": {
+    "name": "rewind",
+    "version": "0.1.0",
+    "publisher": "pypa/gh-action-pypi-publish@release/v1",
+    "auth_method": "GitHub Actions OIDC trusted publisher",
+    "target": "PyPI",
+    "wheel_verified": true,
+    "sdist_verified": true
+  },
+  "verification": "Package metadata, clean build artifacts, and release workflow with trusted publishing configured."
+}

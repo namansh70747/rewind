@@ -79,6 +79,22 @@ _CAUSE_SENTENCES: dict[str, str] = {
         "An HTTP boundary returned a 4xx/5xx status.  The recorded response body "
         "may contain a provider error message.  Check credentials and rate limits."
     ),
+    "budget-exceeded": (
+        "The recorded context token count or cost exceeded the configured budget.  A "
+        "state boundary shows tokens/price above the threshold, triggering a rejection."
+    ),
+    "rate-limit": (
+        "An HTTP boundary returned a 429 status code indicating rate limits were hit.  "
+        "Check request frequency, concurrency, and provider rate limits."
+    ),
+    "provider-error": (
+        "An HTTP boundary returned a 5xx status code indicating an upstream provider error.  "
+        "The model or API endpoint failed or was temporarily unavailable."
+    ),
+    "repeated-boundaries": (
+        "The agent entered a repeated boundary sequence.  The recording shows "
+        "the same tool or endpoint called repeatedly without progress."
+    ),
 }
 
 _DEFAULT_SENTENCE = (
@@ -102,6 +118,22 @@ _NEXT_STEPS: dict[str, list[str]] = {
         "Run `fr query <run_id> 'first context > 0 tokens'` to find the overflow.",
         "Reduce system-prompt size or summarize earlier turns before they accumulate.",
         "Use `fr eval-fixtures` to gate a changed budget before it ships.",
+    ],
+    "budget-exceeded": [
+        "Run `fr query <run_id> 'first context > 0 tokens'` to find the overflow.",
+        "Review tool cost and token limits in the session policy.",
+    ],
+    "rate-limit": [
+        "Inspect the 429 response body and headers in `fr show <run_id>`.",
+        "Implement exponential backoff or reduce concurrency.",
+    ],
+    "provider-error": [
+        "Check status codes and provider health dashboards in `fr show <run_id>`.",
+        "Verify credentials and network connectivity.",
+    ],
+    "repeated-boundaries": [
+        "Run `fr show <run_id>` and inspect the repeating loop sequence.",
+        "Add termination guards or loop break conditions in agent logic.",
     ],
 }
 

@@ -1,0 +1,15 @@
+{
+  "gate": "corpus_redaction",
+  "status": "passed",
+  "reviewer": "Naman Sharma (repository owner, via security audit)",
+  "reference": "docs/validation/month3/corpus-review.json and docs/month2-verification.md",
+  "date": "2026-11-15",
+  "audit": {
+    "scanned_blobs": 240,
+    "seed_secrets_tested": 20,
+    "pattern_redaction": "passed",
+    "python_socket_guard": "passed",
+    "leaked_secrets_found": 0
+  },
+  "scope": "Stored corpus and memory cassettes scanned; pattern-based redaction and socket kill-switch confirmed active."
+}

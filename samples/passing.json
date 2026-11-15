@@ -1,0 +1,117 @@
+{
+  "format": "rewind.cassette.v2",
+  "checksum": "53cb91ce51a87eb5b1826741d1083acf942b421fef4d230774b655c3645895ba",
+  "run": {
+    "boundaries": [
+      {
+        "seq": 0,
+        "kind": "input",
+        "key": "travel_request",
+        "request": null,
+        "response": {
+          "destination": "Jaipur",
+          "budget": 500,
+          "currency": "INR"
+        },
+        "chain_hash": "54523e79a12402bbab63825c63567c85f352bdb18fa09e4893587217ae5bbcdb"
+      },
+      {
+        "seq": 1,
+        "kind": "clock",
+        "key": "time",
+        "request": null,
+        "response": 1780000000.0,
+        "chain_hash": "dba9551b48ea45145284946132fb93dd824762b4d3c1416126c4e61e7c2cbc4b"
+      },
+      {
+        "seq": 2,
+        "kind": "llm",
+        "key": "plan_trip",
+        "request": {
+          "destination": "Jaipur",
+          "budget": 500,
+          "currency": "INR"
+        },
+        "response": {
+          "tool": "price_lookup",
+          "reason": "Check the fare before booking."
+        },
+        "chain_hash": "50425896b657942f16d40ac73d8a92f8fb68a514162033ba1aedd0bd4288a60d"
+      },
+      {
+        "seq": 3,
+        "kind": "tool",
+        "key": "price_lookup",
+        "request": {
+          "destination": "Jaipur"
+        },
+        "response": {
+          "price": 420,
+          "currency": "INR",
+          "source": "simulated-cache"
+        },
+        "chain_hash": "838e2f2054735e23706ea9e91c81454d9f7cf1bc2bc88defcbfa1572a4f24660"
+      },
+      {
+        "seq": 4,
+        "kind": "state",
+        "key": "agent_state",
+        "request": {
+          "destination": "Jaipur",
+          "budget": 500,
+          "currency": "INR",
+          "quoted_price": 420,
+          "within_budget": true
+        },
+        "response": {
+          "destination": "Jaipur",
+          "budget": 500,
+          "currency": "INR",
+          "quoted_price": 420,
+          "within_budget": true
+        },
+        "chain_hash": "3254b4c80116b6c031a2d452742830d345454a0219b0f1e3752abc847b01655c"
+      },
+      {
+        "seq": 5,
+        "kind": "tool",
+        "key": "reserve_trip",
+        "request": {
+          "destination": "Jaipur",
+          "price": 420
+        },
+        "response": {
+          "status": "confirmed",
+          "total": 420,
+          "budget": 500,
+          "simulated": true
+        },
+        "chain_hash": "c4acb5a77864ec926f05a81c6af23035ffd9d981f70dd7aa3c5b1d4b36791b8e"
+      },
+      {
+        "seq": 6,
+        "kind": "llm",
+        "key": "explain_result",
+        "request": {
+          "status": "confirmed",
+          "total": 420,
+          "budget": 500,
+          "simulated": true
+        },
+        "response": {
+          "text": "Trip reserved within budget."
+        },
+        "chain_hash": "05d67ac7b6724ed38a5ee15ef4da056972f7b7424bc05e175ae0188d71ab967e"
+      }
+    ],
+    "fingerprint": "05d67ac7b6724ed38a5ee15ef4da056972f7b7424bc05e175ae0188d71ab967e",
+    "final_output": "{\"budget\": 500, \"explanation\": \"Trip reserved within budget.\", \"simulated\": true, \"status\": \"confirmed\", \"total\": 420}",
+    "provider": "demo",
+    "model": "travel-budget-v1",
+    "metadata": {
+      "scenario": "travel-budget-v1",
+      "simulated": true
+    },
+    "chain_algorithm": "blake3"
+  }
+}

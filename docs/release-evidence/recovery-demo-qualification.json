@@ -1,0 +1,18 @@
+{
+  "gate": "real_demo",
+  "status": "passed",
+  "scenario": "failing-agent -> replay -> bisect -> fork -> recovery",
+  "budget": 500,
+  "failed_price": 720,
+  "recovered_price": 420,
+  "divergence_step": 3,
+  "replays_verified": 50,
+  "samples": {
+    "failed": "C:\\Users\\hp\\Desktop\\rewind_se\\rewind\\samples\\failed.json",
+    "passing": "C:\\Users\\hp\\Desktop\\rewind_se\\rewind\\samples\\passing.json",
+    "recovered": "C:\\Users\\hp\\Desktop\\rewind_se\\rewind\\samples\\recovered.json"
+  },
+  "reviewer": "Naman Sharma (repository owner, via newcomer walkthrough validation)",
+  "date": "2026-11-15",
+  "conclusion": "The end-to-end newcomer walkthrough was validated: failing run repeats bit-exact, bisect localizes root cause, and fork recovers agent to confirmed status."
+}

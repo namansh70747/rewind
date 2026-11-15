@@ -1,0 +1,21 @@
+{
+  "gate": "real_provider_replay",
+  "status": "passed",
+  "reviewer": "Naman Sharma (repository owner, via live provider qualification)",
+  "reference": "docs/month2-verification.md and docs/validation/month3/live-provider-gate.json",
+  "date": "2026-11-15",
+  "providers_qualified": [
+    "nvidia",
+    "gemini",
+    "groq",
+    "openai",
+    "anthropic"
+  ],
+  "verification": {
+    "replays_per_run": 50,
+    "network_kill_switch": true,
+    "zero_api_leakage": true,
+    "audit_guard": "offline_guard"
+  },
+  "scope": "Five provider transports validated against live API endpoints and confirmed deterministic under offline replay."
+}

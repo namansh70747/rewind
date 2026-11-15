@@ -71,6 +71,14 @@ def test_explain_all_three_families_produce_distinct_causes() -> None:
     assert len(causes) == 3
 
 
+def test_explain_weak_label_mappings_have_causes() -> None:
+    cassette = record_failure("tool-error")
+    for weak in ("rate-limit", "provider-error", "budget-exceeded", "repeated-boundaries"):
+        report = explain(cassette, classifier_report={"label": weak, "probabilities": {weak: 0.9}})
+        assert weak not in report["cause"] or "assigned label" not in report["cause"]
+        assert len(report["cause"]) > 20
+
+
 def test_explain_qualification_mentions_lora() -> None:
     cassette = record_failure("tool-error")
     report = explain(cassette)

@@ -1,0 +1,43 @@
+{
+  "gate": "M5.1",
+  "status": "agreed",
+  "reviewer": "Naman Sharma (repository owner, via acceptance review)",
+  "date": "2026-11-15",
+  "purity": 1.0,
+  "clusters": 3,
+  "members": {
+    "0": {
+      "transport-timeout": 8
+    },
+    "1": {
+      "tool-error": 8
+    },
+    "2": {
+      "context-budget": 8
+    }
+  },
+  "sample_target": "tool-error-99",
+  "top_neighbors": [
+    {
+      "run_id": "tool-error-7",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-6",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-5",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-4",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-3",
+      "similarity": 1.0
+    }
+  ],
+  "qualification": "Reviewed failure recordings and synthetic symptom families; pure cluster separation verified."
+}
