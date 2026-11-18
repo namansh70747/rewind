@@ -61,7 +61,9 @@ nav:
   - Month 4 workflow: month4-bisect-fleet.md
   - Month 4 planner audit: validation/month4/planner-audit.md
   - Month 5 planner audit: validation/month5/planner-audit.md
+  - Month 5 course close: month5-course-close.md
   - Month 6 planner audit: validation/month6/planner-audit.md
+  - Killer demo: killer-demo.md
   - Glossary: glossary.md
   - FAQ: faq.md
   - Decisions:
@@ -82,6 +84,7 @@ nav:
   - "Month 4 bisect and fleet ADR": adr/0012-month4-bisect-and-fleet.md
   - "Month 5 failure intelligence ADR": adr/0013-month5-failure-intelligence.md
   - "Month 6 hardening ADR": adr/0014-month6-lora-explainer-stub.md
+  - "Course substitution ADR": adr/0015-course-provider-substitution.md
 
 markdown_extensions:
   - admonition
