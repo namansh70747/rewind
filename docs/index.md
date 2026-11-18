@@ -6,7 +6,9 @@ A local flight recorder and counterfactual debugger for Python AI agents.
 investigation with failed, passing and safely forked runs. See the repository README
 for installation and actual capture coverage.
 
+- [Killer demo](killer-demo.md)
 - [Demo and viva guide](demo-guide.md)
+- [Month 5 course close](month5-course-close.md)
 - [Implemented architecture](implementation.md)
 - [Validation evidence](validation.md)
 - [Original research roadmap](roadmap.md)

@@ -2,7 +2,8 @@
 
 ## Before class
 
-Install from the repository using the README. Run `fr demo`, `fr eval`, and
+Install from the repository using the README. Follow the
+[killer demo](killer-demo.md). Run `fr demo`, `fr eval`, and
 `python -m pytest`. Open `.rewind/demo.html` before presenting. All external
 services in the bundled scenario are simulated: internet and API keys are unnecessary.
 

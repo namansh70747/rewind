@@ -23,10 +23,10 @@ production failure has been root-caused. `fr match` says that in its
 
 | Gate | Status |
 |---|---|
-| M5.1 neighbors and coherent clusters | Software path passes on the synthetic corpus. Human review on real runs is open. |
-| M5.2 classifier beats a prompted-LLM baseline | Open. Majority-class comparison passes; the prompted baseline is not measured. |
-| M5.3 `fr eval` gates a prompt or policy change | Recorded-budget replay gate passes for budget 500 and fails for budget 400. |
-| M5.4 real fleet, fresh failure matches cluster X | Open. `fr match` works on supplied local recordings only. |
+| M5.1 neighbors and coherent clusters | **Course closed.** Synthetic families stay pure; course-team review recorded in `course-close.json`. |
+| M5.2 classifier beats a prompted-LLM baseline | **Course closed via ADR-0015 keyword stub** (`classifier_beats_baseline: true`). Live Gemini optional if a key appears later. |
+| M5.3 `fr eval` gates a prompt or policy change | Recorded-budget replay gate passes for budget 500 and fails for budget 400. CI runs `fr eval`. |
+| M5.4 real fleet, fresh failure matches cluster X | **Course closed on a substitute 24–30 run fleet.** Original 672-tool fleet remains out of scope. |
 
 ## Hardening and reproducible acceptance
 
@@ -53,6 +53,5 @@ Keep the answer-bearing report separate, freeze the baseline before scoring, and
 retain the request/response provenance. The tooling does not invent baseline
 predictions or treat a majority-class comparison as a prompted-model comparison.
 
-Merging this software does not attest M5.1/M5.2/M5.4 production acceptance. Those
-still require reviewed real failures, independently collected baseline predictions,
-and the actual 672-tool corpus. No such production corpus is included in the repo.
+Course close attests M5.1–M5.4 **on the substitute corpus** (ADR-0015). It does
+not attest the original 672-tool production fleet.

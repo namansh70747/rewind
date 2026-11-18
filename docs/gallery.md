@@ -13,6 +13,10 @@ real customer data is claimed.
 Import a downloaded sample with `fr import failed.json`, then run
 `fr verify RUN_ID --n 50`. Use `fr demo` to regenerate all three and the dashboard.
 
+These three bundles are the public Month 6 sample gallery. They contain no API
+keys. Live NVIDIA/Gemini recordings stay on the development machine (see
+[month2-verification](month2-verification.md)).
+
 Run `python examples/alignment_demo.py` to inspect an inserted step with the aligned
 dashboard. Open `.rewind/alignment.html`; selecting an alignment row reveals both
 sides and moves the inspector to the corresponding recorded boundary.
