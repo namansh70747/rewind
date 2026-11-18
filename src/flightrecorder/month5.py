@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from collections import Counter
 from typing import Any
 
@@ -244,6 +245,69 @@ def keyword_stub_label(text: str, identity: str, labels: list[str]) -> str:
     return guess
 
 
+LIVE_BASELINE_PROMPT = (
+    "Predict one taxonomy label for these agent-run event features. "
+    "Reply with exactly one label from the allowed list. No extra words."
+)
+
+
+def _normalize_live_label(text: str, labels: list[str]) -> str:
+    lowered = text.strip().lower()
+    for label in sorted(labels, key=len, reverse=True):
+        if label.lower() in lowered:
+            return label
+    return sorted(labels)[0]
+
+
+def live_prompted_predictions(
+    inputs: dict[str, Any], provider_name: str | None = None
+) -> dict[str, Any] | None:
+    """Collect a prompted baseline from Gemini or NVIDIA. Returns None if no key."""
+    import httpx
+
+    from .providers import PROVIDERS
+
+    order = [provider_name] if provider_name else ["gemini", "nvidia"]
+    chosen = None
+    for name in order:
+        if not name or name not in PROVIDERS:
+            continue
+        spec = PROVIDERS[name]
+        if os.environ.get(spec.key_env):
+            chosen = spec
+            break
+    if chosen is None:
+        return None
+    labels = list(inputs["labels"])
+    prompt_text = LIVE_BASELINE_PROMPT + " Allowed: " + ", ".join(sorted(labels))
+    rows = []
+    with httpx.Client(timeout=120, trust_env=False) as client:
+        for item in inputs["inputs"]:
+            response = client.post(
+                chosen.url,
+                headers=chosen.headers(os.environ.get(chosen.key_env, "")),
+                json=chosen.body(
+                    chosen.default_model,
+                    [{"role": "user", "content": prompt_text + "\n" + str(item["text"])}],
+                ),
+            )
+            response.raise_for_status()
+            rows.append(
+                {
+                    "id": item["id"],
+                    "label": _normalize_live_label(chosen.extract(response.json()), labels),
+                }
+            )
+    return {
+        "predictions": rows,
+        "provenance": {
+            "provider": chosen.name,
+            "model": chosen.default_model,
+            "prompt_sha256": hashlib.sha256(prompt_text.encode()).hexdigest(),
+        },
+    }
+
+
 def keyword_stub_predictions(inputs: dict[str, Any]) -> dict[str, Any]:
     labels = list(inputs["labels"])
     rows = [
@@ -263,8 +327,8 @@ def keyword_stub_predictions(inputs: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def close_month5_gates(per_family: int = 10) -> dict[str, Any]:
-    """Run the course Month 5 close: substitute fleet, match, clusters, heuristic baseline."""
+def close_month5_gates(per_family: int = 10, live: bool = False) -> dict[str, Any]:
+    """Run the course Month 5 close: substitute fleet, match, clusters, Gemini/NVIDIA baseline."""
     from .baseline import prepare_inputs
     from .fleet import compare_baseline, train_classifier
 
@@ -277,8 +341,9 @@ def close_month5_gates(per_family: int = 10) -> dict[str, Any]:
     samples = classifier_rows(12)
     learned = train_classifier(samples)
     blinded = prepare_inputs(samples, learned)
-    stub = keyword_stub_predictions(blinded)
-    compared = compare_baseline(learned, stub)
+    live_baseline = live_prompted_predictions(blinded) if live else None
+    baseline = live_baseline or keyword_stub_predictions(blinded)
+    compared = compare_baseline(learned, baseline)
     clusters = cluster_agreement(corpus)
     matched = match_failure(fresh, others, limit=5)
     return {
@@ -293,12 +358,14 @@ def close_month5_gates(per_family: int = 10) -> dict[str, Any]:
         "classifier_macro_f1": learned["test"]["macro avg"]["f1-score"],
         "majority_baseline_macro_f1": learned["majority_baseline_macro_f1"],
         "heuristic_baseline": compared,
+        "baseline_source": baseline["provenance"]["model"],
         "human_evaluation": (
             "Course team reviewed the three synthetic families and confirmed "
             "neighbors stay inside the same symptom family."
         ),
         "qualification": (
             "Substitute local fleet (ADR-0015). Not the original 672-tool / "
-            "10-provider production gate. Keyword stub is not a live Gemini call."
+            "10-provider production gate. Baseline is Gemini/NVIDIA when a key "
+            "is configured, otherwise keyword-stub-v1."
         ),
     }

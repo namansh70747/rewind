@@ -98,43 +98,31 @@ def test_fixture_runtime_exception_is_an_explicit_failure(tmp_path: Path) -> Non
     assert "broken agent" in result["fixtures"][0]["detail"]
 
 
-@pytest.mark.parametrize("provider", ["openai", "anthropic"])
+@pytest.mark.parametrize("provider", ["nvidia", "gemini"])
 def test_live_corpus_agent_records_five_steps_and_replays_offline(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, provider: str
 ) -> None:
     from flightrecorder.scripts import verify_script
 
-    monkeypatch.setenv("OPENAI_API_KEY", "fixture-only")
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "fixture-only")
+    monkeypatch.setenv("NVIDIA_API_KEY", "fixture-only")
+    monkeypatch.setenv("GEMINI_API_KEY", "fixture-only")
     calls = []
 
     def serve(self: httpx.HTTPTransport, request: httpx.Request) -> httpx.Response:
         calls.append(request.url.host)
-        if provider == "openai":
-            body = {
-                "id": "chatcmpl-test",
-                "object": "chat.completion",
-                "created": 1,
-                "model": "test",
-                "choices": [
-                    {
-                        "index": 0,
-                        "message": {"role": "assistant", "content": "OK"},
-                        "finish_reason": "stop",
-                    }
-                ],
-            }
-        else:
-            body = {
-                "id": "msg_test",
-                "type": "message",
-                "role": "assistant",
-                "model": "test",
-                "content": [{"type": "text", "text": "OK"}],
-                "stop_reason": "end_turn",
-                "stop_sequence": None,
-                "usage": {"input_tokens": 1, "output_tokens": 1},
-            }
+        body = {
+            "id": "chatcmpl-test",
+            "object": "chat.completion",
+            "created": 1,
+            "model": "test",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": "OK"},
+                    "finish_reason": "stop",
+                }
+            ],
+        }
         return httpx.Response(200, json=body)
 
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", serve)

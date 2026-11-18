@@ -7,15 +7,15 @@
 ## Context
 
 The original Month 2 gate asked for unmodified OpenAI and Anthropic agents.
-Those APIs are billed. The team already records and replays **NVIDIA, Gemini,
-and Groq** over the same `httpx` interceptor. Month 5's 672-tool fleet is not
-available. Month 6's LoRA stretch was already cut in ADR-0014.
+Those APIs are billed. Remaining live work uses **NVIDIA and Gemini only** over
+the same `httpx` interceptor. Groq stays as optional extra HTTP evidence, not a
+required key. Month 5's 672-tool fleet is not available. Month 6's LoRA stretch
+was already cut in ADR-0014.
 
 ## Decision
 
-1. Treat NVIDIA / Gemini / Groq (and Groq's OpenAI-compatible HTTP) as the
-   **course equivalent** of the OpenAI/Anthropic live-provider gate. The capture
-   plane is still `httpx`; the plan is not rewritten.
+1. Treat NVIDIA and Gemini as the **course equivalent** of the OpenAI/Anthropic
+   live-provider gate. The capture plane is still `httpx`; the plan is not rewritten.
 2. Freeze the on-disk format described in ADR-0010 as **Accepted** for v0.1.0
    course release: BLAKE3 chains (`b3:`), zstd CAS, portable JSON v2 with
    SHA-256 envelope checksum, legacy BLAKE2b/zlib readable.

@@ -1,0 +1,6 @@
+{
+  "schema": "rewind.month2-course-close.v1",
+  "providers": {},
+  "passed": false,
+  "detail": "Configure NVIDIA_API_KEY and/or GEMINI_API_KEY locally, then run python examples/month2_close_gates.py. Keys are never stored in git."
+}

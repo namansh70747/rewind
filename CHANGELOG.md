@@ -3,7 +3,9 @@
 ## Course close Months 5–6 — 2026-11-18
 
 - ADR-0010 recording format **accepted** for v0.1.0 (BLAKE3/zstd/JSON v2).
-- ADR-0015: NVIDIA/Gemini/Groq substitute the billed OpenAI/Anthropic live gate.
+- ADR-0015: NVIDIA/Gemini substitute the billed OpenAI/Anthropic live gate.
+- Month 2 live corpus harness now records NVIDIA/Gemini only (`examples/provider_corpus.py`).
+- Month 5 prompted baseline uses Gemini or NVIDIA when a key is configured.
 - Month 5 leftover evidence: substitute fleet, keyword-stub baseline, `fr eval` CI,
   killer-demo and gallery docs (`docs/killer-demo.md`, `docs/month5-course-close.md`).
 - LoRA remains cut (ADR-0014). PyPI publish remains optional.
