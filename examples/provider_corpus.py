@@ -1,76 +1,83 @@
-"""Record a controlled live-provider corpus, then verify without additional API calls.
+"""Record a controlled NVIDIA or Gemini corpus, then verify without extra API calls.
 
-Requires your own configured provider credentials and explicitly selected model.
-This makes three billable model calls per recording. It is not real fleet evidence.
+Requires NVIDIA_API_KEY or GEMINI_API_KEY locally. Makes three model calls per
+recording. This is not a 672-tool fleet. OpenAI and Anthropic are out of course
+scope (ADR-0015).
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import os
 from pathlib import Path
 
 from flightrecorder.evaluation import evaluate_manifest
 from flightrecorder.portable import export_run
+from flightrecorder.providers import GEMINI, NVIDIA, PROVIDERS
 from flightrecorder.redaction import redact_text
 from flightrecorder.scripts import record_script
 
+COURSE_PROVIDERS = {"nvidia": NVIDIA, "gemini": GEMINI}
+
 
 def agent_source(provider: str, model: str, case: int) -> str:
-    if provider == "openai":
-        imports = "from openai import OpenAI\nclient = OpenAI(max_retries=0)"
-        call = (
-            f"client.chat.completions.create(model={model!r}, max_tokens=32, "
-            "messages=[{'role': 'user', 'content': prompt}]).choices[0].message.content"
-        )
-    else:
-        imports = "from anthropic import Anthropic\nclient = Anthropic(max_retries=0)"
-        call = (
-            f"client.messages.create(model={model!r}, max_tokens=32, "
-            "messages=[{'role': 'user', 'content': prompt}]).model_dump(mode='json')"
-        )
+    if provider not in COURSE_PROVIDERS:
+        raise ValueError("course corpus uses nvidia or gemini only")
+    price = 420 if case % 2 else 720
     return f"""import json
+import os
+
+import httpx
+
 from flightrecorder import tool
-{imports}
+from flightrecorder.providers import PROVIDERS
+
+provider = PROVIDERS[{provider!r}]
+key = os.environ.get(provider.key_env, "")
+
 
 @tool(name="normalize_case", mutating=False)
 def normalize_case(value):
     return {{"case": value, "budget": 500}}
 
+
 @tool(name="check_budget", mutating=False)
 def check_budget(price):
     return {{"price": price, "within_budget": price <= 500}}
 
+
 case = normalize_case({case})
 outputs = []
-try:
+with httpx.Client(timeout=120, trust_env=False) as client:
     for step in range(3):
-        prompt = "Controlled Rewind qualification. Reply briefly with OK. " + str(case) + " step " + str(step)
-        outputs.append({call})
-    result = check_budget({420 if case % 2 else 720})
+        prompt = "Controlled Rewind qualification. Reply briefly with OK. {case} step " + str(step)
+        response = client.post(
+            provider.url,
+            headers=provider.headers(key),
+            json=provider.body({model!r}, [{{"role": "user", "content": prompt}}]),
+        )
+        response.raise_for_status()
+        outputs.append(provider.extract(response.json()))
+    result = check_budget({price})
     print(json.dumps({{"outputs": outputs, "budget": result}}, sort_keys=True))
-finally:
-    client.close()
 """
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("provider", choices=["openai", "anthropic"])
-    parser.add_argument("model", help="a model available to your account")
-    parser.add_argument("--runs", type=int, default=10, choices=range(10, 16))
+    parser.add_argument("provider", choices=sorted(COURSE_PROVIDERS))
+    parser.add_argument("model", nargs="?", default=None, help="defaults to the course provider model")
+    parser.add_argument("--runs", type=int, default=10, choices=range(2, 16))
     parser.add_argument("--replays", type=int, default=50)
     parser.add_argument("--output", type=Path, default=Path(".rewind/provider-corpus"))
     args = parser.parse_args()
     if not 50 <= args.replays <= 1000:
         parser.error("qualification requires between 50 and 1000 offline replays")
-    key = "OPENAI_API_KEY" if args.provider == "openai" else "ANTHROPIC_API_KEY"
-    if not os.environ.get(key):
-        parser.error(f"configure {key} locally; never place credentials in source or chat")
-    if importlib.util.find_spec(args.provider) is None:
-        parser.error("install the integrations extra first")
+    spec = PROVIDERS[args.provider]
+    model = args.model or spec.default_model
+    if not os.environ.get(spec.key_env):
+        parser.error(f"configure {spec.key_env} locally; never place credentials in source or chat")
     if args.output.exists() and any(args.output.iterdir()):
         parser.error("choose an empty output directory to preserve earlier evidence")
     args.output.mkdir(parents=True, exist_ok=True)
@@ -78,27 +85,26 @@ def main() -> None:
     failures = []
     for index in range(args.runs):
         script = args.output / f"agent-{index:02}.py"
-        script.write_text(agent_source(args.provider, args.model, index), encoding="utf-8")
+        script.write_text(agent_source(args.provider, model, index), encoding="utf-8")
         try:
             recording = record_script(script)
             recording.metadata["qualification_origin"] = "controlled-live-provider"
             recording.metadata["external_provider"] = args.provider
-            recording.metadata["external_model"] = args.model
+            recording.metadata["external_model"] = model
             destination = args.output / f"run-{index:02}.json"
             export_run(recording, destination)
             fixtures.append({"script": script.name, "recording": destination.name})
             print(f"Recorded {index + 1}/{args.runs}: {len(recording.boundaries)} boundaries")
         except Exception as exc:
             failures.append({"case": index, "error": redact_text(str(exc))})
-            # Avoid repeating a billing/authentication/provider failure across the corpus.
             break
     manifest = args.output / "fixtures.json"
     manifest.write_text(json.dumps(fixtures, indent=2), encoding="utf-8")
     evaluation = evaluate_manifest(manifest, args.replays) if fixtures else {"passed": False}
     report = {
-        "origin": "controlled live-provider prompts, not author fleet or real failing-agent demo",
+        "origin": "controlled NVIDIA/Gemini prompts, not author fleet or billed OpenAI/Anthropic",
         "provider": args.provider,
-        "model": args.model,
+        "model": model,
         "requested_recordings": args.runs,
         "completed_recordings": len(fixtures),
         "capture_failures": failures,

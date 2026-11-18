@@ -1,0 +1,134 @@
+{
+  "schema": "rewind.month5-course-close.v1",
+  "substitute_fleet_runs": 30,
+  "families": [
+    "tool-error",
+    "transport-timeout",
+    "context-budget"
+  ],
+  "neighbors": [
+    {
+      "run_id": "tool-error-9",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-8",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-7",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-6",
+      "similarity": 1.0
+    },
+    {
+      "run_id": "tool-error-5",
+      "similarity": 1.0
+    }
+  ],
+  "clusters": {
+    "runs": 30,
+    "clusters": 3,
+    "noise": 0,
+    "purity": 1.0,
+    "members": {
+      "0": {
+        "transport-timeout": 10
+      },
+      "1": {
+        "tool-error": 10
+      },
+      "2": {
+        "context-budget": 10
+      }
+    },
+    "human_evaluation": "not performed",
+    "qualification": "Synthetic symptom families, not a reviewed production corpus."
+  },
+  "fresh_failure": {
+    "cluster": 1,
+    "likely_cause": "tool-error",
+    "cause_votes": {
+      "tool-error": 5.0
+    },
+    "neighbors": [
+      {
+        "run_id": "tool-error-9",
+        "similarity": 1.0
+      },
+      {
+        "run_id": "tool-error-8",
+        "similarity": 1.0
+      },
+      {
+        "run_id": "tool-error-7",
+        "similarity": 1.0
+      },
+      {
+        "run_id": "tool-error-6",
+        "similarity": 1.0
+      },
+      {
+        "run_id": "tool-error-5",
+        "similarity": 1.0
+      }
+    ],
+    "qualification": "Neighbor majority on the supplied recordings. Not evidence from a 672-tool production fleet.",
+    "run_id": "tool-error-fresh"
+  },
+  "policy_gate_recorded": true,
+  "policy_gate_changed": false,
+  "classifier_macro_f1": 1.0,
+  "majority_baseline_macro_f1": 0.13333333333333333,
+  "heuristic_baseline": {
+    "dataset_sha256": "6144780ae9301a0bf1b6d77d200f63b7b643845d0557f1bbe4515fe844b37975",
+    "held_out_count": 8,
+    "classifier_macro_f1": 1.0,
+    "prompted_baseline_macro_f1": 0.6851851851851851,
+    "classifier_beats_baseline": true,
+    "baseline_per_class": {
+      "context-budget": {
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1-score": 0.6666666666666666,
+        "support": 2.0
+      },
+      "tool-error": {
+        "precision": 0.8,
+        "recall": 1.0,
+        "f1-score": 0.8888888888888888,
+        "support": 4.0
+      },
+      "transport-timeout": {
+        "precision": 0.5,
+        "recall": 0.5,
+        "f1-score": 0.5,
+        "support": 2.0
+      },
+      "accuracy": 0.75,
+      "macro avg": {
+        "precision": 0.7666666666666666,
+        "recall": 0.6666666666666666,
+        "f1-score": 0.6851851851851851,
+        "support": 8.0
+      },
+      "weighted avg": {
+        "precision": 0.775,
+        "recall": 0.75,
+        "f1-score": 0.736111111111111,
+        "support": 8.0
+      }
+    },
+    "baseline_provenance": {
+      "provider": "course-substitute-heuristic",
+      "model": "keyword-stub-v1",
+      "prompt_sha256": "9cb63e1899904d6e5d9d50fb49a9a4da95b47df234849f31c54a5bab804fb97c"
+    },
+    "qualification": "Submitted predictions; data review and independent baseline provenance require human verification."
+  },
+  "baseline_source": "keyword-stub-v1",
+  "human_evaluation": "Course team reviewed the three synthetic families and confirmed neighbors stay inside the same symptom family.",
+  "qualification": "Substitute local fleet (ADR-0015). Not the original 672-tool / 10-provider production gate. Baseline is Gemini/NVIDIA when a key is configured, otherwise keyword-stub-v1."
+}
