@@ -22,7 +22,7 @@ On the development store on 9 November 2026, the audit examined 26 recordings an
 
 ## Remaining original Month 2 gates
 
-- Billed OpenAI/Anthropic live corpus remains optional. Course close treats NVIDIA/Gemini/Groq as the equivalent httpx providers (**ADR-0015**).
+- Billed OpenAI/Anthropic live corpus is out of course scope. Remaining live capture uses NVIDIA and Gemini only (**ADR-0015**). Run `python examples/month2_close_gates.py` with those keys; summary: [validation/month2/course-close.json](validation/month2/course-close.json).
 - Recorded replay is only as complete as captured boundaries. Python socket auditing is best-effort, not an OS sandbox.
 - Storage format is **Accepted** for v0.1.0 (**ADR-0010**): BLAKE3/zstd + JSON v2.
 - The 26-run scan is a limited known-pattern result, not proof that all stored content or backups are free of secrets.

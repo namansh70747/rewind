@@ -128,6 +128,7 @@
     },
     "qualification": "Submitted predictions; data review and independent baseline provenance require human verification."
   },
+  "baseline_source": "keyword-stub-v1",
   "human_evaluation": "Course team reviewed the three synthetic families and confirmed neighbors stay inside the same symptom family.",
-  "qualification": "Substitute local fleet (ADR-0015). Not the original 672-tool / 10-provider production gate. Keyword stub is not a live Gemini call."
+  "qualification": "Substitute local fleet (ADR-0015). Not the original 672-tool / 10-provider production gate. Baseline is Gemini/NVIDIA when a key is configured, otherwise keyword-stub-v1."
 }

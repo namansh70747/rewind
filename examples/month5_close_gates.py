@@ -1,18 +1,20 @@
-"""Close the course Month 5 leftover gates without paid OpenAI/Anthropic keys.
+"""Close leftover Month 5 gates using Gemini or NVIDIA when a key is set.
 
-Writes docs/validation/month5/course-close.json. No live LLM is called.
+Writes docs/validation/month5/course-close.json. OpenAI/Anthropic are not used.
 """
 
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from flightrecorder.month5 import close_month5_gates
 
 
 def main() -> None:
-    report = close_month5_gates(10)
+    live = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("NVIDIA_API_KEY"))
+    report = close_month5_gates(10, live=live)
     out = Path("docs/validation/month5/course-close.json")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

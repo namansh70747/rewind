@@ -22,6 +22,43 @@ def test_course_close_beats_keyword_stub_and_matches_fresh_failure() -> None:
     assert all(item["run_id"].startswith("tool-error") for item in report["neighbors"])
 
 
+def test_live_gemini_baseline_uses_allowed_labels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("sklearn")
+    from flightrecorder.month5 import live_prompted_predictions
+
+    monkeypatch.setenv("GEMINI_API_KEY", "fixture-only")
+    monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
+
+    def serve(self, request):  # type: ignore[no-untyped-def]
+        import httpx
+
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": "this looks like a transport-timeout",
+                        }
+                    }
+                ]
+            },
+        )
+
+    monkeypatch.setattr("httpx.HTTPTransport.handle_request", serve)
+    inputs = {
+        "labels": ["tool-error", "transport-timeout", "context-budget"],
+        "inputs": [{"id": "abc", "text": "ReadTimeout on POST /v1/chat"}],
+    }
+    result = live_prompted_predictions(inputs)
+    assert result is not None
+    assert result["provenance"]["provider"] == "gemini"
+    assert result["predictions"][0]["label"] == "transport-timeout"
+
+
 def test_eval_cli_is_a_ci_gate() -> None:
     kept = CliRunner().invoke(app, ["eval", "--n", "1", "--budget", "500"])
     assert kept.exit_code == 0, kept.output

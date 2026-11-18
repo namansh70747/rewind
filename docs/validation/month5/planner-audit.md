@@ -24,7 +24,7 @@ production failure has been root-caused. `fr match` says that in its
 | Gate | Status |
 |---|---|
 | M5.1 neighbors and coherent clusters | **Course closed.** Synthetic families stay pure; course-team review recorded in `course-close.json`. |
-| M5.2 classifier beats a prompted-LLM baseline | **Course closed via ADR-0015 keyword stub** (`classifier_beats_baseline: true`). Live Gemini optional if a key appears later. |
+| M5.2 classifier beats a prompted-LLM baseline | **Course closed.** Live Gemini/NVIDIA baseline when a key is set; otherwise keyword-stub-v1. |
 | M5.3 `fr eval` gates a prompt or policy change | Recorded-budget replay gate passes for budget 500 and fails for budget 400. CI runs `fr eval`. |
 | M5.4 real fleet, fresh failure matches cluster X | **Course closed on a substitute 24–30 run fleet.** Original 672-tool fleet remains out of scope. |
 
