@@ -122,6 +122,10 @@ Thumbs.db
 recordings/
 blobs/
 *.db
+*.db-wal
+*.db-shm
+demos/week2_mam/data/*
+!demos/week2_mam/data/.gitkeep
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal

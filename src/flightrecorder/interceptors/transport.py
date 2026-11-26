@@ -22,7 +22,7 @@ import base64
 import codecs
 import json
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx
 
@@ -127,6 +127,7 @@ class RecordingTransport(httpx.BaseTransport):
     def __init__(self, session: Session, inner: httpx.BaseTransport | None = None) -> None:
         self._session = session
         self._inner = inner
+        self._http = httpx
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         # Redact at capture: secrets in the URL/body never reach the boundary log or store.
@@ -151,7 +152,7 @@ class RecordingTransport(httpx.BaseTransport):
                     for chunk in resp.iter_bytes():
                         chunks.append(chunk)
                         offsets.append(time.perf_counter_ns() - started)
-                except httpx.TransportError as exc:
+                except self._http.TransportError as exc:
                     return {
                         "transport_error": {
                             "type": type(exc).__name__,
@@ -171,10 +172,14 @@ class RecordingTransport(httpx.BaseTransport):
             return recorded
 
         rec = self._session.mediate("http", redact_text(request.url.path), req_repr, produce)
-        return _rebuild_response(
-            rec,
-            request,
-            timing_scale=_TIMING_SCALE.get() if self._session.mode == "replay" else 0.0,
+        return cast(
+            "httpx.Response",
+            _rebuild_response(
+                rec,
+                request,
+                timing_scale=_TIMING_SCALE.get() if self._session.mode == "replay" else 0.0,
+                http=self._http,
+            ),
         )
 
     def close(self) -> None:
@@ -188,6 +193,7 @@ class AsyncRecordingTransport(httpx.AsyncBaseTransport):
     def __init__(self, session: Session, inner: httpx.AsyncBaseTransport | None = None) -> None:
         self._session = session
         self._inner = inner
+        self._http = httpx
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         req_repr: dict[str, Any] = redact(
@@ -209,7 +215,7 @@ class AsyncRecordingTransport(httpx.AsyncBaseTransport):
                     async for chunk in resp.aiter_bytes():
                         chunks.append(chunk)
                         offsets.append(time.perf_counter_ns() - started)
-                except httpx.TransportError as exc:
+                except self._http.TransportError as exc:
                     return {
                         "transport_error": {
                             "type": type(exc).__name__,
@@ -231,11 +237,15 @@ class AsyncRecordingTransport(httpx.AsyncBaseTransport):
         rec = await self._session.mediate_async(
             "http", redact_text(request.url.path), req_repr, produce
         )
-        return _rebuild_response(
-            rec,
-            request,
-            is_async=True,
-            timing_scale=_TIMING_SCALE.get() if self._session.mode == "replay" else 0.0,
+        return cast(
+            "httpx.Response",
+            _rebuild_response(
+                rec,
+                request,
+                is_async=True,
+                timing_scale=_TIMING_SCALE.get() if self._session.mode == "replay" else 0.0,
+                http=self._http,
+            ),
         )
 
     async def aclose(self) -> None:
@@ -245,15 +255,16 @@ class AsyncRecordingTransport(httpx.AsyncBaseTransport):
 
 def _rebuild_response(
     rec: dict[str, Any],
-    request: httpx.Request,
+    request: Any,
     *,
     is_async: bool = False,
     timing_scale: float = 0.0,
-) -> httpx.Response:
+    http: Any = httpx,
+) -> Any:
     if "transport_error" in rec:
         error = rec["transport_error"]
         allowed = {
-            name: getattr(httpx, name)
+            name: getattr(http, name)
             for name in (
                 "ConnectError",
                 "ConnectTimeout",
@@ -269,7 +280,7 @@ def _rebuild_response(
                 "TransportError",
             )
         }
-        exception = allowed.get(error["type"], httpx.TransportError)
+        exception = allowed.get(error["type"], http.TransportError)
         raise exception(error["message"], request=request)
     status = int(rec["status"])
     if "chunks" in rec:  # streamed — hand back the same frames as a live stream
@@ -301,13 +312,45 @@ def _rebuild_response(
                     yield chunk
 
             content = _gen()
-        return httpx.Response(status_code=status, headers=headers, content=content, request=request)
+        return http.Response(status_code=status, headers=headers, content=content, request=request)
     headers = {"content-type": rec["content_type"]} if rec.get("content_type") else None
     body = rec.get("body")
     if body is None:
-        return httpx.Response(status_code=status, headers=headers, request=request)
+        return http.Response(status_code=status, headers=headers, request=request)
     if "json" in body:
-        return httpx.Response(
+        return http.Response(
             status_code=status, json=body["json"], headers=headers, request=request
         )
-    return httpx.Response(status_code=status, text=body["text"], headers=headers, request=request)
+    return http.Response(status_code=status, text=body["text"], headers=headers, request=request)
+
+
+def httpx2_recording_transport(session: Session, inner: Any | None = None) -> Any:
+    """Record an ``httpx2`` client. OpenAI 3, Anthropic 2, and MCP 2 use that stack."""
+    import httpx2
+
+    class Transport(httpx2.BaseTransport):
+        def __init__(self) -> None:
+            self._session = session
+            self._inner = inner
+            self._http = httpx2
+
+        handle_request = RecordingTransport.handle_request  # type: ignore[assignment]
+        close = RecordingTransport.close
+
+    return Transport()
+
+
+def httpx2_async_recording_transport(session: Session, inner: Any | None = None) -> Any:
+    """Async twin of :func:`httpx2_recording_transport`."""
+    import httpx2
+
+    class Transport(httpx2.AsyncBaseTransport):
+        def __init__(self) -> None:
+            self._session = session
+            self._inner = inner
+            self._http = httpx2
+
+        handle_async_request = AsyncRecordingTransport.handle_async_request  # type: ignore[assignment]
+        aclose = AsyncRecordingTransport.aclose
+
+    return Transport()

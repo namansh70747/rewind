@@ -14,6 +14,7 @@ It is written to be **precise and executable**: every month has a milestone gate
 | [`team-and-cadence.md`](./team-and-cadence.md) | The three roles, who owns what, the weekly rhythm, Definition of Done, tooling |
 | [`roadmap-6-months.md`](./roadmap-6-months.md) | **The centerpiece** — all 26 weeks, per-person targets + exit criteria |
 | [`milestones-and-exit-criteria.md`](./milestones-and-exit-criteria.md) | The 6 milestone gates, the final Definition of Done, the killer-demo script |
+| [`month1-status.md`](./month1-status.md) | Month 1 execution status: M0/M1 gates and the timeline demo |
 | [`risks-and-spikes.md`](./risks-and-spikes.md) | The pre-mortem risk register + the week-1–3 de-risking spikes |
 | [`tech-stack-and-oss-map.md`](./tech-stack-and-oss-map.md) | The exact free/OSS library for every subsystem + licenses + gotchas |
 | [`algorithms-and-math.md`](./algorithms-and-math.md) | The real math: hash-chains, boundary matching, alignment, checkpointing, HDBSCAN, LoRA |

@@ -1,5 +1,29 @@
 # Changelog
 
+## SDK majors — 2026-11-26
+
+- Capture now records `httpx2` clients, so OpenAI 3 and Anthropic 2 replay through the same transport log.
+- MCP 2 servers use `MCPServer`. Streamable HTTP uses the `httpx2` client and the two-stream return.
+
+## Months 1–6 on main — 2026-11-26
+
+- Month 1 timeline demo is in `demos/week2_mam/` and covered by `tests/test_week2_mam_demo.py`.
+- `fr record -- python agent.py` records an unmodified script. `@tool` works with or without arguments.
+- Retry loops keep an occurrence index so repeated calls to the same endpoint replay in order.
+- OpenAI and Anthropic example agents replay bit-exact against mock transports.
+- Month 5–6 course close (ADR-0010 accepted, ADR-0015 provider substitute) is included.
+- LoRA stays cut. PyPI publish stays optional. The original 672-tool fleet is still out of scope.
+
+## Course close Months 5–6 — 2026-11-18
+
+- ADR-0010 recording format **accepted** for v0.1.0 (BLAKE3/zstd/JSON v2).
+- ADR-0015: NVIDIA/Gemini substitute the billed OpenAI/Anthropic live gate.
+- Month 2 live corpus harness now records NVIDIA/Gemini only (`examples/provider_corpus.py`).
+- Month 5 prompted baseline uses Gemini or NVIDIA when a key is configured.
+- Month 5 leftover evidence: substitute fleet, keyword-stub baseline, `fr eval` CI,
+  killer-demo and gallery docs (`docs/killer-demo.md`, `docs/month5-course-close.md`).
+- LoRA remains cut (ADR-0014). PyPI publish remains optional.
+
 ## Acceptance hardening — 2026-11-14
 
 - Concurrent replay rejects wrong final outputs and fingerprints.

@@ -40,7 +40,12 @@ import httpx
 
 from .boundary import Cassette, Divergence, Session
 from .integrity import validate
-from .interceptors.transport import AsyncRecordingTransport, RecordingTransport
+from .interceptors.transport import (
+    AsyncRecordingTransport,
+    RecordingTransport,
+    httpx2_async_recording_transport,
+    httpx2_recording_transport,
+)
 from .offline import NetworkBlocked, offline_guard
 from .replay import VerifyResult
 
@@ -52,6 +57,54 @@ if TYPE_CHECKING:
 _active_session: ContextVar[Session | None] = ContextVar("flightrecorder_session", default=None)
 _orig_client_init = httpx.Client.__init__
 _orig_async_client_init = httpx.AsyncClient.__init__
+_httpx2: Any = None
+_orig_httpx2_init: Any = None
+_orig_httpx2_async_init: Any = None
+
+
+def _load_httpx2() -> Any:
+    """OpenAI 3, Anthropic 2, and MCP 2 build clients from ``httpx2``, not ``httpx``."""
+    global _httpx2, _orig_httpx2_init, _orig_httpx2_async_init
+    if _httpx2 is not None:
+        return _httpx2
+    try:
+        import httpx2
+    except ImportError:
+        return None
+    _httpx2 = httpx2
+    _orig_httpx2_init = httpx2.Client.__init__
+    _orig_httpx2_async_init = httpx2.AsyncClient.__init__
+    return httpx2
+
+
+def _patched_httpx2_init(self: Any, *args: Any, **kwargs: Any) -> None:
+    _orig_httpx2_init(self, *args, **kwargs)
+    session = _active_session.get()
+    if session is None:
+        return
+    if self._transport is not None:
+        self._transport = httpx2_recording_transport(session, self._transport)
+    self._mounts = {
+        pattern: httpx2_recording_transport(session, transport) if transport is not None else None
+        for pattern, transport in self._mounts.items()
+    }
+
+
+def _patched_httpx2_async_init(self: Any, *args: Any, **kwargs: Any) -> None:
+    _orig_httpx2_async_init(self, *args, **kwargs)
+    session = _active_session.get()
+    if session is None:
+        return
+    if self._transport is not None:
+        self._transport = httpx2_async_recording_transport(session, self._transport)
+    self._mounts = {
+        pattern: (
+            httpx2_async_recording_transport(session, transport) if transport is not None else None
+        )
+        for pattern, transport in self._mounts.items()
+    }
+
+
 #: Nesting depth for the process-global ``__init__`` patches (sync + async are patched and
 #: restored together). ContextVar correctly stacks sessions, but restoring ``__init__`` on
 #: the first nested exit would unpatch an outer ``capture()`` / ``replay_run()`` in flight.
@@ -109,9 +162,13 @@ def _patched(session: Session) -> Iterator[None]:
     """Install the httpx (sync + async) patches + bind the active session for the block."""
     global _patch_depth
     token = _active_session.set(session)
+    httpx2 = _load_httpx2()
     if _patch_depth == 0:
         httpx.Client.__init__ = _patched_client_init  # type: ignore[method-assign]
         httpx.AsyncClient.__init__ = _patched_async_client_init  # type: ignore[method-assign]
+        if httpx2 is not None:
+            httpx2.Client.__init__ = _patched_httpx2_init
+            httpx2.AsyncClient.__init__ = _patched_httpx2_async_init
     _patch_depth += 1
     try:
         yield
@@ -120,6 +177,9 @@ def _patched(session: Session) -> Iterator[None]:
         if _patch_depth == 0:
             httpx.Client.__init__ = _orig_client_init  # type: ignore[method-assign]
             httpx.AsyncClient.__init__ = _orig_async_client_init  # type: ignore[method-assign]
+            if httpx2 is not None:
+                httpx2.Client.__init__ = _orig_httpx2_init
+                httpx2.AsyncClient.__init__ = _orig_httpx2_async_init
         _active_session.reset(token)
 
 
