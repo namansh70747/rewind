@@ -29,6 +29,7 @@ from flightrecorder.boundary import Divergence
 from flightrecorder.diagnosis import diagnose
 from flightrecorder.integrity import validate
 from flightrecorder.portable import MAX_BYTES, envelope, import_run
+from flightrecorder.provenance import check_source, digest
 from flightrecorder.providers import PROVIDERS
 from flightrecorder.store import RunStore, RunSummary
 
@@ -576,9 +577,25 @@ class Handler(BaseHTTPRequestHandler):
                 replays = body.get("replays", 10)
                 if type(replays) is not int or not 1 <= replays <= 100:
                     raise ValueError("Replay count must be between 1 and 100.")
-                job = self.server.launch(
-                    "verify", self.server.source(source), body["run_id"], replays
-                )
+                script = self.server.source(source)
+                if digest(script) != run.metadata.get("source_sha256"):
+                    candidate = script.with_name(f"{script.stem}_legacy.py")
+                    if candidate.is_file():
+                        legacy = self.server.source(str(candidate))
+                        if digest(legacy) == run.metadata.get("source_sha256"):
+                            script = legacy
+                try:
+                    check_source(run.metadata, script)
+                except ValueError:
+                    self._json(
+                        {
+                            "error": "The script changed since capture. Restore the recorded source before replay, or capture a new run with the current script.",
+                            "code": "source_changed",
+                        },
+                        409,
+                    )
+                    return
+                job = self.server.launch("verify", script, body["run_id"], replays)
                 self._json({"job_id": job}, 202)
             elif path == "/api/v1/compare":
                 self._json(

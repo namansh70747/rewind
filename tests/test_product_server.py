@@ -79,6 +79,14 @@ def test_product_capture_verify_and_import(tmp_path: Path, monkeypatch: pytest.M
                 client.get("/api/v1/runs/" + run_id).json()["run"]["final_output"]
                 == "hello <redacted:custom> <redacted:custom>\n"
             )
+            original = source.read_bytes()
+            source.write_text("print('updated source')", encoding="utf-8")
+            changed = client.post(
+                "/api/v1/verify", headers=headers, json={"run_id": run_id, "replays": 3}
+            )
+            assert changed.status_code == 409
+            assert changed.json()["code"] == "source_changed"
+            source.with_name("agent_legacy.py").write_bytes(original)
             response = client.post(
                 "/api/v1/verify", headers=headers, json={"run_id": run_id, "replays": 3}
             )

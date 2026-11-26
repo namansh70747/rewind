@@ -54,16 +54,10 @@ def main() -> None:
     choice = response.json()["choices"][0]
     message = choice["message"].get("content")
     if not isinstance(message, str) or not message.strip():
-        if choice.get("finish_reason") == "length":
-            raise ValueError(
-                "Hosted model reached the completion token limit before producing a visible "
-                "release note. Increase the completion limit or choose a different model."
-            )
-        raise ValueError(
-            "Hosted model returned no visible release note "
-            f"(finish reason: {choice.get('finish_reason') or 'unknown'})."
-        )
-    print(f"{provider_id}/{model}: {message.strip()}")
+        reason = choice.get("finish_reason") or "unknown"
+        print(f"{provider_id}/{model}: release note unavailable (finish reason: {reason}).")
+    else:
+        print(f"{provider_id}/{model}: {message.strip()}")
 
     manifest = read_release_manifest()
     if manifest["revision"] != revision:
