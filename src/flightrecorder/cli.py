@@ -147,20 +147,19 @@ def show(
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
 ) -> None:
     """Print a recorded run's decision timeline."""
-    store = RunStore(db)
-    try:
-        if at is not None:
-            try:
-                console.print_json(data=store.snapshot_at(run_id, at))
-            except ValueError as exc:
-                raise typer.BadParameter(str(exc)) from exc
-            return
-        cassette = store.load(run_id)
-    except KeyError:
-        console.print(f"[red]run {run_id} not found[/]")
-        raise typer.Exit(1) from None
-    finally:
-        store.close()
+    if at is not None:
+        store = RunStore(db)
+        try:
+            console.print_json(data=store.snapshot_at(run_id, at))
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        except KeyError:
+            console.print(f"run {run_id} not found", style="red", markup=False)
+            raise typer.Exit(1) from None
+        finally:
+            store.close()
+        return
+    cassette = _load_run(run_id, db)
 
     if cassette.metadata.get("counterfactual"):
         console.print("QUARANTINED what-if · best-effort exploration", markup=False)
@@ -174,7 +173,9 @@ def show(
         table.add_row(str(b.seq), b.kind, b.key, _summarize(b.kind, b.response), b.chain_hash[:8])
     console.print(table)
     console.print(f"fingerprint: [bold]{cassette.fingerprint[:16]}…[/]")
-    console.print(f"output: {cassette.final_output}")
+    console.print(f"output: {cassette.final_output}", markup=False)
+    if "script_error" in cassette.metadata:
+        console.print(f"Agent failed: {cassette.metadata['script_error']}", markup=False)
 
 
 @app.command()
@@ -267,10 +268,13 @@ def bisect(
     elif first is None:
         console.print("no divergence — the recordings are identical", markup=False)
     else:
-        console.print(
-            f"first divergence at baseline #{first['a']} / candidate #{first['b']} · {first['category']}",
-            markup=False,
-        )
+        if first["label"] == "final-output-drift":
+            location = "final outcome"
+        else:
+            left_step = f"#{first['a']}" if first["a"] is not None else "absent"
+            right_step = f"#{first['b']}" if first["b"] is not None else "absent"
+            location = f"baseline {left_step} / candidate {right_step}"
+        console.print(f"first divergence at {location} · {first['category']}", markup=False)
         console.print(first["summary"], markup=False)
         console.print(
             f"Method: {report['comparison_method']} / {report['alignment_method']}", markup=False
@@ -404,6 +408,10 @@ def fork(
         f"Counterfactual run (quarantined, best-effort): {child_id}\n{recovered.final_output}",
         markup=False,
     )
+    if "script_error" in recovered.metadata:
+        console.print(
+            f"Forked script exception: {recovered.metadata['script_error']}", markup=False
+        )
 
 
 @app.command("export")
@@ -606,6 +614,10 @@ def record_script_command(
         run_id = store.save(cassette)
     finally:
         store.close()
+    if "script_error" in cassette.metadata:
+        console.print(
+            f"Recorded script exception: {cassette.metadata['script_error']}", markup=False
+        )
     console.print(
         f"Recorded script: {run_id}\nNext: fr verify-script {run_id} {source}", markup=False
     )

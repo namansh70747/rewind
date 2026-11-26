@@ -20,6 +20,7 @@ MAX_BYTES = 32 * 1024 * 1024
 def envelope(cassette: Cassette) -> dict[str, Any]:
     validate(cassette)
     data = asdict(cassette)
+    data["metadata"].pop("product_source", None)
     return {"format": FORMAT, "checksum": hashlib.sha256(canon(data)).hexdigest(), "run": data}
 
 
@@ -60,6 +61,7 @@ def import_run(path: Path) -> Cassette:
             if type(b.seq) is not int or not isinstance(b.kind, str) or not isinstance(b.key, str):
                 raise ValueError("invalid boundary schema")
         validate(cassette)
+        cassette.metadata.pop("product_source", None)
         return cassette
     except (KeyError, TypeError) as exc:
         raise ValueError("invalid recording schema") from exc

@@ -14,38 +14,24 @@ into agent code offline, and finds where two recordings first diverge.
 implemented and tested. This is not completion of the original six-month research
 roadmap. Capture coverage and safety limits are explicit below.
 
-## Run the complete demo
+## Capture your first agent
 
-Python 3.11+; no API key, account, GPU, or database server needed.
+From a Python 3.11+ environment, install the checkout and open a trusted workspace.
 
 ```bash
-git clone https://github.com/namansh70747/rewind.git
-cd rewind
-python -m venv .venv
-# macOS / Linux:
-source .venv/bin/activate
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install -e '.[dev]'
-fr demo
+python -m pip install -e .
+fr serve --workspace /path/to/your/agent --db .rewind/runs.db
 ```
 
-Open **`.rewind/demo.html`** in your browser. The HTML is self-contained and makes
-no network requests. The command also creates three SQLite runs and portable JSON
-recordings. Re-running the demo adds new runs; it never deletes prior recordings.
+Open the loopback URL printed by `fr serve`. Choose a trusted Python entrypoint
+under **Capture**, open its recorded steps under **Recordings**, then run
+**Verification**. Replay checks the captured boundaries and script outcome.
+If a script raises a Python exception, the recorder keeps the preceding captured
+steps and labels the outcome as failed. Matching that run means reproducing
+the recorded failure. Only run scripts you trust with your local permissions.
 
-### What you will see
-
-1. A travel agent receives a stale **720 INR** quote against a **500 INR** budget.
-2. Its simulated reservation fails. Record and replay the failed run **50 times**.
-3. Compare it with a passing run; the first differing response is **boundary #3**.
-4. Fork the failed run at that boundary, replacing the quote with **420 INR**.
-5. Execute the agent logic again using explicit safe mocks for the continuation.
-6. The recomputed state changes and the simulated reservation succeeds.
-
-All LLM and external tool services in this teaching demo are **simulated**. The
-recording, replay, hash verification, persistence, divergence detection, and fork
-execution are real. The same HTTP capture core is tested with mock HTTP providers;
-live-provider compatibility is not implied by synthetic results.
+The simulated travel tutorial remains available via `fr demo` for offline
+exploration. Its service responses and outcomes are controlled fixtures.
 
 ## Features and actual scope
 
@@ -60,7 +46,7 @@ live-provider compatibility is not implied by synthetic results.
 | Compare | Validated hash bisection, sequence alignment, divergence taxonomy |
 | Dashboard | Search, scrubber, snapshots, side-by-side evidence, lineage, mobile layout |
 | Portability | Versioned JSON with SHA-256 envelope checksum; validates before import |
-| Scripts | Trusted `.py` entrypoints, httpx capture, source-file hash and redacted stdout verification |
+| Scripts | Trusted `.py` entrypoints, httpx capture, local Python provenance, redacted stdout and script outcome verification |
 | Evaluation | 12 labeled synthetic budget cases, replay and recovery checks |
 | Similarity | Interpretable event-feature cosine similarity; **not** a learned diagnosis |
 
@@ -99,7 +85,7 @@ fr verify-script RUN_ID examples/http_agent.py --n 10
 
 Script recording runs **trusted code in your process**. It is not a sandbox.
 There is no arbitrary subprocess command wrapper, and source drift checks cover
-the entrypoint file, not all imported dependencies. Avoid module-global clients.
+the entrypoint and observed local Python imports. Avoid module-global clients.
 
 ### Record a live example
 

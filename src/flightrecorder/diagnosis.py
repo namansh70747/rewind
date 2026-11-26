@@ -14,6 +14,13 @@ from .difference import decision, json_diff, logical, similarity, values_named
 from .integrity import validate
 
 
+def _outcome(cassette: Cassette) -> dict[str, Any]:
+    return {
+        "final_output": cassette.final_output,
+        "script_error": cassette.metadata.get("script_error"),
+    }
+
+
 def hash_bisect(a: Cassette, b: Cassette) -> int | None:
     """Validate O(N), then find first unequal chain link in O(log N) comparisons."""
     validate(a)
@@ -29,7 +36,7 @@ def hash_bisect(a: Cassette, b: Cassette) -> int | None:
             high = middle
     if low < min(len(a.boundaries), len(b.boundaries)) or len(a.boundaries) != len(b.boundaries):
         return low
-    return low if a.final_output != b.final_output else None
+    return low if _outcome(a) != _outcome(b) else None
 
 
 def _cost(a: Boundary, b: Boundary, cosine: float | None = None) -> float:
@@ -176,6 +183,8 @@ def taxonomy(a: Boundary | None, b: Boundary | None) -> str:
 
 
 def _category(left: Boundary | None, right: Boundary | None, label: str) -> tuple[str, str]:
+    if label == "identical":
+        return label, "The recorded boundary values match."
     if left is None or right is None:
         return label, "A recorded step was added or removed."
     kind, key, request, response, _ = logical(left)
@@ -253,6 +262,8 @@ def diagnose(
         raise ValueError(
             "hash comparison requires aligned kind/key sequences and the same chain algorithm"
         )
+    outcome_a, outcome_b = _outcome(a), _outcome(b)
+    output_changed = outcome_a != outcome_b
     path: list[tuple[int | None, int | None]]
     if use_hash:
         path = [(i, i) for i in range(len(a.boundaries))]
@@ -264,7 +275,7 @@ def diagnose(
                 low = middle + 1
             else:
                 high = middle
-        first_hash = low if low < len(a.boundaries) or a.final_output != b.final_output else None
+        first_hash = low if low < len(a.boundaries) or output_changed else None
     else:
         path = align(a, b, vectors=vectors)
         first_hash, comparisons = None, 0
@@ -305,16 +316,16 @@ def diagnose(
             first = row
         if first_decision is None and row["decision_difference"]:
             first_decision = row
-    if first is None and a.final_output != b.final_output:
+    if first is None and output_changed:
         first = {
             "a": None,
             "b": None,
             "label": "final-output-drift",
             "category": "agent-logic-drift",
-            "summary": "Boundary values match but final outputs differ; inspect agent logic.",
-            "left": {"final_output": a.final_output},
-            "right": {"final_output": b.final_output},
-            "raw_diff": json_diff(a.final_output, b.final_output),
+            "summary": "Boundary values match but final outcomes differ; inspect agent logic.",
+            "left": outcome_a,
+            "right": outcome_b,
+            "raw_diff": json_diff(outcome_a, outcome_b),
         }
     primary = first_decision or first
     prior = None
@@ -337,7 +348,7 @@ def diagnose(
             "complexity": "O(N) validation and report; O(log N) hash comparisons",
         },
         "upstream_context": prior,
-        "output_changed": a.final_output != b.final_output,
+        "output_changed": output_changed,
         "interpretation": "Observed differences and weak candidate labels, not proven root cause. Inspect raw evidence and task/code provenance.",
         "human_review": "required for root-cause agreement",
     }

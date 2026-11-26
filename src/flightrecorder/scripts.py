@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 from .boundary import Cassette, Divergence
 from .capture import capture, replay_run
+from .offline import NetworkBlocked
 from .provenance import check_source, provenance
 from .redaction import redact_text
 from .replay import VerifyResult
@@ -25,15 +26,26 @@ def source_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _execute(path: Path) -> str:
+def _execute(path: Path) -> tuple[str, str | None]:
     output = io.StringIO()
     original_argv, original_path = sys.argv[:], sys.path[:]
     try:
         sys.argv = [str(path)]
         sys.path.insert(0, str(path.resolve().parent))
         with redirect_stdout(output):
-            runpy.run_path(str(path), run_name="__main__")
-        return redact_text(output.getvalue())
+            try:
+                runpy.run_path(str(path), run_name="__main__")
+            except (Divergence, NetworkBlocked):
+                raise
+            except (Exception, SystemExit) as exc:
+                if isinstance(exc, SystemExit) and (
+                    exc.code is None or (isinstance(exc.code, int) and exc.code == 0)
+                ):
+                    return redact_text(output.getvalue()), None
+                kind = type(exc)
+                failure = redact_text(f"{kind.__module__}.{kind.__qualname__}: {exc}")
+                return redact_text(output.getvalue()), failure
+        return redact_text(output.getvalue()), None
     finally:
         sys.argv = original_argv
         sys.path = original_path
@@ -43,7 +55,7 @@ def record_script(path: Path, *, concurrent: bool = False, sources: bool = False
     """Executes trusted code. Only httpx clients created inside capture are intercepted."""
     digest = source_hash(path)
     with capture(provider="script", model=path.name, concurrent=concurrent, sources=sources) as cap:
-        output = _execute(path)
+        output, failure = _execute(path)
     assert cap.cassette is not None
     cap.cassette.final_output = output
     cap.cassette.metadata = {
@@ -53,6 +65,8 @@ def record_script(path: Path, *, concurrent: bool = False, sources: bool = False
         "source_name": path.name,
         "capture_scope": "httpx + decorated tools + optional sources + redacted stdout",
     }
+    if failure is not None:
+        cap.cassette.metadata["script_error"] = failure
     return cap.cassette
 
 
@@ -65,18 +79,24 @@ def verify_script(cassette: Cassette, path: Path, n: int = 10) -> VerifyResult:
     outputs: set[str] = set()
     hashes: set[str] = set()
     for index in range(n):
+        execution: tuple[str, str | None] = ("", None)
 
-        def run() -> Any:
-            output = _execute(path)
-            outputs.add(output)
-            if output != cassette.final_output:
-                raise Divergence(len(cassette.boundaries), "script stdout differs from recording")
+        def run() -> None:
+            nonlocal execution
+            execution = _execute(path)
 
         try:
-            hashes.add(replay_run(cassette, run))
-        except RuntimeError as exc:
-            return VerifyResult(False, index + 1, len(outputs), len(hashes), str(exc))
-        except Divergence as exc:
+            fingerprint = replay_run(cassette, run)
+            output, failure = execution
+            outputs.add(output)
+            if failure != cassette.metadata.get("script_error"):
+                raise Divergence(
+                    len(cassette.boundaries), "script exception differs from recording"
+                )
+            if output != cassette.final_output:
+                raise Divergence(len(cassette.boundaries), "script stdout differs from recording")
+            hashes.add(fingerprint)
+        except (RuntimeError, Divergence) as exc:
             return VerifyResult(False, index + 1, len(outputs), len(hashes), str(exc))
     passed = hashes == {cassette.fingerprint} and outputs == {cassette.final_output}
     return VerifyResult(
@@ -84,7 +104,7 @@ def verify_script(cassette: Cassette, path: Path, n: int = 10) -> VerifyResult:
         n,
         len(outputs),
         len(hashes),
-        "HTTP boundaries and redacted stdout match; source hash checked",
+        "Captured boundaries, redacted stdout and script outcome match; source checked",
     )
 
 
@@ -111,12 +131,16 @@ def fork_script(
     if parent.metadata.get("concurrent"):
         raise ValueError("concurrent forks are not supported; serialize this scenario")
 
+    failure = None
+
     def execute(session: Session, transport: Any) -> str:
+        nonlocal failure
         with (
             _patched(session),
             deterministic_sources(session) if parent.metadata.get("sources") else nullcontext(),
         ):
-            return _execute(path)
+            output, failure = _execute(path)
+            return output
 
     run: Run = execute
     from .fork import recorded_tool_mocks
@@ -133,6 +157,9 @@ def fork_script(
         child = fork_with_policy(parent, run, at=at, value=value, mocks=resolved, policy=policy)
     else:
         child = fork_run(parent, run, at=at, value=value, mocks=resolved)
+    child.metadata.pop("script_error", None)
+    if failure is not None:
+        child.metadata["script_error"] = failure
     child.metadata["tool_mock_policy"] = (
         "recorded outcomes by occurrence; unknown tools fail closed"
     )

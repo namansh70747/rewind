@@ -22,23 +22,12 @@ def main() -> None:
             if request["action"] == "capture":
                 cassette = record_script(source)
                 cassette.metadata["product_source"] = str(source)
-                known_examples = {
-                    "product_groq_agent.py": ("Groq", "openai/gpt-oss-20b"),
-                    "product_groq_stream.py": ("Groq", "openai/gpt-oss-20b"),
-                    "product_nvidia_agent.py": ("NVIDIA", "nvidia/nemotron-3-super-120b-a12b"),
-                    "product_gemini_agent.py": ("Gemini", "gemini-2.5-flash"),
-                }
-                if (
-                    source.resolve().parent == (Path.cwd() / "examples").resolve()
-                    and source.name in known_examples
-                ):
-                    cassette.metadata["product_provider"], cassette.metadata["product_model"] = (
-                        known_examples[source.name]
-                    )
                 if source.resolve() == (Path.cwd() / "examples/http_agent.py").resolve():
                     cassette.metadata["simulated"] = True
                 run_id = store.save(cassette)
                 result = {"run_id": run_id, "boundaries": len(cassette.boundaries)}
+                if "script_error" in cassette.metadata:
+                    result["script_error"] = cassette.metadata["script_error"]
             else:
                 result = asdict(
                     verify_script(store.load(request["run_id"]), source, request["replays"])

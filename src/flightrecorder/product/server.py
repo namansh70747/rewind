@@ -21,6 +21,7 @@ from typing import Any
 
 import httpx
 
+from flightrecorder.boundary import Divergence
 from flightrecorder.diagnosis import diagnose
 from flightrecorder.integrity import validate
 from flightrecorder.portable import MAX_BYTES, envelope, import_run
@@ -228,6 +229,7 @@ class Handler(BaseHTTPRequestHandler):
                                     "display_model": metadata.get("product_model", run.model),
                                     "has_source": isinstance(metadata.get("product_source"), str),
                                     "counterfactual": bool(metadata.get("counterfactual")),
+                                    "script_failed": isinstance(metadata.get("script_error"), str),
                                 }
                             )
                 finally:
@@ -284,7 +286,7 @@ class Handler(BaseHTTPRequestHandler):
                 )
             else:
                 self._json({"error": "Not found"}, 404)
-        except (KeyError, ValueError) as exc:
+        except (KeyError, ValueError, Divergence) as exc:
             self._json({"error": str(exc)}, 400)
 
     def do_POST(self) -> None:
@@ -337,7 +339,6 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(audit_corpus(self.server.db))
             elif path == "/api/v1/export":
                 cassette = self._load(body.get("run_id", ""))
-                cassette.metadata.pop("product_source", None)
                 self._json(envelope(cassette))
             elif path == "/api/v1/import":
                 import tempfile
@@ -349,7 +350,6 @@ class Handler(BaseHTTPRequestHandler):
                     temp_path = Path(temp.name)
                 try:
                     cassette = import_run(temp_path)
-                    cassette.metadata.pop("product_source", None)
                     store = RunStore(self.server.db)
                     try:
                         run_id = store.save(cassette)
@@ -398,7 +398,7 @@ class Handler(BaseHTTPRequestHandler):
                     )
             else:
                 self._json({"error": "Not found"}, 404)
-        except (ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
+        except (ValueError, TypeError, KeyError, Divergence) as exc:
             self._json({"error": str(exc)}, 400)
 
 
