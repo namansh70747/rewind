@@ -406,3 +406,18 @@ def test_explicit_guard_overrides_an_outer_live_authorization() -> None:
     with authorized_network(), offline_guard() as audit, pytest.raises(NetworkBlocked):
         socket.getaddrinfo("fixture.invalid", 80)
     assert audit.blocked_operations == ["getaddrinfo"]
+
+
+def test_explain_supplied_labels_remain_tentative() -> None:
+    cassette = record_failure("tool-error")
+    for label, symptom in (
+        ("rate-limit", "429"),
+        ("provider-error", "5xx"),
+        ("budget-exceeded", "budget"),
+        ("repeated-boundaries", "repeated"),
+    ):
+        report = explain(cassette, classifier_report={"label": label})
+        assert "may" in report["cause"].lower()
+        assert symptom in report["cause"]
+        assert "assigned label" not in report["cause"]
+        assert report["next_steps"]

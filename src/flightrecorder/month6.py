@@ -30,6 +30,10 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 _CAUSE_SENTENCES: dict[str, str] = {
+    "rate-limit": "A rate-limit label may indicate HTTP 429 responses. Inspect recorded status and headers before attributing the failure to request limits.",
+    "provider-error": "A provider-error label may indicate upstream 5xx responses. Inspect recorded status and response evidence before attributing a provider outage.",
+    "budget-exceeded": "A budget-exceeded label may indicate a configured budget overrun. Compare measured tokens or costs with explicit limits before concluding overflow.",
+    "repeated-boundaries": "A repeated-boundaries label may indicate repeated requests. Inspect arguments and progress before concluding the agent entered a loop.",
     "tool-error": "A tool-error label was suggested. Inspect the recorded tool response and error/status fields before attributing a cause.",
     "transport-timeout": "A transport-timeout label was suggested. Inspect captured transport errors and explicit attempts; retry failure is not implied without terminal evidence.",
     "context-budget": "A context/budget-related symptom was suggested. Compare recorded tokens with an explicitly configured limit; a token count alone does not prove overflow.",
@@ -51,6 +55,18 @@ _DEFAULT_SENTENCE = (
 )
 
 _NEXT_STEPS: dict[str, list[str]] = {
+    "rate-limit": [
+        "Inspect HTTP status and retry headers in `fr show <run_id>` before adjusting concurrency."
+    ],
+    "provider-error": [
+        "Inspect HTTP status and response bodies in `fr show <run_id>` and compare provider status evidence."
+    ],
+    "budget-exceeded": [
+        "Inspect measured costs and token counts in `fr show <run_id>` and compare with configured limits."
+    ],
+    "repeated-boundaries": [
+        "Inspect repeated requests and their arguments in `fr show <run_id>` for progress or termination conditions."
+    ],
     "tool-error": [
         "Run `fr show <run_id>` and inspect the tool boundary at the first error seq.",
         "Check the tool's error field and status code in the recorded response.",
