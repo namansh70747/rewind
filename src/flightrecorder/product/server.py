@@ -16,6 +16,7 @@ import sys
 import threading
 import time
 import urllib.parse
+from contextlib import closing
 from dataclasses import asdict
 from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -51,7 +52,7 @@ class ProductServer(ThreadingHTTPServer):
         self.processes: dict[str, subprocess.Popen[str]] = {}
         self.lock = threading.Lock()
         self.db.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS product_verification (run_id TEXT PRIMARY KEY, passed INTEGER NOT NULL, replays INTEGER NOT NULL, checked_at REAL NOT NULL)"
             )
@@ -67,7 +68,7 @@ class ProductServer(ThreadingHTTPServer):
 
     def save_job(self, job: dict[str, Any]) -> None:
         """Persist terminal job evidence and retain the 100 most recent jobs."""
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute(
                 "INSERT OR REPLACE INTO product_job_history VALUES (?, ?, ?)",
                 (job["id"], job["created"], json.dumps(job)),
@@ -97,7 +98,7 @@ class ProductServer(ThreadingHTTPServer):
                 "type": action,
                 "status": "queued",
                 "created": time.time(),
-                "script": str(source.relative_to(self.root)),
+                "script": source.relative_to(self.root).as_posix(),
                 "recording_id": run_id or None,
                 "requested_replays": replays if action == "verify" else None,
             }
@@ -118,7 +119,7 @@ class ProductServer(ThreadingHTTPServer):
                         [sys.executable, "-m", "flightrecorder.product.worker"],
                         stdin=subprocess.PIPE,
                         stdout=subprocess.PIPE,
-                        stderr=subprocess.DEVNULL,
+                        stderr=subprocess.PIPE,
                         encoding="utf-8",
                         errors="replace",
                         cwd=self.root,
@@ -135,7 +136,7 @@ class ProductServer(ThreadingHTTPServer):
                     )
                     self.processes[job_id] = process
                     self.jobs[job_id]["status"] = "running"
-                output, _ = process.communicate(json.dumps(request), timeout=600)
+                output, stderr = process.communicate(json.dumps(request), timeout=600)
                 with self.lock:
                     if self.jobs[job_id]["status"] == "cancelled":
                         return
@@ -144,9 +145,18 @@ class ProductServer(ThreadingHTTPServer):
                         if not isinstance(result, dict) or type(result.get("ok")) is not bool:
                             raise ValueError("Invalid worker result")
                     except (ValueError, IndexError):
+                        missing_module = (
+                            "No module named 'flightrecorder'" in stderr
+                            or "No module named flightrecorder" in stderr
+                            or "No module named flightrecorder.product.worker" in stderr
+                        )
                         result = {
                             "ok": False,
-                            "error": f"Worker exited without a recording result (exit code {process.returncode}). Check the workspace Python dependencies and retry.",
+                            "error": (
+                                "Rewind is missing from the worker's Python environment. Install Rewind in that environment and restart the workspace."
+                                if missing_module
+                                else f"Worker exited without a recording result (exit code {process.returncode}). Check the workspace Python dependencies and retry."
+                            ),
                         }
                     if (
                         action == "verify"
@@ -154,7 +164,7 @@ class ProductServer(ThreadingHTTPServer):
                         and isinstance(result.get("result"), dict)
                     ):
                         verified = result["result"]
-                        with sqlite3.connect(self.db) as conn:
+                        with closing(sqlite3.connect(self.db)) as conn, conn:
                             conn.execute(
                                 "INSERT OR REPLACE INTO product_verification VALUES (?, ?, ?, ?)",
                                 (
@@ -474,7 +484,7 @@ class Handler(BaseHTTPRequestHandler):
                         if name.endswith(".py"):
                             file = Path(current, name)
                             if file.resolve().is_relative_to(self.server.root):
-                                paths.append(str(file.relative_to(self.server.root)))
+                                paths.append(file.relative_to(self.server.root).as_posix())
                     if len(paths) >= 1000:
                         break
                 self._json({"root": str(self.server.root), "scripts": sorted(paths)[:1000]})
@@ -501,9 +511,9 @@ class Handler(BaseHTTPRequestHandler):
                         "supported": [
                             "New httpx clients",
                             "Decorated tools",
-                            "Selected time, random and UUID shims when enabled",
                         ],
                         "limitations": [
+                            "Browser capture leaves time, random and UUID shims off",
                             "No arbitrary subprocess or native network interception",
                             "No general filesystem capture",
                             "Socket guard is not an OS sandbox",
@@ -569,6 +579,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"job_id": job}, 202)
             elif path == "/api/v1/verify":
                 run = self._load(body.get("run_id", ""))
+                if run.metadata.get("counterfactual"):
+                    raise ValueError(
+                        "Ordinary replay is unavailable for what-if forks. Inspect or compare the fork instead."
+                    )
                 source = run.metadata.get("product_source")
                 if not isinstance(source, str):
                     raise ValueError(
@@ -577,8 +591,13 @@ class Handler(BaseHTTPRequestHandler):
                 replays = body.get("replays", 10)
                 if type(replays) is not int or not 1 <= replays <= 100:
                     raise ValueError("Replay count must be between 1 and 100.")
-                script = self.server.source(source)
-                if digest(script) != run.metadata.get("source_sha256"):
+                alternative = body.get("source")
+                if alternative is not None and (
+                    not isinstance(alternative, str) or body.get("trusted") is not True
+                ):
+                    raise ValueError("Confirm that you trust the alternative Python script.")
+                script = self.server.source(alternative if alternative is not None else source)
+                if alternative is None and digest(script) != run.metadata.get("source_sha256"):
                     candidate = script.with_name(f"{script.stem}_legacy.py")
                     if candidate.is_file():
                         legacy = self.server.source(str(candidate))
@@ -589,7 +608,7 @@ class Handler(BaseHTTPRequestHandler):
                 except ValueError:
                     self._json(
                         {
-                            "error": "The script changed since capture. Restore the recorded source before replay, or capture a new run with the current script.",
+                            "error": "The script changed since capture. Choose the matching trusted source, or capture a new run with the current script.",
                             "code": "source_changed",
                         },
                         409,

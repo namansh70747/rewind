@@ -450,7 +450,7 @@ function drawSelectors() {
   const rightChanged = fillSelect("compare-right", items, "No recordings available");
   if (rightChanged && items.length > 1 && $("compare-left").value === $("compare-right").value) $("compare-right").selectedIndex = 1;
   if (leftChanged || rightChanged) clearComparison();
-  fillSelect("verify-run", items.filter((item, i) => runs[i].has_source), "No trusted recording available");
+  fillSelect("verify-run", items.filter((item, i) => runs[i].has_source && !runs[i].counterfactual), "No trusted recording available");
   syncForms();
 }
 
@@ -469,6 +469,7 @@ async function refresh({quiet = false} = {}) {
     runs = library.runs;
     providers = readiness.providers;
     if (fillSelect("script", scripts.scripts.map((script) => ({label: script, value: script})), "No Python scripts found")) $("trust").checked = false;
+    if (fillSelect("verify-source", [{value: "", label: "Use recorded source"}, ...scripts.scripts.map((script) => ({label: script, value: script}))], "Use recorded source")) $("verify-source-trust").checked = false;
     $("workspace-path").textContent = scripts.root;
     $("settings-path").textContent = scripts.root;
     $("stat-storage").textContent = sizeLabel(coverage.storage_bytes);
@@ -491,7 +492,14 @@ async function refresh({quiet = false} = {}) {
 $("refresh").onclick = () => refresh();
 $("show-samples").onchange = () => refresh();
 
-function investigate(id) {
+async function revealRun(id) {
+  if (!runs.some((run) => run.id === id) && !$("show-samples").checked) {
+    $("show-samples").checked = true;
+    await refresh();
+  }
+}
+async function investigate(id) {
+  await revealRun(id);
   openRun(id);
   go("recordings");
 }
@@ -558,7 +566,8 @@ function showRunTab(tab) {
   }
   if (tab === "verification") {
     target.append(el("p", summary ? verificationText(summary) : "No stored verification"));
-    if (run.metadata.product_source) target.append(button("Open verification", () => goVerify(selectedId)));
+    if (run.metadata.counterfactual) target.append(el("p", "What-if forks can be inspected and compared. Ordinary verification applies to the original recording.", "notice"));
+    else if (run.metadata.product_source) target.append(button("Open verification", () => goVerify(selectedId)));
     else target.append(el("p", "Inspection only. No trusted workspace script is linked.", "notice"));
     return;
   }
@@ -796,7 +805,7 @@ function active(job) { return job && ["queued", "running"].includes(job.status);
 function syncForms() {
   const blocked = busy || jobs.some(active);
   $("capture").disabled = blocked || !$("script").value || !$("trust").checked;
-  $("verify").disabled = blocked || !$("verify-run").value;
+  $("verify").disabled = blocked || !$("verify-run").value || Boolean($("verify-source").value && !$("verify-source-trust").checked);
   $("compare").disabled = !$("compare-left").value || !$("compare-right").value;
 }
 async function submitJob(action, args) {
@@ -806,7 +815,7 @@ async function submitJob(action, args) {
   try {
     const {job_id} = await api(action, args);
     if (action === "capture") $("trust").checked = false;
-    else selectedVerification = job_id;
+    else if ($("verify-run").value === args.run_id) selectedVerification = job_id;
     await refresh();
   } catch (problem) { error(problem); }
   finally { busy = false; syncForms(); }
@@ -820,13 +829,22 @@ $("capture-form").onsubmit = (event) => {
 };
 $("verify-form").onsubmit = (event) => {
   event.preventDefault();
-  submitJob("verify", {run_id: $("verify-run").value, replays: Number($("replays").value)});
+  const source = $("verify-source").value;
+  submitJob("verify", {
+    run_id: $("verify-run").value, replays: Number($("replays").value),
+    ...(source ? {source, trusted: $("verify-source-trust").checked} : {}),
+  });
 };
 $("fewer").onclick = () => $("replays").stepDown();
 $("more").onclick = () => $("replays").stepUp();
-function goVerify(id) {
+$("verify-source").onchange = () => { $("verify-source-trust").checked = false; syncForms(); };
+$("verify-source-trust").onchange = syncForms;
+$("verify-run").onchange = () => { selectedVerification = null; drawJobs(); };
+async function goVerify(id) {
+  await revealRun(id);
   $("verify-run").value = id;
-  syncForms();
+  selectedVerification = null;
+  drawJobs();
   go("verification");
 }
 async function cancelJob(job) {
@@ -874,7 +892,7 @@ function drawJobResult(root, job) {
     output.append(el("p", job.result.boundaries + " captured boundaries · " + id));
     const actions = el("div", undefined, "actions");
     actions.append(button("Inspect recording", () => investigate(id), "btn primary"));
-    if (runs.some((run) => run.id === id && run.has_source)) actions.append(button("Open verification", () => goVerify(id)));
+    if (job.type === "capture") actions.append(button("Open verification", () => goVerify(id)));
     output.append(actions);
   } else if (job.type === "verify" && job.result) {
     const result = job.result;
@@ -899,7 +917,7 @@ function drawJobs() {
   const result = $("verify-result");
   target.replaceChildren();
   result.replaceChildren();
-  const selected = jobs.find((job) => job.id === selectedVerification) || jobs.find((job) => job.type === "verify");
+  const selected = jobs.find((job) => job.id === selectedVerification) || jobs.find((job) => job.type === "verify" && job.recording_id === $("verify-run").value);
   if (selected) drawJobResult(result, selected);
   else blank(result, "No verification result", "Select a trusted recording and start verification.");
   if (jobs.length === 0) blank(target, "No recent jobs", "Activity appears after a capture or verification starts.");
