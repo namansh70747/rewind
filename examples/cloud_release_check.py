@@ -37,18 +37,29 @@ def main() -> None:
                 "content": "In one short sentence, explain why a release manifest pins a Git commit.",
             }
         ],
-        limit: 128,
+        limit: 512,
         "stream": False,
     }
+    if provider_id == "groq" and model in {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}:
+        payload["reasoning_effort"] = "low"
     revision = git_head()
     with httpx.Client(timeout=30, trust_env=False, follow_redirects=False) as client:
         response = client.post(
             provider.url, headers=provider.headers(os.getenv(provider.key_env, "")), json=payload
         )
     response.raise_for_status()
-    message = response.json()["choices"][0]["message"].get("content")
-    if not message:
-        raise ValueError("Hosted model returned no visible release note")
+    choice = response.json()["choices"][0]
+    message = choice["message"].get("content")
+    if not isinstance(message, str) or not message.strip():
+        if choice.get("finish_reason") == "length":
+            raise ValueError(
+                "Hosted model reached the completion token limit before producing a visible "
+                "release note. Increase the completion limit or choose a different model."
+            )
+        raise ValueError(
+            "Hosted model returned no visible release note "
+            f"(finish reason: {choice.get('finish_reason') or 'unknown'})."
+        )
     print(f"{provider_id}/{model}: {message.strip()}")
 
     manifest = read_release_manifest()
