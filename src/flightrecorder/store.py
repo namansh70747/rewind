@@ -25,7 +25,7 @@ from typing import Any
 import zstandard
 from blake3 import blake3
 
-from .boundary import Boundary, Cassette, canon
+from .boundary import Boundary, Cassette, canon, occurrences
 
 DEFAULT_DB = ".rewind/runs.db"
 
@@ -165,6 +165,8 @@ class RunStore:
             Boundary(seq, kind, key, self._get_blob(rq), self._get_blob(rs), ch)
             for (seq, kind, key, rq, rs, ch) in rows
         ]
+        for boundary, occurrence in zip(boundaries, occurrences(boundaries), strict=True):
+            boundary.occurrence = occurrence
         metadata = self.conn.execute(
             "SELECT data FROM run_metadata WHERE run_id = ?", (run_id,)
         ).fetchone()

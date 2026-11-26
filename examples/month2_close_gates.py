@@ -54,20 +54,14 @@ def main() -> None:
     published = ROOT / "docs" / "validation" / "month2"
     published.mkdir(parents=True, exist_ok=True)
     if os.environ.get(NVIDIA.key_env):
-        evidence["providers"]["nvidia"] = _run(
-            "nvidia", NVIDIA.default_model, dest / "nvidia"
-        )
+        evidence["providers"]["nvidia"] = _run("nvidia", NVIDIA.default_model, dest / "nvidia")
     if os.environ.get(GEMINI.key_env):
-        evidence["providers"]["gemini"] = _run(
-            "gemini", GEMINI.default_model, dest / "gemini"
-        )
+        evidence["providers"]["gemini"] = _run("gemini", GEMINI.default_model, dest / "gemini")
     if not evidence["providers"]:
         evidence["passed"] = False
         evidence["detail"] = "configure NVIDIA_API_KEY and/or GEMINI_API_KEY locally"
     else:
-        evidence["passed"] = all(
-            bool(row.get("passed")) for row in evidence["providers"].values()
-        )
+        evidence["passed"] = all(bool(row.get("passed")) for row in evidence["providers"].values())
     out = published / "course-close.json"
     out.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(evidence, indent=2))

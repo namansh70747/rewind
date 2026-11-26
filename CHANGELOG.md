@@ -1,5 +1,14 @@
 # Changelog
 
+## Months 1–6 on main — 2026-11-26
+
+- Month 1 timeline demo is in `demos/week2_mam/` and covered by `tests/test_week2_mam_demo.py`.
+- `fr record -- python agent.py` records an unmodified script. `@tool` works with or without arguments.
+- Retry loops keep an occurrence index so repeated calls to the same endpoint replay in order.
+- OpenAI and Anthropic example agents replay bit-exact against mock transports.
+- Month 5–6 course close (ADR-0010 accepted, ADR-0015 provider substitute) is included.
+- LoRA stays cut. PyPI publish stays optional. The original 672-tool fleet is still out of scope.
+
 ## Course close Months 5–6 — 2026-11-18
 
 - ADR-0010 recording format **accepted** for v0.1.0 (BLAKE3/zstd/JSON v2).
