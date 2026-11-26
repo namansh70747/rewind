@@ -121,6 +121,7 @@ class Session:
         self.algorithm = cassette.chain_algorithm if cassette else "blake3"
         self.mode: Mode = mode
         self.boundaries: list[Boundary] = []
+        self.on_boundary: Callable[[Boundary], None] | None = None
         self._recorded: list[Boundary] = cassette.boundaries if cassette else []
         self._cursor = 0
         self.chain = GENESIS
@@ -148,6 +149,8 @@ class Session:
                 )
             )
             self._live_counts[occ_key] = occurrence + 1
+            if self.on_boundary is not None:
+                self.on_boundary(self.boundaries[-1])
             return response
 
         seq = self._cursor

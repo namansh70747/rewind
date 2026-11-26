@@ -14,7 +14,42 @@ into agent code offline, and finds where two recordings first diverge.
 implemented and tested. This is not completion of the original six-month research
 roadmap. Capture coverage and safety limits are explicit below.
 
-## Run the complete demo
+## Record and replay a real script
+
+Use Python 3.11+. Build the wheel from this checkout and install it into a
+fresh virtual environment.
+
+```bash
+python -m pip wheel --no-deps --wheel-dir dist .
+python -m venv .venv
+source .venv/bin/activate  # Windows PowerShell uses .venv/Scripts/Activate.ps1
+python -m pip install dist/rewind-0.1.0-py3-none-any.whl
+```
+
+Choose a dedicated workspace with a Python agent you trust. Install the agent's
+own dependencies there and configure its model service if it needs one.
+
+```bash
+fr serve --workspace /path/to/workspace --db /path/to/workspace/rewind.db
+```
+
+Open the loopback URL printed by `fr serve`. Select your script, confirm that
+you trust it, and start a capture. Open the resulting recording to inspect its
+boundaries and final outcome. Start verification from the same workspace.
+A matching replay can reproduce either a successful or a failed agent outcome.
+
+The CLI equivalent uses the same recording and verification engine:
+
+```bash
+fr record-script /path/to/workspace/agent.py --db /path/to/workspace/rewind.db
+fr show RUN_ID --db /path/to/workspace/rewind.db
+fr verify-script RUN_ID /path/to/workspace/agent.py --db /path/to/workspace/rewind.db
+```
+
+Use the run ID printed by capture even when the script exits unsuccessfully.
+Supported replay serves captured boundaries without making new provider calls.
+
+## Simulated travel tutorial
 
 Python 3.11+; no API key, account, GPU, or database server needed.
 

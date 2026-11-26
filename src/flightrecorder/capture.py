@@ -52,6 +52,7 @@ from .replay import VerifyResult
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
 
+    from .boundary import Boundary
     from .store import RunStore
 
 _active_session: ContextVar[Session | None] = ContextVar("flightrecorder_session", default=None)
@@ -200,11 +201,13 @@ def capture(
     model: str = "",
     concurrent: bool = False,
     sources: bool = False,
+    on_boundary: Callable[[Boundary], None] | None = None,
 ) -> Iterator[Capture]:
     """Record every ``httpx`` call made by unmodified code inside the block."""
     from .concurrency import ConcurrentSession
 
     session = ConcurrentSession("record") if concurrent else Session("record")
+    session.on_boundary = on_boundary
     handle = Capture(session=session)
     from .sources import deterministic_sources
 

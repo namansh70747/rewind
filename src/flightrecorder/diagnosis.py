@@ -176,6 +176,8 @@ def taxonomy(a: Boundary | None, b: Boundary | None) -> str:
 
 
 def _category(left: Boundary | None, right: Boundary | None, label: str) -> tuple[str, str]:
+    if label == "identical":
+        return label, "Recorded boundary values match."
     if left is None or right is None:
         return label, "A recorded step was added or removed."
     kind, key, request, response, _ = logical(left)
@@ -253,6 +255,11 @@ def diagnose(
         raise ValueError(
             "hash comparison requires aligned kind/key sequences and the same chain algorithm"
         )
+    left_outcome = a.metadata.get("terminal_outcome")
+    right_outcome = b.metadata.get("terminal_outcome")
+    outcome_changed = (
+        left_outcome is not None and right_outcome is not None and left_outcome != right_outcome
+    )
     path: list[tuple[int | None, int | None]]
     if use_hash:
         path = [(i, i) for i in range(len(a.boundaries))]
@@ -264,7 +271,11 @@ def diagnose(
                 low = middle + 1
             else:
                 high = middle
-        first_hash = low if low < len(a.boundaries) or a.final_output != b.final_output else None
+        first_hash = (
+            low
+            if low < len(a.boundaries) or a.final_output != b.final_output or outcome_changed
+            else None
+        )
     else:
         path = align(a, b, vectors=vectors)
         first_hash, comparisons = None, 0
@@ -305,16 +316,20 @@ def diagnose(
             first = row
         if first_decision is None and row["decision_difference"]:
             first_decision = row
-    if first is None and a.final_output != b.final_output:
+    if first is None and (a.final_output != b.final_output or outcome_changed):
+        left_final = {"final_output": a.final_output, "terminal_outcome": left_outcome}
+        right_final = {"final_output": b.final_output, "terminal_outcome": right_outcome}
         first = {
             "a": None,
             "b": None,
-            "label": "final-output-drift",
+            "label": "final-outcome-drift" if outcome_changed else "final-output-drift",
             "category": "agent-logic-drift",
-            "summary": "Boundary values match but final outputs differ; inspect agent logic.",
-            "left": {"final_output": a.final_output},
-            "right": {"final_output": b.final_output},
-            "raw_diff": json_diff(a.final_output, b.final_output),
+            "summary": "Boundary values match but the terminal outcome differs."
+            if outcome_changed
+            else "Boundary values match but final outputs differ; inspect agent logic.",
+            "left": left_final,
+            "right": right_final,
+            "raw_diff": json_diff(left_final, right_final),
         }
     primary = first_decision or first
     prior = None
@@ -337,6 +352,7 @@ def diagnose(
             "complexity": "O(N) validation and report; O(log N) hash comparisons",
         },
         "upstream_context": prior,
+        "terminal_outcome_changed": outcome_changed,
         "output_changed": a.final_output != b.final_output,
         "interpretation": "Observed differences and weak candidate labels, not proven root cause. Inspect raw evidence and task/code provenance.",
         "human_review": "required for root-cause agreement",

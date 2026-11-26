@@ -143,20 +143,16 @@ def show(
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
 ) -> None:
     """Print a recorded run's decision timeline."""
-    store = RunStore(db)
-    try:
-        if at is not None:
-            try:
-                console.print_json(data=store.snapshot_at(run_id, at))
-            except ValueError as exc:
-                raise typer.BadParameter(str(exc)) from exc
-            return
-        cassette = store.load(run_id)
-    except KeyError:
-        console.print(f"[red]run {run_id} not found[/]")
-        raise typer.Exit(1) from None
-    finally:
-        store.close()
+    cassette = _load_run(run_id, db)
+    if at is not None:
+        store = RunStore(db)
+        try:
+            console.print_json(data=store.snapshot_at(run_id, at))
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        finally:
+            store.close()
+        return
 
     if cassette.metadata.get("counterfactual"):
         console.print("QUARANTINED what-if · best-effort exploration", markup=False)
@@ -170,7 +166,11 @@ def show(
         table.add_row(str(b.seq), b.kind, b.key, _summarize(b.kind, b.response), b.chain_hash[:8])
     console.print(table)
     console.print(f"fingerprint: [bold]{cassette.fingerprint[:16]}…[/]")
-    console.print(f"output: {cassette.final_output}")
+    console.print(f"output: {cassette.final_output}", markup=False)
+    if cassette.metadata.get("capture_status") == "incomplete":
+        console.print("Incomplete capture: only committed boundaries are available.", markup=False)
+    if cassette.provider == "script":
+        console.print_json(data={"terminal_outcome": cassette.metadata.get("terminal_outcome")})
 
 
 @app.command()
@@ -285,13 +285,10 @@ def bisect(
 
 def _load_run(run_id: str, db: str) -> Cassette:
     from .boundary import Divergence
-    from .integrity import validate
 
     store = RunStore(db)
     try:
-        cassette = store.load(run_id)
-        validate(cassette)
-        return cassette
+        return store.load_validated(run_id)
     except (KeyError, ValueError, Divergence) as exc:
         console.print(str(exc), style="red", markup=False)
         raise typer.Exit(1) from exc
@@ -588,23 +585,32 @@ def record_script_command(
 ) -> None:
     """Execute and record a TRUSTED Python script (new httpx clients + stdout)."""
     from .redaction import RedactionRules, redaction_rules
-    from .scripts import record_script
+    from .scripts import CapturePersistenceError, record_script_to_store
 
     rules = (
         RedactionRules.from_json(json.loads(redaction_config.read_text()))
         if redaction_config
         else RedactionRules()
     )
-    with redaction_rules(rules):
-        cassette = record_script(source, concurrent=concurrent, sources=sources)
     store = RunStore(db)
     try:
-        run_id = store.save(cassette)
+        with redaction_rules(rules.with_provider_keys()):
+            run_id, cassette = record_script_to_store(
+                store, source, concurrent=concurrent, sources=sources
+            )
+    except CapturePersistenceError as exc:
+        console.print(str(exc), style="red", markup=False)
+        raise typer.Exit(1) from exc
     finally:
         store.close()
     console.print(
         f"Recorded script: {run_id}\nNext: fr verify-script {run_id} {source}", markup=False
     )
+
+    outcome = cassette.metadata["terminal_outcome"]
+    if outcome["code"]:
+        console.print_json(data={"terminal_outcome": outcome})
+        raise typer.Exit(outcome["code"])
 
 
 @app.command("verify-script")
@@ -628,7 +634,7 @@ def verify_script_command(
             if redaction_config
             else RedactionRules()
         )
-        with redaction_rules(rules), stream_playback_timing(timing_scale):
+        with redaction_rules(rules.with_provider_keys()), stream_playback_timing(timing_scale):
             result = verify_script(_load_run(run_id, db), source, n)
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc

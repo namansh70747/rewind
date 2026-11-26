@@ -20,11 +20,12 @@ MAX_BYTES = 32 * 1024 * 1024
 def envelope(cassette: Cassette) -> dict[str, Any]:
     validate(cassette)
     data = asdict(cassette)
+    data["metadata"].pop("product_source", None)
     return {"format": FORMAT, "checksum": hashlib.sha256(canon(data)).hexdigest(), "run": data}
 
 
 def export_run(cassette: Cassette, path: Path) -> None:
-    """Export recorded data as-is. Review prompts before sharing; checksums aren't signatures."""
+    """Export recorded data without local execution links. Review prompts before sharing; checksums aren't signatures."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(envelope(cassette), indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -60,6 +61,7 @@ def import_run(path: Path) -> Cassette:
             if type(b.seq) is not int or not isinstance(b.kind, str) or not isinstance(b.key, str):
                 raise ValueError("invalid boundary schema")
         validate(cassette)
+        cassette.metadata.pop("product_source", None)
         return cassette
     except (KeyError, TypeError) as exc:
         raise ValueError("invalid recording schema") from exc

@@ -22,9 +22,34 @@ from typing import Any
 import httpx
 
 from flightrecorder.diagnosis import diagnose
-from flightrecorder.integrity import validate
+from flightrecorder.integrity import IntegrityError
 from flightrecorder.portable import MAX_BYTES, envelope, import_run
 from flightrecorder.store import RunStore
+
+PROVIDERS = {
+    "nvidia": (
+        "NVIDIA",
+        "NVIDIA_API_KEY",
+        "nvidia/nemotron-3-super-120b-a12b",
+        "https://integrate.api.nvidia.com/v1/models",
+        "Authorization",
+    ),
+    "gemini": (
+        "Gemini",
+        "GEMINI_API_KEY",
+        "gemini-2.5-flash",
+        "https://generativelanguage.googleapis.com/v1beta/models",
+        "x-goog-api-key",
+    ),
+    "groq": (
+        "Groq",
+        "GROQ_API_KEY",
+        "openai/gpt-oss-20b",
+        "https://api.groq.com/openai/v1/models",
+        "Authorization",
+    ),
+    "xai": ("xAI", "XAI_API_KEY", "Grok", "https://api.x.ai/v1/models", "Authorization"),
+}
 
 
 class ProductServer(ThreadingHTTPServer):
@@ -52,11 +77,19 @@ class ProductServer(ThreadingHTTPServer):
             raise ValueError("Select an existing Python file inside the trusted workspace.")
         return candidate
 
-    def launch(self, action: str, source: Path, run_id: str = "", replays: int = 10) -> str:
+    def launch(
+        self,
+        action: str,
+        source: Path,
+        run_id: str = "",
+        replays: int = 10,
+        *,
+        intervention: dict[str, Any] | None = None,
+    ) -> str:
         job_id = secrets.token_hex(8)
         with self.lock:
             if any(j["status"] in ("queued", "running") for j in self.jobs.values()):
-                raise ValueError("Another capture or verification is already running.")
+                raise ValueError("Another workspace job is already running.")
             self.jobs[job_id] = {
                 "id": job_id,
                 "type": action,
@@ -71,6 +104,7 @@ class ProductServer(ThreadingHTTPServer):
                 "run_id": run_id,
                 "replays": replays,
                 "db": str(self.db),
+                "intervention": intervention,
             }
             try:
                 with self.lock:
@@ -120,12 +154,14 @@ class ProductServer(ThreadingHTTPServer):
                 process.kill()
                 process.communicate()
                 with self.lock:
-                    self.jobs[job_id].update(
-                        status="failed", error="Job exceeded the 10-minute limit."
-                    )
+                    if self.jobs[job_id]["status"] != "cancelled":
+                        self.jobs[job_id].update(
+                            status="failed", error="Job exceeded the 10-minute limit."
+                        )
             except Exception:
                 with self.lock:
-                    self.jobs[job_id].update(status="failed", error="Could not start job.")
+                    if self.jobs[job_id]["status"] != "cancelled":
+                        self.jobs[job_id].update(status="failed", error="Could not run job.")
             finally:
                 with self.lock:
                     self.processes.pop(job_id, None)
@@ -156,13 +192,15 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(payload)
 
     def _load(self, run_id: str) -> Any:
-        if len(run_id) != 12 or any(c not in "0123456789abcdef" for c in run_id):
+        if (
+            not isinstance(run_id, str)
+            or len(run_id) != 12
+            or any(c not in "0123456789abcdef" for c in run_id)
+        ):
             raise ValueError("Invalid recording ID.")
         store = RunStore(self.server.db)
         try:
-            cassette = store.load(run_id)
-            validate(cassette)
-            return cassette
+            return store.load_validated(run_id)
         finally:
             store.close()
 
@@ -194,7 +232,11 @@ class Handler(BaseHTTPRequestHandler):
                     include_samples = urllib.parse.parse_qs(route.query).get("samples") == ["1"]
                     data = []
                     for run in store.list_runs():
-                        cassette = store.load(run.id)
+                        try:
+                            cassette = store.load_validated(run.id)
+                        except IntegrityError as exc:
+                            data.append({**asdict(run), "integrity_error": str(exc)})
+                            continue
                         sample = run.provider == "demo" or bool(cassette.metadata.get("simulated"))
                         if include_samples or not sample:
                             check = store.conn.execute(
@@ -214,9 +256,12 @@ class Handler(BaseHTTPRequestHandler):
                                 {
                                     **asdict(run),
                                     "sample": sample,
+                                    "capture_status": cassette.metadata.get("capture_status"),
+                                    "terminal_outcome": cassette.metadata.get("terminal_outcome"),
                                     "verification": verification,
                                     "display_provider": cassette.metadata.get(
-                                        "product_provider", run.provider
+                                        "product_provider",
+                                        None if run.provider == "script" else run.provider,
                                     ),
                                     "display_model": cassette.metadata.get(
                                         "product_model", run.model
@@ -249,11 +294,7 @@ class Handler(BaseHTTPRequestHandler):
                     {
                         "providers": [
                             {"name": n, "configured": bool(os.getenv(k)), "model": m}
-                            for n, k, m in [
-                                ("NVIDIA", "NVIDIA_API_KEY", "nvidia/nemotron-3-super-120b-a12b"),
-                                ("Gemini", "GEMINI_API_KEY", "gemini-2.5-flash"),
-                                ("Groq", "GROQ_API_KEY", "openai/gpt-oss-20b"),
-                            ]
+                            for n, k, m, _, _ in PROVIDERS.values()
                         ],
                         "notice": "Configured indicates environment presence only; live access and quota are not verified.",
                     }
@@ -272,11 +313,12 @@ class Handler(BaseHTTPRequestHandler):
                             "Socket guard is not an OS sandbox",
                             "Redaction is pattern based and incomplete",
                         ],
-                        "month2": "Free-provider live evidence pending; original OpenAI and Anthropic gate remains separate.",
                     }
                 )
             else:
                 self._json({"error": "Not found"}, 404)
+        except IntegrityError as exc:
+            self._json({"error": str(exc), "code": "recording_integrity", "boundary": exc.seq}, 422)
         except (KeyError, ValueError) as exc:
             self._json({"error": str(exc)}, 400)
 
@@ -287,6 +329,16 @@ class Handler(BaseHTTPRequestHandler):
             or (origin and origin != f"http://127.0.0.1:{self.server.server_port}")
             or not hmac.compare_digest(self.headers.get("X-Rewind-Token", ""), self.server.token)
         ):
+            # Closing with an unread request body can reset the socket before the 403
+            # reaches the client. Discard small bodies with a bounded read; never parse them.
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                if 0 < length <= 16 * 1024:
+                    self.connection.settimeout(0.25)
+                    self.rfile.read(length)
+            except (OSError, ValueError):
+                pass
+            self.close_connection = True
             self._json({"error": "Unauthorized request"}, 403)
             return
         try:
@@ -304,6 +356,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"job_id": job}, 202)
             elif path == "/api/v1/verify":
                 run = self._load(body.get("run_id", ""))
+                if run.metadata.get("capture_status") == "incomplete":
+                    raise ValueError("Incomplete captures can be inspected but cannot be verified.")
                 source = run.metadata.get("product_source")
                 if not isinstance(source, str):
                     raise ValueError(
@@ -316,6 +370,26 @@ class Handler(BaseHTTPRequestHandler):
                     "verify", self.server.source(source), body["run_id"], replays
                 )
                 self._json({"job_id": job}, 202)
+            elif path == "/api/v1/fork":
+                if body.get("trusted") is not True:
+                    raise ValueError("Confirm that the workspace script is trusted.")
+                run_id = body.get("run_id", "")
+                parent = self._load(run_id)
+                source = parent.metadata.get("product_source")
+                if parent.provider != "script" or not isinstance(source, str):
+                    raise ValueError("Forking requires a locally recorded script.")
+                at = body.get("at")
+                if type(at) is not int or not 0 <= at < len(parent.boundaries):
+                    raise ValueError("Select a recorded boundary to replace.")
+                if "value" not in body:
+                    raise ValueError("Provide a JSON replacement value.")
+                job_id = self.server.launch(
+                    "fork",
+                    self.server.source(source),
+                    run_id,
+                    intervention={"at": at, "value": body["value"]},
+                )
+                self._json({"job_id": job_id}, 202)
             elif path == "/api/v1/compare":
                 self._json(
                     {
@@ -330,7 +404,6 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(audit_corpus(self.server.db))
             elif path == "/api/v1/export":
                 cassette = self._load(body.get("run_id", ""))
-                cassette.metadata.pop("product_source", None)
                 self._json(envelope(cassette))
             elif path == "/api/v1/import":
                 import tempfile
@@ -342,7 +415,6 @@ class Handler(BaseHTTPRequestHandler):
                     temp_path = Path(temp.name)
                 try:
                     cassette = import_run(temp_path)
-                    cassette.metadata.pop("product_source", None)
                     store = RunStore(self.server.db)
                     try:
                         run_id = store.save(cassette)
@@ -365,25 +437,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"status": "cancelled"})
             elif path == "/api/v1/provider-check":
                 provider = body.get("provider")
-                if provider == "nvidia":
-                    key, url, headers = (
-                        os.getenv("NVIDIA_API_KEY", ""),
-                        "https://integrate.api.nvidia.com/v1/models",
-                        {},
-                    )
-                    headers = {"Authorization": f"Bearer {key}"}
-                elif provider == "gemini":
-                    key, url = (
-                        os.getenv("GEMINI_API_KEY", ""),
-                        "https://generativelanguage.googleapis.com/v1beta/models",
-                    )
-                    headers = {"x-goog-api-key": key}
-                elif provider == "groq":
-                    key = os.getenv("GROQ_API_KEY", "")
-                    url = "https://api.groq.com/openai/v1/models"
-                    headers = {"Authorization": f"Bearer {key}"}
-                else:
+                if not isinstance(provider, str) or provider not in PROVIDERS:
                     raise ValueError("Unknown provider.")
+                _, variable, _, url, header = PROVIDERS[provider]
+                key = os.getenv(variable, "")
+                headers = {header: f"Bearer {key}" if header == "Authorization" else key}
                 if not key:
                     raise ValueError("Provider key is not configured in the server environment.")
                 try:
@@ -404,6 +462,8 @@ class Handler(BaseHTTPRequestHandler):
                     )
             else:
                 self._json({"error": "Not found"}, 404)
+        except IntegrityError as exc:
+            self._json({"error": str(exc), "code": "recording_integrity", "boundary": exc.seq}, 422)
         except (ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
             self._json({"error": str(exc)}, 400)
 

@@ -14,6 +14,7 @@ guarantee — a structure-only capture mode and richer detectors come later.
 
 from __future__ import annotations
 
+import os
 import re
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -29,6 +30,11 @@ if TYPE_CHECKING:
 class RedactionRules:
     extra_keys: frozenset[str] = frozenset()
     literals: tuple[str, ...] = ()
+
+    def with_provider_keys(self) -> RedactionRules:
+        keys = ("OPENAI", "ANTHROPIC", "NVIDIA", "GEMINI", "GROQ", "XAI")
+        literals = tuple(value for provider in keys if (value := os.getenv(f"{provider}_API_KEY")))
+        return RedactionRules(self.extra_keys, self.literals + literals)
 
     @classmethod
     def from_json(cls, data: Any) -> RedactionRules:

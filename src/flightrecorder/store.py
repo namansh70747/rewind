@@ -25,7 +25,8 @@ from typing import Any
 import zstandard
 from blake3 import blake3
 
-from .boundary import Boundary, Cassette, canon, occurrences
+from .boundary import GENESIS, Boundary, Cassette, canon, occurrences
+from .integrity import IntegrityError, validate
 
 DEFAULT_DB = ".rewind/runs.db"
 
@@ -115,20 +116,27 @@ class RunStore:
         """Persist a recording; returns its run id."""
         run_id = uuid.uuid4().hex[:12]
         created_at = datetime.now(UTC).isoformat(timespec="seconds")
-        from .integrity import validate
-
         validate(cassette)
         with self.conn:
             return self._save(cassette, run_id, created_at)
 
+    def _save_boundary(self, run_id: str, boundary: Boundary) -> None:
+        self.conn.execute(
+            "INSERT INTO boundary VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                run_id,
+                boundary.seq,
+                boundary.kind,
+                boundary.key,
+                self._put_blob(boundary.request),
+                self._put_blob(boundary.response),
+                boundary.chain_hash,
+            ),
+        )
+
     def _save(self, cassette: Cassette, run_id: str, created_at: str) -> str:
-        for b in cassette.boundaries:
-            req_hash = self._put_blob(b.request)
-            resp_hash = self._put_blob(b.response)
-            self.conn.execute(
-                "INSERT INTO boundary VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (run_id, b.seq, b.kind, b.key, req_hash, resp_hash, b.chain_hash),
-            )
+        for boundary in cassette.boundaries:
+            self._save_boundary(run_id, boundary)
         self.conn.execute(
             "INSERT INTO run VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
@@ -150,7 +158,57 @@ class RunStore:
         )
         return run_id
 
+    def begin_script_capture(self, name: str, *, sample: bool) -> str:
+        """Publish an inspectable, non-replayable prefix before executing trusted code."""
+        return self.save(
+            Cassette(
+                boundaries=[],
+                fingerprint=GENESIS,
+                provider="script",
+                model=name,
+                metadata={"capture_status": "incomplete", "replayable": False, "simulated": sample},
+            )
+        )
+
+    def checkpoint_boundary(self, run_id: str, boundary: Boundary) -> None:
+        """Atomically append a boundary and its fingerprint to the durable prefix."""
+        with self.conn:
+            updated = self.conn.execute(
+                "UPDATE run SET n_boundaries = ?, fingerprint = ? WHERE id = ? AND n_boundaries = ?",
+                (boundary.seq + 1, boundary.chain_hash, run_id, boundary.seq),
+            )
+            if updated.rowcount != 1:
+                raise ValueError("capture prefix is missing or out of sequence")
+            self._save_boundary(run_id, boundary)
+
+    def complete_script_capture(self, run_id: str, cassette: Cassette) -> None:
+        validate(cassette)
+        with self.conn:
+            updated = self.conn.execute(
+                "UPDATE run SET final_output = ? WHERE id = ? AND n_boundaries = ? AND fingerprint = ?",
+                (cassette.final_output, run_id, len(cassette.boundaries), cassette.fingerprint),
+            )
+            if updated.rowcount != 1:
+                raise ValueError("capture prefix does not match the completed recording")
+            self.conn.execute(
+                "UPDATE run_metadata SET data = ? WHERE run_id = ?",
+                (
+                    canon(
+                        {**cassette.metadata, "_chain_algorithm": cassette.chain_algorithm}
+                    ).decode(),
+                    run_id,
+                ),
+            )
+
     def load(self, run_id: str) -> Cassette:
+        # WAL readers must see the run row, boundary index and metadata in the same snapshot.
+        if self.conn.in_transaction:
+            return self._load(run_id)
+        with self.conn:
+            self.conn.execute("BEGIN")
+            return self._load(run_id)
+
+    def _load(self, run_id: str) -> Cassette:
         meta = self.conn.execute(
             "SELECT fingerprint, final_output, provider, model FROM run WHERE id = ?", (run_id,)
         ).fetchone()
@@ -161,10 +219,14 @@ class RunStore:
             "FROM boundary WHERE run_id = ? ORDER BY seq",
             (run_id,),
         ).fetchall()
-        boundaries = [
-            Boundary(seq, kind, key, self._get_blob(rq), self._get_blob(rs), ch)
-            for (seq, kind, key, rq, rs, ch) in rows
-        ]
+        boundaries = []
+        for seq, kind, key, request_hash, response_hash, chain_hash in rows:
+            try:
+                request = self._get_blob(request_hash)
+                response = self._get_blob(response_hash)
+            except (KeyError, ValueError, zlib.error, zstandard.ZstdError) as exc:
+                raise IntegrityError(seq, "boundary payload missing or corrupt") from exc
+            boundaries.append(Boundary(seq, kind, key, request, response, chain_hash))
         for boundary, occurrence in zip(boundaries, occurrences(boundaries), strict=True):
             boundary.occurrence = occurrence
         metadata = self.conn.execute(
@@ -181,6 +243,11 @@ class RunStore:
             metadata=details,
             chain_algorithm=algorithm,
         )
+
+    def load_validated(self, run_id: str) -> Cassette:
+        cassette = self.load(run_id)
+        validate(cassette)
+        return cassette
 
     def list_runs(self) -> list[RunSummary]:
         rows = self.conn.execute(
