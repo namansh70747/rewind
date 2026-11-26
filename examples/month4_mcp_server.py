@@ -6,14 +6,14 @@ import argparse
 import asyncio
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--transport", choices=["stdio", "streamable-http"], default="stdio")
 parser.add_argument("--marker", type=Path, required=True)
 parser.add_argument("--port", type=int, default=8000)
 args = parser.parse_args()
-server = FastMCP("rewind-month4", port=args.port)
+server = MCPServer("rewind-month4")
 
 
 @server.tool()
@@ -30,4 +30,7 @@ def fail() -> str:
 
 
 if __name__ == "__main__":
-    server.run(transport=args.transport)
+    if args.transport == "streamable-http":
+        server.run(transport=args.transport, host="127.0.0.1", port=args.port)
+    else:
+        server.run(transport=args.transport)

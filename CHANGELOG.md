@@ -1,5 +1,10 @@
 # Changelog
 
+## SDK majors — 2026-11-26
+
+- Capture now records `httpx2` clients, so OpenAI 3 and Anthropic 2 replay through the same transport log.
+- MCP 2 servers use `MCPServer`. Streamable HTTP uses the `httpx2` client and the two-stream return.
+
 ## Months 1–6 on main — 2026-11-26
 
 - Month 1 timeline demo is in `demos/week2_mam/` and covered by `tests/test_week2_mam_demo.py`.

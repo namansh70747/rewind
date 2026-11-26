@@ -274,6 +274,8 @@ def test_openai_sdk_record_replay(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", serve)
+    httpx2 = pytest.importorskip("httpx2")
+    monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", serve)
 
     def agent() -> None:
         with openai.OpenAI(api_key="fixture-only", max_retries=0) as client:
@@ -313,6 +315,8 @@ def test_anthropic_sdk_record_replay(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", serve)
+    httpx2 = pytest.importorskip("httpx2")
+    monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", serve)
 
     def agent() -> None:
         with anthropic.Anthropic(api_key="fixture-only", max_retries=0) as client:
