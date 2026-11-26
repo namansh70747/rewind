@@ -96,15 +96,33 @@ def main() -> None:
             if "/api/" in url:
                 key = url.split("/api/", 1)[1].split("?")[0]
                 request.fulfill(json=fixtures.get(key, {}))
+            elif url.endswith("/workspace.js"):
+                request.fulfill(
+                    content_type="text/javascript",
+                    body=(
+                        Path(__file__).resolve().parents[1]
+                        / "src/flightrecorder/product/workspace.js"
+                    ).read_text(),
+                )
+            elif url.endswith("/workspace.css"):
+                request.fulfill(
+                    content_type="text/css",
+                    body=(
+                        Path(__file__).resolve().parents[1]
+                        / "src/flightrecorder/product/workspace.css"
+                    ).read_text(),
+                )
             else:
                 request.fulfill(content_type="text/html", body=template)
 
         product.route("**/*", route)
         product.goto("http://rewind.test/")
-        product.evaluate("(report)=>{show('compare');renderComparison(report)}", report)
-        assert product.locator("#compare-alignment button").count() == len(report["alignment"])
+        product.evaluate("(report)=>{go('compare');showComparison(report)}", report)
+        assert product.locator("#compare-alignment button").count() == len(
+            report["alignment"]
+        ) + bool(report.get("outcome_difference"))
         product.locator("#compare-alignment button").nth(1).click()
-        assert "No corresponding step" in product.locator("#compare-raw-left").inner_text()
+        assert "No corresponding evidence" in product.locator("#compare-raw-left").inner_text()
         assert not errors, errors
         browser.close()
     summary = {

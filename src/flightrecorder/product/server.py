@@ -203,6 +203,7 @@ class Handler(BaseHTTPRequestHandler):
             "/": ("index.html", "text/html"),
             "/workspace.css": ("workspace.css", "text/css"),
             "/workspace.js": ("workspace.js", "text/javascript"),
+            "/rewind-mark.png": ("rewind-mark.png", "image/png"),
         }
         if asset := assets.get(route.path):
             filename, mime_type = asset
@@ -216,7 +217,10 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 payload = resource.read_bytes()
             self.send_response(200)
-            self.send_header("Content-Type", f"{mime_type}; charset=utf-8")
+            self.send_header(
+                "Content-Type",
+                mime_type if mime_type.startswith("image/") else f"{mime_type}; charset=utf-8",
+            )
             self.send_header(
                 "Content-Security-Policy",
                 "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; "

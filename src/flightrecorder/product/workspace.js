@@ -159,7 +159,11 @@ function route() {
   const address = location.hash.slice(1);
   const previous = page;
   page = Object.hasOwn(pageNames, address) ? address : "overview";
-  if (previous !== page) window.scrollTo(0, 0);
+  if (previous !== page) {
+    window.scrollTo(0, 0);
+    $("main").scrollTop = 0;
+  }
+  $("current-page").textContent = pageNames[page];
   document.querySelector(".skip").hidden = page === "welcome";
   if (page !== "recordings") stopPlayback();
   $("shell").hidden = page === "welcome";
@@ -171,8 +175,7 @@ function route() {
     if (link.dataset.page === page) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   });
-  $("shell").classList.remove("menu-open");
-  $("menu-trigger").setAttribute("aria-expanded", "false");
+  if (closeMenu() && page !== "welcome") $("main").focus({preventScroll: true});
   if (page === "recordings" && selectedId === null && runs.length) openRun(runs[0].id);
 }
 addEventListener("hashchange", route);
@@ -180,10 +183,50 @@ document.querySelector(".skip").onclick = (event) => {
   event.preventDefault();
   $("main").focus();
 };
-$("menu-trigger").onclick = () => {
-  const opened = $("shell").classList.toggle("menu-open");
-  $("menu-trigger").setAttribute("aria-expanded", String(opened));
+const mobileMenu = matchMedia("(max-width: 625px)");
+const menuTrigger = $("menu-trigger");
+const sidebar = $("workspace-sidebar");
+
+function closeMenu({returnFocus = false} = {}) {
+  const wasOpen = $("shell").classList.contains("menu-open");
+  $("shell").classList.remove("menu-open");
+  menuTrigger.setAttribute("aria-expanded", "false");
+  if (wasOpen && returnFocus) menuTrigger.focus();
+  return wasOpen;
+}
+
+menuTrigger.onclick = () => {
+  if (closeMenu({returnFocus: true})) return;
+  $("shell").classList.add("menu-open");
+  menuTrigger.setAttribute("aria-expanded", "true");
+  (sidebar.querySelector('[aria-current="page"]') || sidebar.querySelector("a"))?.focus();
 };
+
+sidebar.addEventListener("click", (event) => {
+  if (event.target.closest("a")?.hash === location.hash && closeMenu()) {
+    $("main").focus({preventScroll: true});
+  }
+});
+
+mobileMenu.addEventListener("change", () => {
+  if (!mobileMenu.matches) closeMenu();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!$("shell").classList.contains("menu-open")) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeMenu({returnFocus: true});
+  } else if (event.key === "Tab") {
+    const links = [...sidebar.querySelectorAll("a[href]")].filter((link) => link.getClientRects().length);
+    const index = links.indexOf(document.activeElement);
+    if (index < 0 || (event.shiftKey ? index === 0 : index === links.length - 1)) {
+      event.preventDefault();
+      links[event.shiftKey ? links.length - 1 : 0]?.focus();
+    }
+  }
+});
+
 
 const runName = (run) => run.display_model || run.model || run.display_provider || run.provider || run.id;
 const verificationText = (run) => (
@@ -217,22 +260,65 @@ function drawOverview() {
   $("stat-verified").textContent = matched;
   const recent = $("recent");
   recent.replaceChildren();
-  if (!runs.length) blank(recent, "No recordings yet", "Start a trusted capture or import a portable bundle.");
-  for (const run of runs.slice(0, 4)) {
-    const row = el("div", undefined, "summary-row");
-    const label = el("div");
-    label.append(el("strong", runName(run)), el("small", [dateLabel(run.created_at), verificationText(run)].join(" · ")));
-    const inspect = button("Inspect", () => investigate(run.id), "btn");
-    row.append(label, inspect);
-    recent.append(row);
+  if (!runs.length) {
+    const firstRun = el("div", undefined, "first-run");
+    const mark = el("span", undefined, "stat-icon");
+    mark.append(icon("disc"));
+    const copy = el("div");
+    const action = el("a", "Capture your first run", "text-link");
+    action.href = "#capture";
+    copy.append(
+      el("strong", "No recordings yet"),
+      el("p", "Captured requests, responses, and replay results will appear here."),
+      action,
+    );
+    firstRun.append(mark, copy);
+    recent.append(firstRun);
+  }
+  if (runs.length) {
+    const table = el("table", undefined, "recent-table");
+    const header = table.createTHead().insertRow();
+    for (const title of ["Script", "Outcome", "Steps", "Verification", "Recorded", ""]) {
+      const heading = el("th", title);
+      heading.scope = "col";
+      header.append(heading);
+    }
+    const body = table.createTBody();
+    for (const run of runs.slice(0, 5)) {
+      const row = body.insertRow();
+      const name = row.insertCell();
+      name.append(el("strong", runName(run)), el("small", run.id));
+      const script = run.provider === "script";
+      const outcome = run.script_failed ? "Agent failed" : script ? "Completed" : "Recorded";
+      row.insertCell().append(badge(outcome, run.script_failed ? "danger" : script ? "good" : ""));
+      row.insertCell().textContent = run.n_boundaries;
+      row.insertCell().append(badge(verificationText(run), run.verification?.passed ? "good" : run.verification ? "danger" : ""));
+      row.insertCell().textContent = dateLabel(run.created_at);
+      row.insertCell().append(button("Inspect", () => investigate(run.id), "btn recent-inspect"));
+    }
+    const scroll = el("div", undefined, "recent-scroll");
+    scroll.append(table);
+    recent.append(scroll);
   }
   const distribution = el("div", undefined, "distribution");
   for (const [label, count] of [["Matched", matched], ["Diverged", diverged], ["Not verified", runs.length - matched - diverged]]) {
     const line = el("div");
-    line.append(el("span", label), el("strong", count));
+    const name = el("span", label);
+    const dot = el("i", undefined, label === "Matched" ? "matched" : label === "Diverged" ? "diverged" : "unverified");
+    name.prepend(dot);
+    line.append(name, el("strong", count));
     distribution.append(line);
   }
-  $("distribution").replaceChildren(distribution);
+  const replaySummary = el("div", undefined, "replay-summary");
+  const ring = el("div", undefined, "replay-ring");
+  ring.setAttribute("aria-hidden", "true");
+  if (runs.length) {
+    ring.style.setProperty("--matched", matched / runs.length * 100 + "%");
+    ring.style.setProperty("--checked", (matched + diverged) / runs.length * 100 + "%");
+  }
+  ring.append(el("strong", runs.length), el("small", runs.length === 1 ? "recording" : "recordings"));
+  replaySummary.append(ring, distribution);
+  $("distribution").replaceChildren(replaySummary);
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const days = Array.from({length: 7}, (_, i) => {
@@ -414,6 +500,8 @@ async function openRun(id) {
   $("detail-id").textContent = id;
   $("run-detail").replaceChildren();
   $("timeline").replaceChildren();
+  $("timeline-start").hidden = true;
+  $("timeline-end").hidden = true;
   $("evidence-body").hidden = true;
   $("no-evidence").hidden = false;
   $("step-badge").textContent = "—";
@@ -483,6 +571,11 @@ function drawTimeline() {
   const target = $("timeline");
   target.replaceChildren();
   const boundaries = selectedRun?.boundaries || [];
+  $("timeline-start").hidden = !boundaries.length;
+  $("timeline-end").hidden = !boundaries.length;
+  const failed = Boolean(selectedRun?.metadata.script_error);
+  $("timeline-end").classList.toggle("failed", failed);
+  $("timeline-end-text").textContent = failed ? "Execution ended with an error" : "End of recording";
   if (!boundaries.length) {
     blank(target, "No captured boundaries", "This recording can still have a terminal outcome.");
     return;
@@ -833,13 +926,17 @@ setInterval(async () => {
 }, 1500);
 setInterval(drawClock, 1000);
 
+let compareEvidence = "response";
+
 function clearComparison() {
   compareRequest++;
   alignment = [];
   comparisonSelection = -1;
   $("compare-result").hidden = true;
   $("comparison").replaceChildren();
+  $("compare-finding").replaceChildren();
   $("compare-alignment").replaceChildren();
+  setCompareEvidenceVisible(false);
   $("compare-raw-left").replaceChildren();
   $("compare-raw-right").replaceChildren();
 }
@@ -875,11 +972,13 @@ function showComparison(report) {
     summary.append(el("div", "Earliest observed difference: baseline " + (first.a ?? "—") + " / candidate " + (first.b ?? "—") + " · " + first.label.replaceAll("-", " ")));
   }
   if (primary && report.interpretation) summary.append(el("small", report.interpretation));
-  $("comparison").replaceChildren(summary);
+  $("comparison").replaceChildren();
+  $("compare-finding").replaceChildren(summary);
   alignment = report.alignment.slice();
   const outcome = report.outcome_difference || (primary?.a === null && primary?.b === null ? primary : null);
   if (outcome) alignment.push(outcome);
   $("compare-result").hidden = false;
+  drawCompareLanes(alignment);
   for (const [index, row] of alignment.entries()) {
     const item = button(undefined, () => selectDifference(index), "alignment-row");
     const left = row.left?.key || (row.a === null ? (row.left ? "Final outcome" : "—") : "Step " + row.a);
@@ -888,12 +987,49 @@ function showComparison(report) {
     item.setAttribute("aria-pressed", "false");
     $("compare-alignment").append(item);
   }
+  setCompareEvidenceVisible(alignment.length > 0);
   if (alignment.length) {
     const focus = primary ? alignment.findIndex((row) => row.a === primary.a && row.b === primary.b && row.label === primary.label) : 0;
     selectDifference(Math.max(0, focus));
   } else {
     blank($("compare-alignment"), "No captured steps to align", "Both recordings have no boundary evidence.");
     $("previous-diff").disabled = $("next-diff").disabled = true;
+  }
+}
+function drawCompareLanes(rows) {
+  const lanes = $("compare-lanes");
+  const metrics = $("compare-metrics");
+  lanes.replaceChildren();
+  metrics.replaceChildren();
+  const alignedSteps = Array.from(rows.entries()).filter(([, row]) => row.a !== null || row.b !== null);
+  const steps = alignedSteps.map(([, row]) => row);
+  lanes.hidden = !steps.length;
+  for (const [label, side, indexKey] of [["Baseline", "left", "a"], ["Candidate", "right", "b"]]) {
+    const lane = el("div", undefined, "compare-lane " + side);
+    lane.append(el("strong", label));
+    for (const [index, row] of alignedSteps) {
+      const step = row[indexKey];
+      const caption = step === null ? "Gap" : (row[side]?.key || "Step " + step);
+      const point = button(undefined, () => selectDifference(index, true), "compare-point");
+      point.dataset.alignmentIndex = index;
+      point.setAttribute("aria-pressed", "false");
+      point.classList.toggle("changed", row.label !== "identical");
+      point.append(el("span", step === null ? "–" : step), el("small", caption));
+      lane.append(point);
+    }
+    lanes.append(lane);
+  }
+  const changed = steps.filter((row) => row.a !== null && row.b !== null && row.label !== "identical").length;
+  for (const [name, value] of [
+    ["Baseline steps", steps.filter((row) => row.a !== null).length],
+    ["Candidate steps", steps.filter((row) => row.b !== null).length],
+    ["Changed steps", changed],
+    ["Added in candidate", steps.filter((row) => row.a === null).length],
+    ["Removed from candidate", steps.filter((row) => row.b === null).length],
+  ]) {
+    const metric = el("div", undefined, "comparison-metric");
+    metric.append(el("span", name), el("strong", value));
+    metrics.append(metric);
   }
 }
 function selectDifference(index, scroll = false) {
@@ -903,12 +1039,44 @@ function selectDifference(index, scroll = false) {
   list.children[comparisonSelection]?.setAttribute("aria-pressed", "false");
   comparisonSelection = index;
   list.children[index]?.setAttribute("aria-pressed", "true");
+  for (const point of $("compare-lanes").querySelectorAll(".compare-point")) {
+    point.setAttribute("aria-pressed", String(Number(point.dataset.alignmentIndex) === index));
+  }
   if (scroll) list.children[index]?.scrollIntoView({block: "nearest"});
-  $("compare-raw-left").textContent = row.left ? json(row.left) : "No corresponding step.";
-  $("compare-raw-right").textContent = row.right ? json(row.right) : "No corresponding step.";
+  drawCompareEvidence(row);
   $("previous-diff").disabled = !alignment.slice(0, index).some(({label}) => label !== "identical");
   $("next-diff").disabled = !alignment.slice(index + 1).some(({label}) => label !== "identical");
 }
+function setCompareEvidenceVisible(visible) {
+  $("compare-evidence-controls").hidden = !visible;
+  $("compare-evidence-panes").hidden = !visible;
+}
+
+function drawCompareEvidence(row) {
+  $("compare-evidence-title").textContent = row.label.replaceAll("-", " ");
+  const tabs = $("compare-evidence-tabs").querySelectorAll("button");
+  for (const tab of tabs) {
+    const mode = tab.dataset.compareEvidence;
+    tab.disabled = mode !== "raw" && ![row.left, row.right].some((boundary) => boundary && Object.hasOwn(boundary, mode));
+  }
+  const preferred = Array.from(tabs).find((tab) => tab.dataset.compareEvidence === compareEvidence);
+  const mode = preferred?.disabled ? "raw" : compareEvidence;
+  for (const tab of tabs) tab.setAttribute("aria-pressed", String(tab.dataset.compareEvidence === mode));
+  for (const side of ["left", "right"]) {
+    const boundary = row[side];
+    const value = mode === "raw" ? boundary : boundary?.[mode];
+    $("compare-raw-" + side).textContent = value === undefined || !boundary ? "No corresponding evidence." : json(value);
+  }
+}
+
+$("compare-evidence-tabs").onclick = (event) => {
+  const mode = event.target.closest("button")?.dataset.compareEvidence;
+  const row = alignment[comparisonSelection];
+  if (!row || !mode) return;
+  compareEvidence = mode;
+  drawCompareEvidence(row);
+};
+
 $("previous-diff").onclick = () => selectDifference(alignment.findLastIndex((row, index) => index < comparisonSelection && row.label !== "identical"), true);
 $("next-diff").onclick = () => selectDifference(alignment.findIndex((row, index) => index > comparisonSelection && row.label !== "identical"), true);
 
@@ -942,7 +1110,7 @@ function drawProviders() {
     card.append(head, body);
     target.append(card);
     const row = el("div", undefined, "provider-row");
-    row.append(el("strong", providerNames[provider.name] || provider.name), badge(label, tone));
+    row.append(el("span", providerMarks[provider.name] || "◇", "provider-mark"), el("strong", providerNames[provider.name] || provider.name), badge(label, tone));
     overview.append(row);
   }
 }
@@ -1051,7 +1219,10 @@ document.addEventListener("keydown", (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k" && !$("evidence-dialog").open) {
     event.preventDefault();
     if ($("palette").open) $("palette").close();
-    else openPalette();
+    else {
+      closeMenu();
+      openPalette();
+    }
   }
 });
 document.querySelectorAll("[data-close]").forEach((node) => {
@@ -1064,3 +1235,43 @@ document.addEventListener("visibilitychange", () => {
 
 route();
 refresh();
+
+function drawSignalArt(canvas) {
+  const {width, height} = canvas.getBoundingClientRect();
+  if (!width || !height) return;
+  const scale = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = Math.round(width * scale);
+  canvas.height = Math.round(height * scale);
+  const context = canvas.getContext("2d");
+  if (!context) return;
+  context.scale(scale, scale);
+
+  const gradient = context.createLinearGradient(0, 0, width, 0);
+  gradient.addColorStop(0, "#434aea00");
+  gradient.addColorStop(0.27, "#6395ff");
+  gradient.addColorStop(0.65, "#ab75ff");
+  gradient.addColorStop(1, "#8457fa00");
+
+  for (let line = 0; line < 6; line++) {
+    context.beginPath();
+    context.globalAlpha = line === 0 ? 0.98 : 0.28 - line * 0.026;
+    context.strokeStyle = gradient;
+    context.lineWidth = line === 0 ? 2 : 1;
+    context.shadowColor = "#9065ff";
+    context.shadowBlur = line === 0 ? 15 : 0;
+    for (let step = 0; step <= 120; step++) {
+      const part = step / 120;
+      const envelope = Math.sin(Math.PI * part);
+      const ripple = Math.sin(part * 18 + line * 0.16) * envelope * height * 0.12;
+      const y = height * (0.68 - part * 0.23) + ripple + line * 5 * envelope;
+      if (step === 0) context.moveTo(0, y);
+      else context.lineTo(part * width, y);
+    }
+    context.stroke();
+  }
+}
+
+const artwork = new ResizeObserver((entries) => {
+  for (const {target} of entries) drawSignalArt(target);
+});
+document.querySelectorAll(".signal-art").forEach((canvas) => artwork.observe(canvas));

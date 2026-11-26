@@ -11,8 +11,8 @@
 <body>
   <a class="skip" href="#main">Skip to content</a>
   <div id="shell" class="shell">
-    <aside class="sidebar" aria-label="Workspace">
-      <a class="brand" href="#overview" aria-label="Rewind overview"><span class="brand-mark" aria-hidden="true"><i></i><i></i></span><span>Rewind<small>Agent Flight Recorder</small></span></a>
+    <aside class="sidebar" id="workspace-sidebar" aria-label="Workspace">
+      <a class="brand" href="#overview" aria-label="Rewind overview"><span class="brand-mark"><img src="/rewind-mark.png" alt=""></span><span>Rewind<small>Agent Flight Recorder</small></span></a>
       <nav id="navigation" aria-label="Main navigation">
         <a href="#overview" data-page="overview" aria-label="Overview"><i class="icon" data-icon="grid"></i><span>Overview</span></a>
         <a href="#recordings" data-page="recordings" aria-label="Recordings"><i class="icon" data-icon="disc"></i><span>Recordings</span></a>
@@ -22,6 +22,7 @@
         <a href="#providers" data-page="providers" aria-label="Providers"><i class="icon" data-icon="diamond"></i><span>Providers</span></a>
         <a href="#settings" data-page="settings" aria-label="Settings"><i class="icon" data-icon="settings"></i><span>Settings</span></a>
       </nav>
+      <div class="rail-signal" aria-hidden="true"><canvas class="signal-art"></canvas></div>
       <div class="sidebar-foot">
         <div class="local-card"><span class="signal"></span><span>Local workspace<small id="side-storage">SQLite on this device</small></span></div>
         <a href="#welcome"><i class="icon" data-icon="arrow-right"></i> About Rewind</a>
@@ -29,7 +30,8 @@
     </aside>
     <div class="workspace">
       <header class="topbar">
-        <button class="icon-btn menu-trigger" id="menu-trigger" aria-label="Toggle navigation" aria-expanded="false"><i class="icon" data-icon="menu"></i></button>
+        <button class="icon-btn menu-trigger" id="menu-trigger" aria-label="Toggle navigation" aria-controls="workspace-sidebar" aria-expanded="false"><i class="icon" data-icon="menu"></i></button>
+        <div class="top-location">Workspace <span aria-hidden="true">/</span> <strong id="current-page">Overview</strong></div>
         <button class="global-search" id="search-trigger"><i class="icon" data-icon="search"></i><span>Search pages and recordings</span><kbd>⌘ K</kbd></button>
         <div class="top-actions"><span class="local-status"><span class="signal"></span>Local workspace</span><button class="icon-btn" id="theme-toggle" aria-label="Switch to light theme"><i class="icon" data-icon="sun"></i></button></div>
       </header>
@@ -39,11 +41,16 @@
         <div id="notice" class="toast" role="status" hidden></div>
 
         <section class="screen" id="page-overview" aria-labelledby="overview-title">
-          <div class="hero">
-            <div class="hero-content"><div class="kicker"><span></span> AGENT FLIGHT RECORDER</div><h1 id="overview-title">Every decision,<br><em>within reach.</em></h1><p>Capture agent execution, replay it offline, and trace what changed.</p>
+          <div class="hero overview-hero">
+            <div class="hero-content"><div class="kicker"><span></span> AGENT FLIGHT RECORDER</div><h1 id="overview-title">Every <em>decision,</em> within reach.</h1><p>Capture agent execution, replay it offline, and trace what changed.</p>
               <div class="actions"><a class="btn primary" href="#capture"><i class="icon" data-icon="play"></i> Start capture</a><a class="btn quiet" href="#recordings">Browse recordings <i class="icon" data-icon="arrow-right"></i></a></div>
             </div>
-            <div class="hero-art" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="hero-grid"></div><div class="hero-stack"><div></div><div></div><div><span class="rewind-glyph">◀◀</span></div></div><span class="star star-a"></span><span class="star star-b"></span><span class="star star-c"></span></div>
+            <div class="hero-art" aria-hidden="true"><canvas class="signal-art"></canvas><div class="hero-stack"><div></div><div></div><div><span class="brand-mark"><img src="/rewind-mark.png" alt=""></span></div></div></div>
+            <nav class="hero-shortcuts" aria-label="Investigation shortcuts">
+              <a href="#capture"><span class="stat-icon"><i class="icon" data-icon="capture"></i></span><span><strong>Capture</strong><small>Record execution</small></span></a>
+              <a href="#recordings"><span class="stat-icon"><i class="icon" data-icon="layers"></i></span><span><strong>Inspect</strong><small>Read stored steps</small></span></a>
+              <a href="#verification"><span class="stat-icon"><i class="icon" data-icon="shield"></i></span><span><strong>Verify</strong><small>Replay offline</small></span></a>
+            </nav>
           </div>
           <div class="stats">
             <article class="stat"><span class="stat-icon"><i class="icon" data-icon="disc"></i></span><div><span>Stored recordings</span><strong id="stat-runs">—</strong></div></article>
@@ -52,6 +59,14 @@
             <article class="stat"><span class="stat-icon amber"><i class="icon" data-icon="database"></i></span><div><span>SQLite file size</span><strong id="stat-storage">—</strong></div></article>
           </div>
           <div class="overview-grid">
+            <section class="panel workflow-card">
+              <div class="panel-head"><h2>Investigation workflow</h2></div>
+              <div class="workflow-links">
+                <a href="#capture"><span class="stat-icon"><i class="icon" data-icon="capture"></i></span><span><strong>Capture</strong><small>Record a trusted Python script.</small></span><i class="icon next" data-icon="arrow-right"></i></a>
+                <a href="#recordings"><span class="stat-icon"><i class="icon" data-icon="layers"></i></span><span><strong>Inspect</strong><small>Read requests, responses, and outcomes.</small></span><i class="icon next" data-icon="arrow-right"></i></a>
+                <a href="#verification"><span class="stat-icon"><i class="icon" data-icon="shield"></i></span><span><strong>Verify</strong><small>Check the recording offline.</small></span><i class="icon next" data-icon="arrow-right"></i></a>
+              </div>
+            </section>
             <section class="panel"><div class="panel-head"><h2>Recent recordings</h2><a class="text-link" href="#recordings">View library <i class="icon" data-icon="arrow-right"></i></a></div><div id="recent" class="panel-body compact"></div></section>
             <section class="panel"><div class="panel-head"><h2>Execution activity</h2><span class="pill">Last 7 days</span></div><div id="chart" class="panel-body chart"></div></section>
             <section class="panel"><div class="panel-head"><h2>Replay verification</h2><a class="text-link" href="#verification">Verification <i class="icon" data-icon="arrow-right"></i></a></div><div id="distribution" class="panel-body"></div></section>
@@ -70,7 +85,7 @@
             <section class="panel execution"><div class="panel-head execution-head"><div><h2 id="detail-title">Execution timeline</h2><p id="detail-id" class="mono"></p></div><span class="pill" id="boundary-count">—</span></div>
               <div class="segmented panel-tabs" id="run-tabs" role="group" aria-label="Recording view"><button data-run-tab="timeline" aria-pressed="true">Timeline</button><button data-run-tab="summary" aria-pressed="false">Summary</button><button data-run-tab="verification" aria-pressed="false">Verification</button><button data-run-tab="metadata" aria-pressed="false">Metadata</button></div>
               <div id="run-detail" class="panel-body"></div>
-              <div id="timeline-panel"><div id="timeline" class="timeline"></div><div class="playback" id="playback" hidden><div class="playback-actions"><button class="icon-btn" id="prev-step" aria-label="Previous step">◀</button><button class="btn primary play" id="play-step" aria-label="Play stored steps">▶</button><button class="icon-btn" id="next-step" aria-label="Next step">▶</button><label class="sr-only" for="speed">Playback speed</label><select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div><label class="sr-only" for="scrub">Recording step</label><input type="range" id="scrub" min="0" max="0" value="0"><div class="play-label"><span id="step-label"></span><span>Stored steps</span></div></div></div>
+              <div id="timeline-panel"><div id="timeline-start" class="timeline-endpoint" hidden><i class="icon" data-icon="play"></i><span>Execution start</span></div><div id="timeline" class="timeline"></div><div id="timeline-end" class="timeline-endpoint" hidden><i class="icon" data-icon="disc"></i><span id="timeline-end-text">Execution end</span></div><div class="playback" id="playback" hidden><div class="playback-actions"><button class="icon-btn" id="prev-step" aria-label="Previous step">◀</button><button class="btn primary play" id="play-step" aria-label="Play stored steps">▶</button><button class="icon-btn" id="next-step" aria-label="Next step">▶</button><label class="sr-only" for="speed">Playback speed</label><select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div><label class="sr-only" for="scrub">Recording step</label><input type="range" id="scrub" min="0" max="0" value="0"><div class="play-label"><span id="step-label"></span><span>Stored steps</span></div></div></div>
             </section>
             <section id="inspector" class="panel evidence"><div id="evidence-resize" class="resize-handle left" role="separator" tabindex="0" aria-label="Resize evidence inspector" aria-controls="inspector" aria-orientation="vertical"></div><div class="panel-head"><h2>Evidence inspector</h2><span class="pill" id="step-badge">—</span></div><div id="no-evidence" class="empty">Select a recorded step to inspect its evidence.</div>
               <div id="evidence-body" hidden><div class="evidence-title"><span class="stat-icon"><i class="icon" data-icon="code"></i></span><div><span id="boundary-kind" class="muted"></span><strong id="boundary-title"></strong></div></div>
@@ -84,8 +99,8 @@
         </section>
 
         <section class="screen" id="page-capture" aria-labelledby="capture-title" hidden>
-          <header class="page-heading"><div><div class="crumb">Workspace / Capture</div><h1 id="capture-title">Capture the <em>moment.</em></h1><p>Run a trusted Python script and preserve its captured evidence.</p></div><span class="page-symbol"><i class="icon" data-icon="code"></i></span></header>
-          <div class="workflow"><span>1 <strong>Select script</strong></span><i></i><span>2 <strong>Review &amp; trust</strong></span><i></i><span>3 <strong>Capture</strong></span></div>
+          <header class="page-heading"><div><div class="crumb">Workspace / Capture</div><h1 id="capture-title">Capture the <em>moment.</em></h1><p>Run a trusted Python script and preserve its captured evidence.</p></div><div class="page-art" aria-hidden="true"><canvas class="signal-art"></canvas><span class="page-symbol"><i class="icon" data-icon="code"></i></span></div></header>
+          <div class="workflow"><span><b>1</b> <strong>Select script</strong></span><i></i><span><b>2</b> <strong>Review &amp; trust</strong></span><i></i><span><b>3</b> <strong>Capture</strong></span></div>
           <div class="two-col capture-layout">
             <form id="capture-form" class="stack">
               <section class="panel"><div class="panel-head"><h2>Select a Python script</h2><span class="pill">Local</span></div><div class="panel-body"><label class="field">Script in trusted workspace<select id="script" required></select></label><p id="workspace-path" class="muted path"></p></div></section>
@@ -98,7 +113,7 @@
         </section>
 
         <section class="screen" id="page-verification" aria-labelledby="verify-title" hidden>
-          <header class="page-heading"><div><div class="crumb">Workspace / Verification</div><h1 id="verify-title">Trust, but <em>verify.</em></h1><p>Replay stored interactions and check whether the execution matches.</p></div><span class="page-symbol"><i class="icon" data-icon="shield"></i></span></header>
+          <header class="page-heading"><div><div class="crumb">Workspace / Verification</div><h1 id="verify-title">Trust, but <em>verify.</em></h1><p>Replay stored interactions and check whether the execution matches.</p></div><div class="page-art" aria-hidden="true"><canvas class="signal-art"></canvas><span class="page-symbol"><i class="icon" data-icon="shield"></i></span></div></header>
           <form class="panel verify-form" id="verify-form">
             <label class="field">Recording<select id="verify-run" required></select></label>
             <div class="field"><label for="replays">Offline replays</label><div class="stepper"><button class="icon-btn" id="fewer" type="button" aria-label="Decrease replay count">−</button><input id="replays" type="number" min="1" max="100" step="1" value="10" required><button class="icon-btn" id="more" type="button" aria-label="Increase replay count">+</button></div></div>
@@ -108,14 +123,16 @@
         </section>
 
         <section class="screen" id="page-compare" aria-labelledby="compare-title" hidden>
-          <header class="page-heading"><div><div class="crumb">Workspace / Compare</div><h1 id="compare-title">Compare executions</h1><p>Locate the earliest recorded difference and inspect the evidence on both sides.</p></div><span class="page-symbol"><i class="icon" data-icon="compare"></i></span></header>
+          <header class="page-heading"><div><div class="crumb">Workspace / Compare</div><h1 id="compare-title">Compare executions</h1><p>Locate the earliest recorded difference and inspect the evidence on both sides.</p></div><div class="page-art" aria-hidden="true"><canvas class="signal-art"></canvas><span class="page-symbol"><i class="icon" data-icon="compare"></i></span></div></header>
           <form class="panel compare-form" id="compare-form"><label class="field">Baseline<select id="compare-left" required></select></label><button class="icon-btn" id="swap" type="button" aria-label="Swap baseline and candidate"><i class="icon" data-icon="compare"></i></button><label class="field">Candidate<select id="compare-right" required></select></label><button class="btn primary" id="compare">Compare runs</button></form>
           <div id="comparison" role="status"></div>
-          <div id="compare-result" class="panel" hidden><div class="panel-head"><h2>Aligned steps</h2><div class="actions"><button class="btn" id="previous-diff">Previous difference</button><button class="btn" id="next-diff">Next difference</button></div></div><div id="compare-alignment" class="compare-alignment"></div><div class="two-col compare-raw"><div><h3>Baseline evidence</h3><pre id="compare-raw-left"></pre></div><div><h3>Candidate evidence</h3><pre id="compare-raw-right"></pre></div></div></div>
+          <div id="compare-result" class="compare-layout" hidden><section class="panel"><div class="panel-head"><h2>Aligned steps</h2><div class="actions"><button class="btn" id="previous-diff">Previous difference</button><button class="btn" id="next-diff">Next difference</button></div></div><div class="compare-lanes" id="compare-lanes"></div><div id="compare-alignment" class="compare-alignment"></div><div class="compare-evidence-controls" id="compare-evidence-controls" hidden><h3 id="compare-evidence-title">Selected difference</h3><div class="segmented" id="compare-evidence-tabs" role="group" aria-label="Comparison evidence">
+            <button type="button" data-compare-evidence="response" aria-pressed="true">Response</button><button type="button" data-compare-evidence="request" aria-pressed="false">Request</button><button type="button" data-compare-evidence="raw" aria-pressed="false">Raw</button>
+          </div></div><div class="two-col compare-raw" id="compare-evidence-panes" hidden><div><h3>Baseline evidence</h3><pre id="compare-raw-left"></pre></div><div><h3>Candidate evidence</h3><pre id="compare-raw-right"></pre></div></div></section><aside class="panel compare-summary"><div class="panel-head"><h2>Comparison overview</h2></div><div id="compare-metrics" class="panel-body"></div><div id="compare-finding" class="panel-body" role="status"></div></aside></div>
         </section>
 
         <section class="screen" id="page-providers" aria-labelledby="providers-title" hidden>
-          <header class="page-heading"><div><div class="crumb">Workspace / Providers</div><h1 id="providers-title">Bring your <em>models.</em></h1><p>Inspect credential configuration and check provider catalogue access.</p></div><span class="page-symbol"><i class="icon" data-icon="diamond"></i></span></header>
+          <header class="page-heading"><div><div class="crumb">Workspace / Providers</div><h1 id="providers-title">Bring your <em>models.</em></h1><p>Inspect credential configuration and check provider catalogue access.</p></div><div class="page-art" aria-hidden="true"><canvas class="signal-art"></canvas><span class="page-symbol"><i class="icon" data-icon="diamond"></i></span></div></header>
           <div class="provider-grid" id="providers"></div><p class="notice" id="provider-notice"></p>
         </section>
 
@@ -128,7 +145,7 @@
       </main>
     </div>
   </div>
-  <main id="welcome" class="welcome" hidden><header><a class="brand" href="#welcome"><span class="brand-mark" aria-hidden="true"><i></i><i></i></span>Rewind</a><a class="btn" href="#overview">Open workspace <i class="icon" data-icon="arrow-right"></i></a></header><div class="hero"><div class="hero-content"><div class="kicker"><span></span> LOCAL-FIRST AGENT DEBUGGING</div><h1>The Flight Recorder<br>for <em>AI agents.</em></h1><p>Capture supported execution boundaries, replay recorded interactions offline, and investigate what changed.</p><div class="actions"><a class="btn primary" href="#overview">Open workspace <i class="icon" data-icon="arrow-right"></i></a><a class="btn quiet" href="#capture">Start a capture</a></div></div><div class="hero-art" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="hero-grid"></div><div class="hero-stack"><div></div><div></div><div><span class="rewind-glyph">◀◀</span></div></div></div></div><nav class="welcome-steps" aria-label="Rewind workflow"><a href="#capture">Capture <span>Run a trusted script</span></a><a href="#recordings">Inspect <span>Read stored steps</span></a><a href="#verification">Replay <span>Check execution offline</span></a><a href="#compare">Compare <span>Find the recorded difference</span></a></nav></main>
+  <main id="welcome" class="welcome" hidden><header><a class="brand" href="#welcome"><span class="brand-mark"><img src="/rewind-mark.png" alt=""></span>Rewind</a><a class="btn" href="#overview">Open workspace <i class="icon" data-icon="arrow-right"></i></a></header><div class="hero"><div class="hero-content"><div class="kicker"><span></span> LOCAL-FIRST AGENT DEBUGGING</div><h1>The Flight Recorder<br>for <em>AI agents.</em></h1><p>Capture supported execution boundaries, replay recorded interactions offline, and investigate what changed.</p><div class="actions"><a class="btn primary" href="#overview">Open workspace <i class="icon" data-icon="arrow-right"></i></a><a class="btn quiet" href="#capture">Start a capture</a></div></div><div class="hero-art" aria-hidden="true"><canvas class="signal-art"></canvas><div class="hero-stack"><div></div><div></div><div><span class="brand-mark"><img src="/rewind-mark.png" alt=""></span></div></div></div></div><nav class="welcome-steps" aria-label="Rewind workflow"><a href="#capture">Capture <span>Run a trusted script</span></a><a href="#recordings">Inspect <span>Read stored steps</span></a><a href="#verification">Replay <span>Check execution offline</span></a><a href="#compare">Compare <span>Find the recorded difference</span></a></nav></main>
   <dialog id="palette" aria-label="Command palette"><div class="dialog-search"><i class="icon" data-icon="search"></i><input id="palette-search" type="search" aria-label="Search commands and recordings" placeholder="Find a page or recording…" autocomplete="off"><button class="btn" data-close="palette">Esc</button></div><div id="palette-results"></div></dialog>
   <dialog id="evidence-dialog" aria-labelledby="expanded-title"><div class="panel-head"><h2 id="expanded-title">Captured evidence</h2><button class="btn" data-close="evidence-dialog">Close</button></div><div id="expanded-code" class="code" tabindex="0"></div></dialog>
 </body>
