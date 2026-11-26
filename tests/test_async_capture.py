@@ -9,12 +9,14 @@ no pytest-asyncio is needed, and they use only `httpx` (no flightrecorder import
 from __future__ import annotations
 
 import asyncio
+import socket
 from typing import TYPE_CHECKING
 
 import httpx
 import pytest
 
 from flightrecorder import Divergence, RunStore, capture, verify_run
+from flightrecorder.offline import NetworkBlocked, offline_guard
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -123,3 +125,15 @@ def test_concurrent_async_boundaries_fail_loud(monkeypatch: pytest.MonkeyPatch) 
 
     with pytest.raises(Divergence), capture(provider="openai", model="m"):
         asyncio.run(_gather_agent())
+
+
+def test_async_thread_wakeup_preserves_offline_guard() -> None:
+    async def wakeup() -> int:
+        return await asyncio.to_thread(lambda: 42)
+
+    with offline_guard() as audit:
+        assert asyncio.run(wakeup()) == 42
+        assert not audit.blocked_operations
+        with socket.socket() as sock, pytest.raises(NetworkBlocked):
+            sock.connect(("127.0.0.1", 9))
+        assert audit.blocked_operations == ["connect"]
