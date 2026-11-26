@@ -77,6 +77,26 @@ class Boundary:
     request: Any
     response: Any
     chain_hash: str = ""
+    #: 0-based count of prior boundaries sharing this ``(kind, key)``.
+    #: Loops and retries of the same endpoint stay ordered. Derived from
+    #: position, so it is recomputed on load and is not part of the hash-chain.
+    occurrence: int = 0
+
+
+def _occurrence_key(kind: str, key: str) -> str:
+    """Identity an occurrence index counts against. NUL-joined so kind and key cannot collide."""
+    return f"{kind}\x00{key}"
+
+
+def occurrences(boundaries: list[Boundary]) -> list[int]:
+    """Occurrence index of each boundary: the Nth time its ``(kind, key)`` appears."""
+    counts: dict[str, int] = {}
+    result: list[int] = []
+    for boundary in boundaries:
+        key = _occurrence_key(boundary.kind, boundary.key)
+        result.append(counts.get(key, 0))
+        counts[key] = counts.get(key, 0) + 1
+    return result
 
 
 @dataclass
@@ -105,10 +125,14 @@ class Session:
         self._cursor = 0
         self.chain = GENESIS
         self._in_flight = False  # guards against concurrent (asyncio.gather) boundaries
+        self._live_counts: dict[str, int] = {}
+        self._rec_occurrences = occurrences(self._recorded)
 
     def mediate(self, kind: str, key: str, request: Any, produce: Callable[[], Any]) -> Any:
         """The one method every boundary goes through."""
         req_bytes = canon([kind, key, request])
+        occ_key = _occurrence_key(kind, key)
+        occurrence = self._live_counts.get(occ_key, 0)
         if self.mode == "record":
             response = produce()
             self.chain = chain_link(self.chain, req_bytes, canon(response), self.algorithm)
@@ -120,8 +144,10 @@ class Session:
                     copy.deepcopy(request),
                     copy.deepcopy(response),
                     self.chain,
+                    occurrence,
                 )
             )
+            self._live_counts[occ_key] = occurrence + 1
             return response
 
         seq = self._cursor
@@ -138,9 +164,17 @@ class Session:
                 f"input diverged — live {kind}/{key} does not match recorded "
                 f"{rec.kind}/{rec.key} (uncaptured nondeterminism or a code change)",
             )
+        if occurrence != self._rec_occurrences[seq]:
+            raise Divergence(
+                seq,
+                f"occurrence mismatch — live {kind}/{key} is call #{occurrence}, but the "
+                f"recording expected call #{self._rec_occurrences[seq]} here "
+                "(a loop or retry ran a different number of times)",
+            )
         self.chain = chain_link(self.chain, req_bytes, canon(rec.response), self.algorithm)
         if self.chain != rec.chain_hash:
             raise Divergence(seq, "hash-chain mismatch — the recording was tampered or corrupted")
+        self._live_counts[occ_key] = occurrence + 1
         self._cursor += 1
         return copy.deepcopy(rec.response)
 

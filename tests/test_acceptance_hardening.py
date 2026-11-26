@@ -139,6 +139,16 @@ def test_live_corpus_agent_records_five_steps_and_replays_offline(
         return httpx.Response(200, json=body)
 
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", serve)
+    import importlib.util
+
+    if importlib.util.find_spec("httpx2") is not None:
+        import httpx2
+
+        def serve_v2(self: object, request: httpx2.Request) -> httpx2.Response:
+            response = serve(self, request)  # type: ignore[arg-type]
+            return httpx2.Response(response.status_code, json=response.json())
+
+        monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", serve_v2)
     script = tmp_path / "agent.py"
     script.write_text(agent_source(provider, "test", 1))
     cassette = record_script(script)

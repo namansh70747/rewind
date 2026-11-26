@@ -3,10 +3,11 @@
 import sys
 from pathlib import Path
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 transport, marker = sys.argv[1:3]
-server = FastMCP("rewind-test", port=int(sys.argv[3]) if len(sys.argv) > 3 else 8000)
+server = MCPServer("rewind-test")
+port = int(sys.argv[3]) if len(sys.argv) > 3 else 8000
 
 
 @server.tool()
@@ -25,6 +26,6 @@ if __name__ == "__main__":
     if transport == "stdio":
         server.run(transport="stdio")
     elif transport == "streamable-http":
-        server.run(transport="streamable-http")
+        server.run(transport="streamable-http", host="127.0.0.1", port=port)
     else:
         raise ValueError("unsupported test transport")

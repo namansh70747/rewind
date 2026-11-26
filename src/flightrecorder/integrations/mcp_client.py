@@ -1,4 +1,4 @@
-"""Managed MCP v1 SDK transports; replay never connects or starts a subprocess."""
+"""Managed MCP SDK transports; replay never connects or starts a subprocess."""
 
 from __future__ import annotations
 
@@ -48,7 +48,10 @@ class MCPClient:
                 with suppress_sources():
                     try:
                         result = await producer()
-                        outcome = {"ok": True, "value": result.model_dump(mode="json")}
+                        outcome = {
+                            "ok": True,
+                            "value": result.model_dump(mode="json", by_alias=True),
+                        }
                     except Exception as exc:
                         outcome = {"ok": False, "type": type(exc).__name__, "message": str(exc)}
                     return dict(redact({**outcome, "wire": self._wire.finish(occurrence)}))
@@ -68,9 +71,14 @@ class MCPClient:
         return dict(outcome["value"])
 
     async def list_tools(self, cursor: str | None = None) -> dict[str, Any]:
-        return await self._operation(
-            "tools/list", {"cursor": cursor}, lambda: self._sdk.list_tools(cursor=cursor)
-        )
+        def listed() -> Any:
+            if cursor is None:
+                return self._sdk.list_tools()
+            from mcp.types import PaginatedRequestParams
+
+            return self._sdk.list_tools(params=PaginatedRequestParams(cursor=cursor))
+
+        return await self._operation("tools/list", {"cursor": cursor}, listed)
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         return await self._operation(
@@ -161,18 +169,17 @@ async def mcp_http(
     """Streamable HTTP initialization, session negotiation and cleanup via MCP SDK.
 
     Headers are credentials/configuration supplied at runtime, never persisted.
-    Supported SDK contract is mcp>=1.20,<2, not the incompatible v2 client API.
+    MCP 2 speaks Streamable HTTP through ``httpx2`` and returns the read/write pair only.
     """
 
     async def connect(stack: AsyncExitStack, tap: WireTap) -> Any:
-        import httpx
+        import httpx2
         from mcp import ClientSession
         from mcp.client.streamable_http import streamable_http_client
 
-        http = await stack.enter_async_context(httpx.AsyncClient(headers=headers, timeout=30))
-        read, write, _ = await stack.enter_async_context(
-            streamable_http_client(url, http_client=http)
-        )
+        http = await stack.enter_async_context(httpx2.AsyncClient(headers=headers, timeout=30))
+        streams = await stack.enter_async_context(streamable_http_client(url, http_client=http))
+        read, write = streams[0], streams[1]
         return await stack.enter_async_context(
             ClientSession(
                 cast("Any", TappedStream(read, tap, "response")),
