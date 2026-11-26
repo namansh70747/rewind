@@ -1,24 +1,24 @@
-# Month 5 course close
+# Month 5 substitute evaluation proposal
 
-Software for weeks 19–22 already lived in `main`. This page closes the leftover
-**evidence** items without paid OpenAI/Anthropic keys (ADR-0015).
+The implementation is merged, but real-fleet evaluation and independent review
+are pending. [ADR-0015](adr/0015-course-provider-substitution.md) proposes a smaller
+course exercise; approval has not been recorded.
 
-| Leftover | Close |
-|---|---|
-| Neighbors / human review | Three synthetic families; neighbors stay in-family (`course-close.json`) |
-| Embeddings extra | Documented in [killer demo](killer-demo.md); optional BGE/LanceDB |
-| Failure map | `fr fleet-map` on the substitute corpus |
-| Prompted-LLM baseline | Live Gemini or NVIDIA via `live_prompted_predictions` when a key is set; otherwise frozen **keyword-stub-v1** |
-| `fr eval` CI | Already in `.github/workflows/ci.yml`; Month 5 workflow also runs pytest |
-| 672-tool fleet | Substituted with 24–30 local synthetic runs + existing NVIDIA/Gemini pairs |
-
-Reproduce:
+The runner exercises neighbors, three synthetic symptom families, fresh-failure
+matching and a replay policy gate. Its offline keyword baseline is not a
+prompted LLM. Ties and losses are retained; no baseline predictions are degraded.
+Human evaluation is reported as not performed.
 
 ```bash
 python -m pip install -e '.[dev,ml]'
-# Optional: set GEMINI_API_KEY or NVIDIA_API_KEY first for a live prompted baseline.
 python examples/month5_close_gates.py
 python -m pytest tests/test_month5.py tests/test_month5_course_close.py
 ```
 
-Committed evidence: [validation/month5/course-close.json](validation/month5/course-close.json).
+An explicitly requested `--live` baseline sends the blinded synthetic features
+to Gemini or NVIDIA and may incur charges. It requires configured credentials
+and fails if credentials or valid model output are missing. It never falls back
+to the heuristic while claiming a live comparison.
+
+See [generated synthetic report](validation/month5/course-close.json). It does
+not attest original production, course approval, or public release completion.

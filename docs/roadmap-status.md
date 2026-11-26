@@ -1,11 +1,5 @@
 # Roadmap evidence ledger — weeks 1–26
 
-Course close (2026-11-18): leftover Month 5–6 **software and docs** are closed under
-[ADR-0015](adr/0015-course-provider-substitution.md). Format freeze:
-[ADR-0010](adr/0010-roadmap-storage-and-scope.md) Accepted. Evidence:
-[Month 5 course close](month5-course-close.md), [killer demo](killer-demo.md).
-Paid OpenAI/Anthropic, 672-tool fleet, PyPI, and LoRA training stay out of scope.
-
 Current hardening update (2026-11-14): the [Month 5 audit](validation/month5/planner-audit.md)
 and [Month 6 audit](validation/month6/planner-audit.md) are the current gate records.
 Month 6 now checks worker outputs as well as fingerprints and keeps overlapping

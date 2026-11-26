@@ -1,20 +1,24 @@
-"""Close leftover Month 5 gates using Gemini or NVIDIA when a key is set.
+"""Close leftover Month 5 gates with synthetic fixtures; approval remains pending.
 
 Writes docs/validation/month5/course-close.json. OpenAI/Anthropic are not used.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
-import os
 from pathlib import Path
 
 from flightrecorder.month5 import close_month5_gates
 
 
 def main() -> None:
-    live = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("NVIDIA_API_KEY"))
-    report = close_month5_gates(10, live=live)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--live", action="store_true", help="Opt in to billed Gemini/NVIDIA baseline calls"
+    )
+    args = parser.parse_args()
+    report = close_month5_gates(10, live=args.live)
     out = Path("docs/validation/month5/course-close.json")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

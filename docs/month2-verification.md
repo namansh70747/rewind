@@ -22,7 +22,9 @@ On the development store on 9 November 2026, the audit examined 26 recordings an
 
 ## Remaining original Month 2 gates
 
-- Billed OpenAI/Anthropic live corpus is out of course scope. Remaining live capture uses NVIDIA and Gemini only (**ADR-0015**). Run `python examples/month2_close_gates.py` with those keys; summary: [validation/month2/course-close.json](validation/month2/course-close.json).
-- Recorded replay is only as complete as captured boundaries. Python socket auditing is best-effort, not an OS sandbox.
-- Storage format is **Accepted** for v0.1.0 (**ADR-0010**): BLAKE3/zstd + JSON v2.
+- Real unmodified OpenAI and Anthropic agents, including streaming tool calls and retries, still require their own recorded corpus and offline verification. Existing Groq/Gemini checks are a separate free-provider milestone.
+- Recorded replay is only as complete as captured boundaries. Python socket auditing is best-effort, not an OS sandbox; native I/O, subprocesses, filesystem and arbitrary globals are not comprehensively intercepted.
+- The storage format remains **proposed**, not frozen: ADR 0010 and compatibility fixtures still require maintainer review. A measured real-workload footprint budget and broader corpus are pending.
 - The 26-run scan is a limited known-pattern result, not proof that all stored content or backups are free of secrets.
+
+The current outcome is substantial implementation and controlled validation, not complete acceptance of the original M2 gate.

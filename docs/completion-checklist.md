@@ -23,7 +23,7 @@ reported and must pass `fr release-check` before publication.
 | Input / access | Work already prepared | Acceptance still required |
 |---|---|---|
 | GitHub repository-scoped installation: configured | Candidate published in draft PR #43; CI matrix, Pages and release workflows | Automated CI qualified at beecba4; obtain Code Owner review and merge |
-| Locally configured `NVIDIA_API_KEY` / `GEMINI_API_KEY`, with the course default model | `examples/provider_corpus.py`: three NVIDIA or Gemini calls plus two local tools per recording, then offline verification | Capture and inspect 2–15 recordings per provider; billed OpenAI/Anthropic remain out of course scope |
+| Locally configured `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`, with an explicitly chosen account model | `examples/provider_corpus.py`: three provider calls plus two local tools per recording, then offline verification | Capture and inspect 10–15 recordings per intended provider; live streaming/diversity remain separate coverage requirements |
 | Authorized real fleet recordings and original trusted scripts | Checksummed import, fixture manifest evaluation, MCP capture, query DSL, vector search and maps | Hundreds of author-fleet runs; coverage across intended tools/providers; privacy review |
 | Reviewed task-grouped failure labels and an independently collected prompted baseline | Grouped train/validation/test classifier and held-out baseline comparison | Meet the roadmap's held-out accuracy gate without leakage; human cluster and neighbor review |
 | Agreed workload budgets and platform runners | Synthetic benchmark; actual Linux/Windows/macOS CI evidence | Actual-workload capture/storage/snapshot measurements |
@@ -39,9 +39,8 @@ be one supported by your account and compatible with the selected SDK API. The
 script stops after the first capture error and retains partial evidence.
 
 ```bash
-uv run python examples/provider_corpus.py nvidia --output .rewind/nvidia-corpus
-uv run python examples/provider_corpus.py gemini --output .rewind/gemini-corpus
-uv run python examples/month2_close_gates.py
+uv run python examples/provider_corpus.py openai YOUR_CHAT_MODEL --output .rewind/openai-corpus
+uv run python examples/provider_corpus.py anthropic YOUR_MODEL --output .rewind/anthropic-corpus
 ```
 
 Each recording has three model boundaries and two explicitly local tools.

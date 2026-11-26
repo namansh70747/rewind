@@ -86,49 +86,50 @@
     "dataset_sha256": "6144780ae9301a0bf1b6d77d200f63b7b643845d0557f1bbe4515fe844b37975",
     "held_out_count": 8,
     "classifier_macro_f1": 1.0,
-    "prompted_baseline_macro_f1": 0.6851851851851851,
+    "prompted_baseline_macro_f1": 0.6,
     "classifier_beats_baseline": true,
     "baseline_per_class": {
       "context-budget": {
         "precision": 1.0,
-        "recall": 0.5,
-        "f1-score": 0.6666666666666666,
+        "recall": 1.0,
+        "f1-score": 1.0,
         "support": 2.0
       },
       "tool-error": {
-        "precision": 0.8,
+        "precision": 0.6666666666666666,
         "recall": 1.0,
-        "f1-score": 0.8888888888888888,
+        "f1-score": 0.8,
         "support": 4.0
       },
       "transport-timeout": {
-        "precision": 0.5,
-        "recall": 0.5,
-        "f1-score": 0.5,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
         "support": 2.0
       },
       "accuracy": 0.75,
       "macro avg": {
-        "precision": 0.7666666666666666,
+        "precision": 0.5555555555555555,
         "recall": 0.6666666666666666,
-        "f1-score": 0.6851851851851851,
+        "f1-score": 0.6,
         "support": 8.0
       },
       "weighted avg": {
-        "precision": 0.775,
+        "precision": 0.5833333333333333,
         "recall": 0.75,
-        "f1-score": 0.736111111111111,
+        "f1-score": 0.65,
         "support": 8.0
       }
     },
     "baseline_provenance": {
       "provider": "course-substitute-heuristic",
-      "model": "keyword-stub-v1",
-      "prompt_sha256": "9cb63e1899904d6e5d9d50fb49a9a4da95b47df234849f31c54a5bab804fb97c"
+      "model": "keyword-baseline-v2",
+      "prompt_sha256": "1cfa949a41cf4e71e289a2d6191d00443c697a57117c80d79418f37cafffeae6"
     },
     "qualification": "Submitted predictions; data review and independent baseline provenance require human verification."
   },
-  "baseline_source": "keyword-stub-v1",
-  "human_evaluation": "Course team reviewed the three synthetic families and confirmed neighbors stay inside the same symptom family.",
-  "qualification": "Substitute local fleet (ADR-0015). Not the original 672-tool / 10-provider production gate. Baseline is Gemini/NVIDIA when a key is configured, otherwise keyword-stub-v1."
+  "baseline_source": "keyword-baseline-v2",
+  "human_evaluation": "not performed",
+  "course_approval": "pending",
+  "qualification": "Synthetic substitute proposal (ADR-0015), pending course approval. Does not satisfy the original real-fleet or human-review gates. Offline keyword comparison is not a prompted-LLM baseline. Live baseline requires explicit opt-in and credentials."
 }

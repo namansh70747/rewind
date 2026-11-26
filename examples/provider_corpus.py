@@ -1,29 +1,68 @@
-"""Record a controlled NVIDIA or Gemini corpus, then verify without extra API calls.
+"""Record a controlled provider corpus, then verify without extra API calls.
 
-Requires NVIDIA_API_KEY or GEMINI_API_KEY locally. Makes three model calls per
-recording. This is not a 672-tool fleet. OpenAI and Anthropic are out of course
-scope (ADR-0015).
+Supports OpenAI/Anthropic SDKs and NVIDIA/Gemini HTTP clients. Requires locally
+configured credentials and makes three model calls per recording. This is not
+production fleet evidence. Course substitutions are proposed in ADR-0015.
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 from pathlib import Path
 
 from flightrecorder.evaluation import evaluate_manifest
 from flightrecorder.portable import export_run
-from flightrecorder.providers import GEMINI, NVIDIA, PROVIDERS
+from flightrecorder.providers import PROVIDERS
 from flightrecorder.redaction import redact_text
 from flightrecorder.scripts import record_script
 
-COURSE_PROVIDERS = {"nvidia": NVIDIA, "gemini": GEMINI}
+
+def _sdk_agent_source(provider: str, model: str, case: int) -> str:
+    if provider == "openai":
+        imports = "from openai import OpenAI\nclient = OpenAI(max_retries=0)"
+        call = (
+            f"client.chat.completions.create(model={model!r}, max_tokens=32, "
+            "messages=[{'role': 'user', 'content': prompt}]).choices[0].message.content"
+        )
+    else:
+        imports = "from anthropic import Anthropic\nclient = Anthropic(max_retries=0)"
+        call = (
+            f"client.messages.create(model={model!r}, max_tokens=32, "
+            "messages=[{'role': 'user', 'content': prompt}]).model_dump(mode='json')"
+        )
+    return f"""import json
+from flightrecorder import tool
+{imports}
+
+@tool(name="normalize_case", mutating=False)
+def normalize_case(value):
+    return {{"case": value, "budget": 500}}
+
+@tool(name="check_budget", mutating=False)
+def check_budget(price):
+    return {{"price": price, "within_budget": price <= 500}}
+
+case = normalize_case({case})
+outputs = []
+try:
+    for step in range(3):
+        prompt = "Controlled Rewind qualification. Reply briefly with OK. " + str(case) + " step " + str(step)
+        outputs.append({call})
+    result = check_budget({420 if case % 2 else 720})
+    print(json.dumps({{"outputs": outputs, "budget": result}}, sort_keys=True))
+finally:
+    client.close()
+"""
 
 
 def agent_source(provider: str, model: str, case: int) -> str:
-    if provider not in COURSE_PROVIDERS:
-        raise ValueError("course corpus uses nvidia or gemini only")
+    if provider in {"openai", "anthropic"}:
+        return _sdk_agent_source(provider, model, case)
+    if provider not in {"nvidia", "gemini"}:
+        raise ValueError("unsupported corpus provider")
     price = 420 if case % 2 else 720
     return f"""import json
 import os
@@ -66,8 +105,10 @@ with httpx.Client(timeout=120, trust_env=False) as client:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("provider", choices=sorted(COURSE_PROVIDERS))
-    parser.add_argument("model", nargs="?", default=None, help="defaults to the course provider model")
+    parser.add_argument("provider", choices=sorted(PROVIDERS))
+    parser.add_argument(
+        "model", nargs="?", default=None, help="defaults to the course provider model"
+    )
     parser.add_argument("--runs", type=int, default=10, choices=range(2, 16))
     parser.add_argument("--replays", type=int, default=50)
     parser.add_argument("--output", type=Path, default=Path(".rewind/provider-corpus"))
@@ -75,6 +116,8 @@ def main() -> None:
     if not 50 <= args.replays <= 1000:
         parser.error("qualification requires between 50 and 1000 offline replays")
     spec = PROVIDERS[args.provider]
+    if args.provider in {"openai", "anthropic"} and importlib.util.find_spec(args.provider) is None:
+        parser.error("install the integrations extra first")
     model = args.model or spec.default_model
     if not os.environ.get(spec.key_env):
         parser.error(f"configure {spec.key_env} locally; never place credentials in source or chat")
@@ -102,7 +145,7 @@ def main() -> None:
     manifest.write_text(json.dumps(fixtures, indent=2), encoding="utf-8")
     evaluation = evaluate_manifest(manifest, args.replays) if fixtures else {"passed": False}
     report = {
-        "origin": "controlled NVIDIA/Gemini prompts, not author fleet or billed OpenAI/Anthropic",
+        "origin": "controlled live-provider prompts, not author fleet or real failing-agent demo",
         "provider": args.provider,
         "model": model,
         "requested_recordings": args.runs,

@@ -19,6 +19,9 @@ fr fork FAIL_ID --price 420
 fr dashboard FAIL_ID PASS_ID FORK_ID --output .rewind/investigation.html
 ```
 
+All model and tool services in this bundled example are simulated. Recording,
+replay and fork execution are real. This is not a production failure validation.
+
 ## What you must see
 
 1. Failed run: quote **720** vs budget **500**.

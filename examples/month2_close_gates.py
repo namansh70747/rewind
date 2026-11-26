@@ -15,11 +15,12 @@ from pathlib import Path
 from typing import Any
 
 from flightrecorder.providers import GEMINI, NVIDIA
+from flightrecorder.redaction import redact_text
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _run(provider: str, model: str, output: Path) -> dict:
+def _run(provider: str, model: str, output: Path) -> dict[str, Any]:
     output.mkdir(parents=True, exist_ok=True)
     proc = subprocess.run(
         [
@@ -39,11 +40,15 @@ def _run(provider: str, model: str, output: Path) -> dict:
         capture_output=True,
         text=True,
     )
+    if proc.returncode != 0:
+        return {
+            "passed": False,
+            "exit_code": proc.returncode,
+            "stderr": redact_text(proc.stderr[-2000:]),
+        }
     report_path = output / "qualification.json"
     payload = json.loads(report_path.read_text(encoding="utf-8")) if report_path.exists() else {}
     payload["exit_code"] = proc.returncode
-    if proc.returncode != 0:
-        payload["stderr"] = proc.stderr[-2000:]
     return payload
 
 
@@ -54,19 +59,16 @@ def main() -> None:
     published = ROOT / "docs" / "validation" / "month2"
     published.mkdir(parents=True, exist_ok=True)
     if os.environ.get(NVIDIA.key_env):
-        evidence["providers"]["nvidia"] = _run(
-            "nvidia", NVIDIA.default_model, dest / "nvidia"
-        )
+        evidence["providers"]["nvidia"] = _run("nvidia", NVIDIA.default_model, dest / "nvidia")
     if os.environ.get(GEMINI.key_env):
-        evidence["providers"]["gemini"] = _run(
-            "gemini", GEMINI.default_model, dest / "gemini"
-        )
+        evidence["providers"]["gemini"] = _run("gemini", GEMINI.default_model, dest / "gemini")
     if not evidence["providers"]:
         evidence["passed"] = False
         evidence["detail"] = "configure NVIDIA_API_KEY and/or GEMINI_API_KEY locally"
     else:
         evidence["passed"] = all(
-            bool(row.get("passed")) for row in evidence["providers"].values()
+            bool(row.get("passed")) and row.get("exit_code") == 0
+            for row in evidence["providers"].values()
         )
     out = published / "course-close.json"
     out.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
