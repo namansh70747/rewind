@@ -67,7 +67,9 @@ with httpx.Client(timeout=120, trust_env=False) as client:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("provider", choices=sorted(COURSE_PROVIDERS))
-    parser.add_argument("model", nargs="?", default=None, help="defaults to the course provider model")
+    parser.add_argument(
+        "model", nargs="?", default=None, help="defaults to the course provider model"
+    )
     parser.add_argument("--runs", type=int, default=10, choices=range(2, 16))
     parser.add_argument("--replays", type=int, default=50)
     parser.add_argument("--output", type=Path, default=Path(".rewind/provider-corpus"))

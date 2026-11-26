@@ -57,8 +57,17 @@ class ForkSession(Session):
         self.chain = chain_link(
             self.chain, canon([kind, key, request]), canon(result), self.algorithm
         )
+        occurrence = sum(1 for seen in self.boundaries if seen.kind == kind and seen.key == key)
         self.boundaries.append(
-            Boundary(index, kind, key, copy.deepcopy(request), copy.deepcopy(result), self.chain)
+            Boundary(
+                index,
+                kind,
+                key,
+                copy.deepcopy(request),
+                copy.deepcopy(result),
+                self.chain,
+                occurrence,
+            )
         )
         return copy.deepcopy(result)
 
