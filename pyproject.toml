@@ -33,7 +33,7 @@ classifiers = [
 
 # Core capture and compressed content-addressed storage.
 dependencies = [
-    "blake3>=1.0",
+    "blake3>=1.0.11",
     "zstandard>=0.23",
     "httpx[socks]>=0.28.1",   # transport-layer capture (ADR-0007); OpenAI/Anthropic/NVIDIA ride httpx
     "typer>=0.27.2",   # the `fr` CLI
