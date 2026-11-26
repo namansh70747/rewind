@@ -64,6 +64,9 @@ class ProductServer(ThreadingHTTPServer):
                 "type": action,
                 "status": "queued",
                 "created": time.time(),
+                "script": str(source.relative_to(self.root)),
+                "recording_id": run_id or None,
+                "requested_replays": replays if action == "verify" else None,
             }
 
         def task() -> None:
@@ -173,18 +176,32 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(403)
             return
         route = urllib.parse.urlsplit(self.path)
-        if route.path == "/":
-            html = (
-                files("flightrecorder.product").joinpath("index.html").read_text(encoding="utf-8")
-            )
-            payload = html.replace("__REWIND_TOKEN__", self.server.token).encode()
+        assets = {
+            "/": ("index.html", "text/html"),
+            "/workspace.css": ("workspace.css", "text/css"),
+            "/workspace.js": ("workspace.js", "text/javascript"),
+        }
+        if asset := assets.get(route.path):
+            filename, mime_type = asset
+            resource = files("flightrecorder.product").joinpath(filename)
+            if filename == "index.html":
+                payload = (
+                    resource.read_text(encoding="utf-8")
+                    .replace("__REWIND_TOKEN__", self.server.token)
+                    .encode()
+                )
+            else:
+                payload = resource.read_bytes()
             self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Type", f"{mime_type}; charset=utf-8")
             self.send_header(
                 "Content-Security-Policy",
-                "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; base-uri 'none'; frame-ancestors 'none'",
+                "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; "
+                "img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
             )
             self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)
             return
@@ -281,6 +298,9 @@ class Handler(BaseHTTPRequestHandler):
                             "Socket guard is not an OS sandbox",
                             "Redaction is pattern based and incomplete",
                         ],
+                        "storage_bytes": self.server.db.stat().st_size
+                        if self.server.db.exists()
+                        else 0,
                         "month2": "Live qualification is tracked separately for Groq, Gemini, NVIDIA and xAI.",
                     }
                 )
