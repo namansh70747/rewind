@@ -33,6 +33,15 @@ def test_product_capture_verify_and_import(tmp_path: Path, monkeypatch: pytest.M
     headers = {"X-Rewind-Token": server.token, "Origin": url}
     try:
         with httpx.Client(base_url=url, timeout=10, trust_env=False) as client:
+            session = client.get("/api/v1/session")
+            assert session.json() == {"token": server.token}
+            stale = client.post(
+                "/api/v1/compare",
+                headers={**headers, "X-Rewind-Token": "previous-session-token"},
+                json={"left": "bad", "right": "bad"},
+            )
+            assert stale.status_code == 409
+            assert stale.json()["code"] == "stale_token"
             assert (
                 client.post(
                     "/api/v1/capture", json={"source": "agent.py", "trusted": True}

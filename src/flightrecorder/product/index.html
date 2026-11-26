@@ -12,7 +12,7 @@
   <a class="skip" href="#main">Skip to content</a>
   <div id="shell" class="shell">
     <aside class="sidebar" id="workspace-sidebar" aria-label="Workspace">
-      <a class="brand" href="#overview" aria-label="Rewind overview"><span class="brand-mark"><img src="/rewind-mark.png" alt=""></span><span>Rewind<small>Agent Flight Recorder</small></span></a>
+      <a class="brand" href="#overview" aria-label="Rewind overview"><span class="brand-mark"><img src="/rewind-mark.svg" alt=""></span><span>Rewind<small>Agent Flight Recorder</small></span></a>
       <nav id="navigation" aria-label="Main navigation">
         <a href="#overview" data-page="overview" aria-label="Overview"><i class="icon" data-icon="grid"></i><span>Overview</span></a>
         <a href="#recordings" data-page="recordings" aria-label="Recordings"><i class="icon" data-icon="disc"></i><span>Recordings</span></a>
@@ -33,7 +33,7 @@
         <button class="icon-btn menu-trigger" id="menu-trigger" aria-label="Toggle navigation" aria-controls="workspace-sidebar" aria-expanded="false"><i class="icon" data-icon="menu"></i></button>
         <div class="top-location">Workspace <span aria-hidden="true">/</span> <strong id="current-page">Overview</strong></div>
         <button class="global-search" id="search-trigger"><i class="icon" data-icon="search"></i><span>Search pages and recordings</span><kbd>⌘ K</kbd></button>
-        <div class="top-actions"><span class="local-status"><span class="signal"></span>Local workspace</span><button class="icon-btn" id="theme-toggle" aria-label="Switch to light theme"><i class="icon" data-icon="sun"></i></button></div>
+        <div class="top-actions"><form action="/auth/sign-out" method="post" __REWIND_SIGN_OUT__><button type="submit" class="btn">Sign out</button></form><span class="local-status"><span class="signal"></span>Local workspace</span><button class="icon-btn" id="theme-toggle" aria-label="Switch to light theme"><i class="icon" data-icon="sun"></i></button></div>
       </header>
       <main id="main" tabindex="-1">
         <div id="loading" class="loading" role="status">Loading workspace…</div>
@@ -45,7 +45,7 @@
             <div class="hero-content"><div class="kicker"><span></span> AGENT FLIGHT RECORDER</div><h1 id="overview-title">Every <em>decision,</em> within reach.</h1><p>Capture agent execution, replay it offline, and trace what changed.</p>
               <div class="actions"><a class="btn primary" href="#capture"><i class="icon" data-icon="play"></i> Start capture</a><a class="btn quiet" href="#recordings">Browse recordings <i class="icon" data-icon="arrow-right"></i></a></div>
             </div>
-            <div class="hero-art" aria-hidden="true"><canvas class="signal-art"></canvas><div class="hero-stack"><div></div><div></div><div><span class="brand-mark"><img src="/rewind-mark.png" alt=""></span></div></div></div>
+            <div class="hero-art" aria-hidden="true"><canvas class="signal-art"></canvas><div class="hero-stack"><div></div><div></div><div><span class="brand-mark"><img src="/rewind-mark.svg" alt=""></span></div></div></div>
             <nav class="hero-shortcuts" aria-label="Investigation shortcuts">
               <a href="#capture"><span class="stat-icon"><i class="icon" data-icon="capture"></i></span><span><strong>Capture</strong><small>Record execution</small></span></a>
               <a href="#recordings"><span class="stat-icon"><i class="icon" data-icon="layers"></i></span><span><strong>Inspect</strong><small>Read stored steps</small></span></a>
@@ -145,7 +145,7 @@
       </main>
     </div>
   </div>
-  <main id="welcome" class="welcome" hidden><header><a class="brand" href="#welcome"><span class="brand-mark"><img src="/rewind-mark.png" alt=""></span>Rewind</a><a class="btn" href="#overview">Open workspace <i class="icon" data-icon="arrow-right"></i></a></header><div class="hero"><div class="hero-content"><div class="kicker"><span></span> LOCAL-FIRST AGENT DEBUGGING</div><h1>The Flight Recorder<br>for <em>AI agents.</em></h1><p>Capture supported execution boundaries, replay recorded interactions offline, and investigate what changed.</p><div class="actions"><a class="btn primary" href="#overview">Open workspace <i class="icon" data-icon="arrow-right"></i></a><a class="btn quiet" href="#capture">Start a capture</a></div></div><div class="hero-art" aria-hidden="true"><canvas class="signal-art"></canvas><div class="hero-stack"><div></div><div></div><div><span class="brand-mark"><img src="/rewind-mark.png" alt=""></span></div></div></div></div><nav class="welcome-steps" aria-label="Rewind workflow"><a href="#capture">Capture <span>Run a trusted script</span></a><a href="#recordings">Inspect <span>Read stored steps</span></a><a href="#verification">Replay <span>Check execution offline</span></a><a href="#compare">Compare <span>Find the recorded difference</span></a></nav></main>
+  <main id="welcome" class="welcome" hidden><header><a class="brand" href="#welcome"><span class="brand-mark"><img src="/rewind-mark.svg" alt=""></span>Rewind</a><a class="btn" href="#overview">Open workspace <i class="icon" data-icon="arrow-right"></i></a></header><div class="hero"><div class="hero-content"><div class="kicker"><span></span> LOCAL-FIRST AGENT DEBUGGING</div><h1>The Flight Recorder<br>for <em>AI agents.</em></h1><p>Capture supported execution boundaries, replay recorded interactions offline, and investigate what changed.</p><div class="actions"><a class="btn primary" href="#overview">Open workspace <i class="icon" data-icon="arrow-right"></i></a><a class="btn quiet" href="#capture">Start a capture</a></div></div><div class="hero-art" aria-hidden="true"><canvas class="signal-art"></canvas><div class="hero-stack"><div></div><div></div><div><span class="brand-mark"><img src="/rewind-mark.svg" alt=""></span></div></div></div></div><nav class="welcome-steps" aria-label="Rewind workflow"><a href="#capture">Capture <span>Run a trusted script</span></a><a href="#recordings">Inspect <span>Read stored steps</span></a><a href="#verification">Replay <span>Check execution offline</span></a><a href="#compare">Compare <span>Find the recorded difference</span></a></nav></main>
   <dialog id="palette" aria-label="Command palette"><div class="dialog-search"><i class="icon" data-icon="search"></i><input id="palette-search" type="search" aria-label="Search commands and recordings" placeholder="Find a page or recording…" autocomplete="off"><button class="btn" data-close="palette">Esc</button></div><div id="palette-results"></div></dialog>
   <dialog id="evidence-dialog" aria-labelledby="expanded-title"><div class="panel-head"><h2 id="expanded-title">Captured evidence</h2><button class="btn" data-close="evidence-dialog">Close</button></div><div id="expanded-code" class="code" tabindex="0"></div></dialog>
 </body>

@@ -1,7 +1,7 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const token = document.querySelector('meta[name="rewind-token"]').content;
+let token = document.querySelector('meta[name="rewind-token"]').content;
 const paths = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   disc: '<circle cx="12" cy="12" r="9"/><path d="m10 8 6 4-6 4z"/>',
@@ -83,7 +83,7 @@ function notify(message) {
   toastTimeout = setTimeout(() => { $("notice").hidden = true; }, 3200);
 }
 
-async function api(path, body) {
+async function api(path, body, canRefresh = true) {
   const options = body === undefined ? {} : {
     method: "POST",
     headers: {"Content-Type": "application/json", "X-Rewind-Token": token},
@@ -95,6 +95,15 @@ async function api(path, body) {
     payload = await response.json();
   } catch {
     throw new Error("The workspace returned an unreadable response.");
+  }
+  if (response.status === 401) {
+    location.reload();
+    throw new Error("Sign in to continue.");
+  }
+  if (response.status === 409 && payload.code === "stale_token" && canRefresh && body !== undefined) {
+    const session = await api("session");
+    token = session.token;
+    return api(path, body, false);
   }
   if (!response.ok) throw new Error(payload.error || "Workspace request failed.");
   return payload;
@@ -289,8 +298,8 @@ function drawOverview() {
       const name = row.insertCell();
       name.append(el("strong", runName(run)), el("small", run.id));
       const script = run.provider === "script";
-      const outcome = run.script_failed ? "Agent failed" : script ? "Completed" : "Recorded";
-      row.insertCell().append(badge(outcome, run.script_failed ? "danger" : script ? "good" : ""));
+      const outcome = run.script_failed ? "Agent failed" : run.counterfactual ? "What-if fork" : script ? "Completed" : "Recorded";
+      row.insertCell().append(badge(outcome, run.script_failed ? "danger" : script && !run.counterfactual ? "good" : ""));
       row.insertCell().textContent = run.n_boundaries;
       row.insertCell().append(badge(verificationText(run), run.verification?.passed ? "good" : run.verification ? "danger" : ""));
       row.insertCell().textContent = dateLabel(run.created_at);
