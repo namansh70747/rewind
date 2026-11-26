@@ -30,7 +30,7 @@ given that:
 
 **Ship a deterministic, template-based explainer (`month6.explain`) that narrates
 root cause from the classifier's label and recorded evidence.  Document the LoRA
-fine-tuning path explicitly.  No model is called; no prose is fabricated.**
+fine-tuning path explicitly.  No model is called. Templates remain weak candidate explanations; deterministic wording does not establish factual grounding.**
 
 Concretely:
 
@@ -49,8 +49,9 @@ Concretely:
 
 **Easier**
 
-- The P5 milestone is met with zero hallucination risk: users get a human-readable
-  explanation derived entirely from their own recorded timeline.
+- Users get a human-readable candidate explanation keyed on a supplied label.
+  The wording must not turn a label into proof of causality. This does not
+  independently satisfy the original Month 6 release gates.
 - The `lora_status` and `qualification` fields make the deferral explicit and
   machine-readable; a future phase can flip them when training is ready.
 - Concurrent replay and the benchmark schema provide reproducible throughput evidence.

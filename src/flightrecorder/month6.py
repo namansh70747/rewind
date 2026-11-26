@@ -30,71 +30,22 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 _CAUSE_SENTENCES: dict[str, str] = {
-    "tool-error": (
-        "A recorded tool call returned an error response.  The agent received a "
-        "non-OK reply from at least one tool boundary.  Check the tool's status "
-        "field and the recorded request to understand what was rejected."
-    ),
-    "transport-timeout": (
-        "A transport-layer timeout was recorded.  At least one HTTP boundary has "
-        "attempt > 1 and a 5xx or transport_error response.  The agent retried "
-        "but could not complete the request within the recorded session."
-    ),
-    "context-budget": (
-        "The recorded context token count exceeded the configured budget.  A "
-        "state boundary shows context_tokens above the threshold, and a downstream "
-        "tool boundary reflects the resulting constraint."
-    ),
-    "arg-hallucination": (
-        "The divergence trace shows an argument value that was not grounded in the "
-        "recorded input.  The model generated a parameter that differs from both "
-        "the baseline and what the recorded tool expects."
-    ),
-    "tool-choice": (
-        "The model selected a different tool than the baseline.  The sequence "
-        "alignment shows an inserted or deleted tool boundary at the divergence "
-        "point, not a change in argument values."
-    ),
-    "sampling-flake": (
-        "The divergence originates at an LLM boundary with no deterministic "
-        "cause.  Temperature or sampling randomness produced a different token "
-        "sequence, which propagated to downstream decisions."
-    ),
-    "tool-result-drift": (
-        "A tool returned a different value than expected.  The recorded response "
-        "and the replay response differ, suggesting an external side-effect or "
-        "non-deterministic tool.  Check whether the tool is whitelisted for live "
-        "execution during fork or whether its environment changed."
-    ),
-    "loop": (
-        "The agent entered a repeated call sequence.  The boundary histogram shows "
-        "the same tool or HTTP endpoint called more than once with the same "
-        "arguments, indicating the agent did not make forward progress."
-    ),
-    "cost-blowup": (
-        "The recorded cost_usd or token count exceeds the policy budget.  The "
-        "eval-fixtures gate would catch a changed budget threshold before it ships."
-    ),
-    "api-error": (
-        "An HTTP boundary returned a 4xx/5xx status.  The recorded response body "
-        "may contain a provider error message.  Check credentials and rate limits."
-    ),
-    "budget-exceeded": (
-        "The recorded context token count or cost exceeded the configured budget.  A "
-        "state boundary shows tokens/price above the threshold, triggering a rejection."
-    ),
-    "rate-limit": (
-        "An HTTP boundary returned a 429 status code indicating rate limits were hit.  "
-        "Check request frequency, concurrency, and provider rate limits."
-    ),
-    "provider-error": (
-        "An HTTP boundary returned a 5xx status code indicating an upstream provider error.  "
-        "The model or API endpoint failed or was temporarily unavailable."
-    ),
-    "repeated-boundaries": (
-        "The agent entered a repeated boundary sequence.  The recording shows "
-        "the same tool or endpoint called repeatedly without progress."
-    ),
+    "rate-limit": "A rate-limit label may indicate HTTP 429 responses. Inspect recorded status and headers before attributing the failure to request limits.",
+    "provider-error": "A provider-error label may indicate upstream 5xx responses. Inspect recorded status and response evidence before attributing a provider outage.",
+    "budget-exceeded": "A budget-exceeded label may indicate a configured budget overrun. Compare measured tokens or costs with explicit limits before concluding overflow.",
+    "repeated-boundaries": "A repeated-boundaries label may indicate repeated requests. Inspect arguments and progress before concluding the agent entered a loop.",
+    "tool-error": "A tool-error label was suggested. Inspect the recorded tool response and error/status fields before attributing a cause.",
+    "transport-timeout": "A transport-timeout label was suggested. Inspect captured transport errors and explicit attempts; retry failure is not implied without terminal evidence.",
+    "context-budget": "A context/budget-related symptom was suggested. Compare recorded tokens with an explicitly configured limit; a token count alone does not prove overflow.",
+    "arg-hallucination": "Changed request arguments were suggested. Argument drift alone is not proof of hallucination; inspect task inputs and earlier decisions.",
+    "tool-choice": "A changed tool choice was suggested. Compare aligned tool identities; this need not be an inserted or deleted step.",
+    "sampling-flake": "Model-output drift was suggested. Sampling, model changes and provider behavior are alternative explanations; randomness is not a proven cause.",
+    "tool-result-drift": "A changed tool result was suggested. Compare baseline and candidate responses for identical inputs; offline replay itself should reproduce its recording exactly.",
+    "retrieval-drift": "Changed retrieval evidence was suggested. Compare results for identical retrieval requests before attributing downstream behavior.",
+    "loop": "Repeated requests were suggested. Inspect their arguments and progress; repetition alone does not prove an infinite loop.",
+    "cost-blowup": "A cost or token increase was suggested. Inspect measured costs and the configured budget; missing measurements cannot establish an overrun.",
+    "truncation": "A token-limit stop was suggested. Inspect the recorded finish/stop reason; a short answer alone does not establish truncation.",
+    "api-error": "An API-error label was suggested. Inspect recorded HTTP status and response evidence; credentials or rate limits are possible causes, not established facts.",
 }
 
 _DEFAULT_SENTENCE = (
@@ -104,6 +55,18 @@ _DEFAULT_SENTENCE = (
 )
 
 _NEXT_STEPS: dict[str, list[str]] = {
+    "rate-limit": [
+        "Inspect HTTP status and retry headers in `fr show <run_id>` before adjusting concurrency."
+    ],
+    "provider-error": [
+        "Inspect HTTP status and response bodies in `fr show <run_id>` and compare provider status evidence."
+    ],
+    "budget-exceeded": [
+        "Inspect measured costs and token counts in `fr show <run_id>` and compare with configured limits."
+    ],
+    "repeated-boundaries": [
+        "Inspect repeated requests and their arguments in `fr show <run_id>` for progress or termination conditions."
+    ],
     "tool-error": [
         "Run `fr show <run_id>` and inspect the tool boundary at the first error seq.",
         "Check the tool's error field and status code in the recorded response.",
@@ -118,22 +81,6 @@ _NEXT_STEPS: dict[str, list[str]] = {
         "Run `fr query <run_id> 'first context > 0 tokens'` to find the overflow.",
         "Reduce system-prompt size or summarize earlier turns before they accumulate.",
         "Use `fr eval-fixtures` to gate a changed budget before it ships.",
-    ],
-    "budget-exceeded": [
-        "Run `fr query <run_id> 'first context > 0 tokens'` to find the overflow.",
-        "Review tool cost and token limits in the session policy.",
-    ],
-    "rate-limit": [
-        "Inspect the 429 response body and headers in `fr show <run_id>`.",
-        "Implement exponential backoff or reduce concurrency.",
-    ],
-    "provider-error": [
-        "Check status codes and provider health dashboards in `fr show <run_id>`.",
-        "Verify credentials and network connectivity.",
-    ],
-    "repeated-boundaries": [
-        "Run `fr show <run_id>` and inspect the repeating loop sequence.",
-        "Add termination guards or loop break conditions in agent logic.",
     ],
 }
 
@@ -263,7 +210,7 @@ def explain(
             "cost_usd": features_report.get("cost_usd"),
         },
         "qualification": (
-            "Narration is deterministic template text keyed on the classifier label. "
+            "Narration is a candidate explanation keyed on a supplied or weak label; template determinism does not establish factual grounding. "
             "No model is called.  Causal attribution requires human review of the "
             "recorded timeline.  LoRA fine-tuning is deferred to a later phase "
             "(ADR-0005, ADR-0014); this stub is its documented placeholder."
@@ -320,6 +267,8 @@ def concurrent_replay(
 
     if n < 1:
         raise ValueError("n must be at least 1")
+    if max_workers is not None and max_workers < 1:
+        raise ValueError("max_workers must be at least 1")
     if max_workers is None:
         max_workers = min(n, 32)
 
@@ -332,7 +281,11 @@ def concurrent_replay(
         for future in concurrent.futures.as_completed(futures):
             exc = future.exception()
             if exc is None:
-                passed += 1
+                output, fingerprint = future.result()
+                if output == cassette.final_output and fingerprint == cassette.fingerprint:
+                    passed += 1
+                else:
+                    errors.append("Replay output or fingerprint differs from recording")
             else:
                 errors.append(str(exc))
 

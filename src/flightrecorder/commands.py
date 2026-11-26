@@ -320,6 +320,19 @@ def register(app: typer.Typer) -> None:
 
         _json({"votes": weak_labels(_load(run_id, db)), "review_required": True})
 
+    @app.command("baseline-inputs")
+    def baseline_inputs_command(dataset: Path, report: Path, output: Path) -> None:
+        """Export only blinded held-out event text and taxonomy for a baseline runner."""
+        from .baseline import prepare_inputs
+
+        if output.exists():
+            raise typer.BadParameter("choose a new output path to preserve evidence")
+        try:
+            data = prepare_inputs(json.loads(dataset.read_text()), json.loads(report.read_text()))
+        except (ValueError, KeyError, OSError) as exc:
+            raise typer.BadParameter(str(exc)) from exc
+        _json(data, output)
+
     @app.command("compare-baseline")
     def baseline_command(report: Path, baseline: Path, output: Path | None = None) -> None:
         """Compare independently collected prompted baseline predictions on held-out IDs."""

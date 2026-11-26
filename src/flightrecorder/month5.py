@@ -176,7 +176,7 @@ def classifier_rows(per_family: int = 30) -> list[dict[str, str]]:
             cassette = record_failure(family, index)
             rows.append(
                 {
-                    "text": f"{feature_text(cassette)} family-{family} row-{index}",
+                    "text": f"{feature_text(cassette)} sample-{index}",
                     "label": family,
                     "group": f"{family}-{index}",
                 }

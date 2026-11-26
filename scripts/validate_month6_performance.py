@@ -1,4 +1,4 @@
-"""Performance benchmark and budget qualification for Month 6 (P5).
+"""Synthetic local measurements for Month 6; no production approval is implied.
 
 Measures:
 1. Boundary capture overhead per event.
@@ -9,8 +9,10 @@ Measures:
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
+import platform
 import tempfile
 import time
 from pathlib import Path
@@ -46,8 +48,6 @@ def measure_interception_overhead(iterations: int = 1000) -> dict:
         "baseline_us": round(baseline_ns / 1000.0, 3),
         "mediated_us": round(mediated_ns / 1000.0, 3),
         "overhead_us_per_boundary": round(overhead_us, 3),
-        "budget_us_max": 2000.0,  # 2.0 ms budget
-        "passed": overhead_us < 2000.0,
     }
 
 
@@ -68,8 +68,9 @@ def measure_replay_performance() -> dict:
         "n_replays": result["n_replays"],
         "throughput_replays_per_s": result["throughput_replays_per_s"],
         "elapsed_s": result["elapsed_s"],
-        "budget_min_throughput": 100.0,  # 100 replays/s budget
-        "passed": result["throughput_replays_per_s"] >= 100.0,
+        "passed_replays": result["passed"],
+        "failed_replays": result["failed"],
+        "passed": result["failed"] == 0 and result["passed"] == result["n_replays"],
     }
 
 
@@ -136,61 +137,33 @@ def measure_snapshot_latency(steps: int = 256) -> dict:
         "steps": steps,
         "checkpoint_interval": interval,
         "p95_latency_us": round(p95_us, 3),
-        "budget_p95_us_max": 2000.0,
-        "passed": p95_us < 2000.0,
     }
 
 
 def main() -> None:
-    root = Path(__file__).resolve().parents[1]
-    rel_evidence_dir = root / "docs" / "release-evidence"
-    val_evidence_dir = root / "docs" / "validation" / "month6"
-    rel_evidence_dir.mkdir(parents=True, exist_ok=True)
-    val_evidence_dir.mkdir(parents=True, exist_ok=True)
-
-    print("Measuring boundary interception overhead...", flush=True)
-    interception = measure_interception_overhead()
-    assert interception["passed"], "Interception overhead exceeded budget"
-    print(f"  Overhead: {interception['overhead_us_per_boundary']} us/boundary (PASS)")
-
-    print("Measuring replay throughput...", flush=True)
-    replay = measure_replay_performance()
-    assert replay["passed"], "Replay throughput below budget"
-    print(f"  Throughput: {replay['throughput_replays_per_s']} replays/s (PASS)")
-
-    print("Measuring storage deduplication and compression...", flush=True)
-    storage = measure_storage_efficiency()
-    assert storage["passed"], "Storage deduplication failed"
-    print(
-        f"  Storage: {storage['unique_blobs']} unique blobs for {storage['references']} refs (PASS)"
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--output", type=Path, default=Path(".rewind/month6/synthetic-performance.json")
     )
-
-    print("Measuring snapshot reconstruction latency...", flush=True)
-    snapshot = measure_snapshot_latency()
-    assert snapshot["passed"], "Snapshot latency exceeded budget"
-    print(f"  Snapshot p95: {snapshot['p95_latency_us']} us (PASS)")
-
+    args = parser.parse_args()
+    replay = measure_replay_performance()
+    storage = measure_storage_efficiency()
+    if not replay["passed"] or not storage["passed"]:
+        raise RuntimeError("Synthetic replay correctness or deduplication check failed")
     report = {
-        "gate": "performance",
-        "status": "passed",
-        "approved_by": "Naman Sharma (repository owner, via release audit)",
-        "date": "2026-11-15",
-        "interception": interception,
+        "schema": "rewind.synthetic-performance.v1",
+        "source": "Synthetic in-memory boundary workload and repeated storage payloads",
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "interception": measure_interception_overhead(),
         "replay": replay,
         "storage": storage,
-        "snapshot": snapshot,
-        "budget_conclusion": "All measured operational metrics satisfy the production performance budget.",
+        "snapshot": measure_snapshot_latency(),
+        "qualification": "Local diagnostic measurements only. Production qualification requires target workloads and an agreed budget; no human approval is asserted.",
     }
-
-    # Save to both release-evidence and validation directories
-    (rel_evidence_dir / "performance-budget.json").write_text(
-        json.dumps(report, indent=2), encoding="utf-8"
-    )
-    (val_evidence_dir / "performance-benchmark.json").write_text(
-        json.dumps(report, indent=2), encoding="utf-8"
-    )
-
-    print("\nPerformance budget approved and evidence recorded!")
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":

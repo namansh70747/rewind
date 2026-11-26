@@ -1,5 +1,14 @@
 # Changelog
 
+## Acceptance hardening — 2026-11-14
+
+- Concurrent replay rejects wrong final outputs and fingerprints.
+- Overlapping socket guards share a thread-safe lifetime; explicit live access is context-local.
+- Candidate explanations no longer assert that sampling or hallucination is proven by a weak label.
+- Blinded baseline export excludes answers; synthetic classifier inputs no longer include target family labels.
+- Strict docs links, original release-gate mapping and measured capture-overhead evidence are corrected.
+
+
 ## Unpublished Month 6 (P5) — 2026-11-14
 
 Shipped weeks 23–26 on the `feat/month-6-lora-explainer` branch stacked on Month 5.
