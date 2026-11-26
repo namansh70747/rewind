@@ -25,7 +25,7 @@ from flightrecorder.diagnosis import diagnose
 from flightrecorder.integrity import validate
 from flightrecorder.portable import MAX_BYTES, envelope, import_run
 from flightrecorder.providers import PROVIDERS
-from flightrecorder.store import RunStore
+from flightrecorder.store import RunStore, RunSummary
 
 
 class ProductServer(ThreadingHTTPServer):
@@ -194,21 +194,27 @@ class Handler(BaseHTTPRequestHandler):
                 try:
                     include_samples = urllib.parse.parse_qs(route.query).get("samples") == ["1"]
                     data = []
-                    for run in store.list_runs():
-                        cassette = store.load(run.id)
-                        sample = run.provider == "demo" or bool(cassette.metadata.get("simulated"))
+                    rows = store.conn.execute(
+                        """SELECT r.id, r.provider, r.model, r.n_boundaries, r.created_at,
+                                  r.fingerprint, m.data, v.passed, v.replays, v.checked_at
+                           FROM run AS r
+                           LEFT JOIN run_metadata AS m ON m.run_id = r.id
+                           LEFT JOIN product_verification AS v ON v.run_id = r.id
+                           ORDER BY r.created_at DESC"""
+                    )
+                    for row in rows:
+                        run = RunSummary(*row[:6])
+                        raw_metadata, passed, replays, checked_at = row[6:]
+                        metadata = json.loads(raw_metadata) if raw_metadata is not None else {}
+                        sample = run.provider == "demo" or bool(metadata.get("simulated"))
                         if include_samples or not sample:
-                            check = store.conn.execute(
-                                "SELECT passed, replays, checked_at FROM product_verification WHERE run_id = ?",
-                                (run.id,),
-                            ).fetchone()
                             verification = (
                                 {
-                                    "passed": bool(check[0]),
-                                    "replays": check[1],
-                                    "checked_at": check[2],
+                                    "passed": bool(passed),
+                                    "replays": replays,
+                                    "checked_at": checked_at,
                                 }
-                                if check
+                                if passed is not None
                                 else None
                             )
                             data.append(
@@ -216,12 +222,12 @@ class Handler(BaseHTTPRequestHandler):
                                     **asdict(run),
                                     "sample": sample,
                                     "verification": verification,
-                                    "display_provider": cassette.metadata.get(
+                                    "display_provider": metadata.get(
                                         "product_provider", run.provider
                                     ),
-                                    "display_model": cassette.metadata.get(
-                                        "product_model", run.model
-                                    ),
+                                    "display_model": metadata.get("product_model", run.model),
+                                    "has_source": isinstance(metadata.get("product_source"), str),
+                                    "counterfactual": bool(metadata.get("counterfactual")),
                                 }
                             )
                 finally:

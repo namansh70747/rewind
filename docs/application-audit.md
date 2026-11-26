@@ -29,3 +29,5 @@ The native recorder still runs trusted Python code. Track CSP hardening, export
 privacy, trust-boundary review and OS isolation in separate release checks.
 
 See the [Mac audit results](release-evidence/local-application-audit.md) for the recorded baseline.
+
+See the [Chrome user journeys and large-library retest](release-evidence/user-journey-audit.md) for the follow-up.
