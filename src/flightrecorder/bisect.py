@@ -78,6 +78,8 @@ def first_divergence(a: Cassette, b: Cassette) -> BisectResult:
         "script_error"
     ):
         return BisectResult(
-            True, common, "boundaries match but final outcomes differ (agent logic changed)"
+            True,
+            common,
+            "boundaries match but final outputs or errors differ (agent logic changed)",
         )
     return BisectResult(False, None, "identical")

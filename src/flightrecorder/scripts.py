@@ -94,7 +94,8 @@ def verify_script(cassette: Cassette, path: Path, n: int = 10) -> VerifyResult:
             outputs.add(output)
             if failure != cassette.metadata.get("script_error"):
                 raise Divergence(
-                    len(cassette.boundaries), "script exception differs from recording"
+                    len(cassette.boundaries),
+                    f"script exception differs from recording: {failure or 'no exception'}",
                 )
             if output != cassette.final_output:
                 raise Divergence(len(cassette.boundaries), "script stdout differs from recording")

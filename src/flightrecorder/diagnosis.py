@@ -279,7 +279,9 @@ def diagnose(
     else:
         path = align(a, b, vectors=vectors)
         first_hash, comparisons = None, 0
-    rows, first, first_decision = [], None, None
+    rows: list[dict[str, Any]] = []
+    first: dict[str, Any] | None = None
+    first_decision: dict[str, Any] | None = None
     for i, j in path:
         left = a.boundaries[i] if i is not None else None
         right = b.boundaries[j] if j is not None else None
@@ -316,7 +318,7 @@ def diagnose(
             first = row
         if first_decision is None and row["decision_difference"]:
             first_decision = row
-    outcome_difference = None
+    outcome_difference: dict[str, Any] | None = None
     if output_changed:
         outcome_difference = {
             "a": None,
