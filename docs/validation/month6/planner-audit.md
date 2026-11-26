@@ -8,11 +8,11 @@ replace release or performance acceptance.
 
 | Gate | Implemented and verified | Remaining acceptance |
 |---|---|---|
-| M6.1 clean install and tagged release | CI builds wheels; `fr` console script ships | **Course: tag `v0.1.0` on merge.** PyPI publisher still optional. |
-| M6.2 acceptable capture overhead | [Measured baseline versus capture](performance.json) on a controlled 12-tool CPU workload; output equality and 50 faithful concurrent replays asserted | Production fleet budget still not claimed. Course accepts the committed measurement. |
-| M6.3 newcomer-reproducible killer demo | [Killer demo](../../killer-demo.md) from `fr demo`; NVIDIA/Gemini live path in Month 3 docs; [gallery](../../gallery.md) | Public Pages deploy on `main` via `docs.yml`. |
+| M6.1 clean install and tagged release | CI builds wheels on Linux/macOS/Windows, installs into clean environments, and exercises the CLI/demo; CHANGELOG and publishing workflow exist | No `v0.1.0` tag/release or verified PyPI publisher ownership is recorded. `release-check` intentionally blocks publication while evidence is missing. |
+| M6.2 acceptable capture overhead | [Measured baseline versus capture](performance.json) on a controlled 12-tool CPU workload; output equality and 50 faithful concurrent replays asserted | Target-fleet measurement and an agreed production overhead budget. A synthetic number is not production acceptance. |
+| M6.3 newcomer-reproducible killer demo | [Month 3 workflow](../../month3-time-travel.md) documents record/replay/fork using actual NVIDIA/Gemini examples; committed actual-provider reports show zero mutating fork calls. The portable viewer/browser and examples run in CI. | Final newcomer walkthrough, public docs/gallery validation, and final release evidence review. Reusing earlier provider evidence is not a fresh provider call. |
 | M6.4 trained LoRA or documented cut plus hardened core | LoRA is deliberately cut in ADR-0014. Deterministic candidate explanations, strict output verification, shared thread-safe socket guards and GC have regression coverage. No training claim is made. | No model training is required for the documented cut path. |
-| M6.5 final Definition of Done | Core tests and interop are exercised in CI; format freeze in ADR-0010/0015 | PyPI and paid OpenAI/Anthropic corpus remain explicitly out of course scope. |
+| M6.5 final Definition of Done | Core tests and interop are exercised in CI; the release manifest fails closed on missing evidence | Release checklist still requires real fleet/labels, reviewer attestations and publisher setup. Merging software does not silently waive these. |
 
 ## Correctness fixes
 

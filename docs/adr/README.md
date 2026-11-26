@@ -46,10 +46,10 @@ follows the same sections, defined by the [template](0000-template.md):
 | [0006](0006-replay-is-playback-not-re-execution.md) | Replay is playback, not model re-execution | Accepted | 2026-08-08 |
 | [0007](0007-capture-at-http-transport-layer.md) | Capture at the HTTP transport layer | Accepted | 2026-08-08 |
 | [0008](0008-internal-recording-schema-otel-as-export.md) | Own the recording schema; OTel as export | Accepted | 2026-08-08 |
-| [0010](0010-roadmap-storage-and-scope.md) | Storage evolution and log-format freeze | Accepted | 2026-11-18 |
+| [0010](0010-roadmap-storage-and-scope.md) | Storage evolution and log-format freeze | Proposed | 2026-10-08 |
 | [0013](0013-month5-failure-intelligence.md) | Synthetic failure intelligence before a real fleet | Accepted for the software path | 2026-11-13 |
 | [0014](0014-month6-lora-explainer-stub.md) | Month 6 — LoRA explainer stub, concurrent replay, and retention | Accepted | 2026-11-14 |
-| [0015](0015-course-provider-substitution.md) | Course provider substitution and Month 5–6 close | Accepted | 2026-11-18 |
+| [0015](0015-course-provider-substitution.md) | Course provider substitution and Month 5–6 close | Proposed | 2026-11-18 |
 
 New ADRs should copy [`0000-template.md`](0000-template.md), take the next number in
 sequence, and be linked into the table above.

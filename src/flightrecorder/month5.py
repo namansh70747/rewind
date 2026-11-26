@@ -1,8 +1,8 @@
 """Month 5 failure intelligence on supplied recordings.
 
 Synthetic corpora exercise neighbors, clusters, the eval gate and fresh-failure
-matching. Course close uses a 30-50 run substitute fleet and a frozen keyword
-baseline (ADR-0015). That is not the original 672-tool production fleet.
+matching. The proposed course substitute uses synthetic runs and an honest keyword
+baseline; approval remains pending (ADR-0015). That is not the original 672-tool production fleet.
 """
 
 from __future__ import annotations
@@ -169,7 +169,7 @@ def match_failure(target: Cassette, runs: dict[str, Cassette], limit: int = 5) -
 
 
 def classifier_rows(per_family: int = 30) -> list[dict[str, str]]:
-    """Reviewed-style rows for the synthetic families. Groups do not share text."""
+    """Synthetic labels derived from scenario construction, without human review."""
     from .fleet import feature_text
 
     rows = []
@@ -223,13 +223,14 @@ def policy_gate(candidate_budget: int, repeats: int = 2) -> dict[str, Any]:
 
 KEYWORD_STUB_PROMPT = (
     "keyword-stub-v1: if text mentions Timeout/ReadTimeout guess transport-timeout; "
-    "if over_budget/context_tokens guess context-budget; else tool-error. "
-    "Every third id is flipped so a learned model can beat this stub."
+    "if over_budget/context_tokens guess context-budget; else tool-error."
 )
 
 
 def keyword_stub_label(text: str, identity: str, labels: list[str]) -> str:
     """Deterministic Gemini-free baseline used when paid LLM keys are not available."""
+    if not labels:
+        raise ValueError("need allowed labels")
     ordered = sorted(labels)
     if "ReadTimeout" in text or "transport-timeout" in text or "Timeout" in text:
         guess = "transport-timeout"
@@ -238,10 +239,7 @@ def keyword_stub_label(text: str, identity: str, labels: list[str]) -> str:
     else:
         guess = "tool-error"
     if guess not in ordered:
-        guess = ordered[0]
-    if int(identity[:8], 16) % 3 == 0:
-        others = [item for item in ordered if item != guess]
-        return others[int(identity[8:10], 16) % len(others)]
+        raise ValueError(f"keyword prediction is outside allowed labels: {guess}")
     return guess
 
 
@@ -253,20 +251,22 @@ LIVE_BASELINE_PROMPT = (
 
 def _normalize_live_label(text: str, labels: list[str]) -> str:
     lowered = text.strip().lower()
-    for label in sorted(labels, key=len, reverse=True):
-        if label.lower() in lowered:
-            return label
-    return sorted(labels)[0]
+    matches = [label for label in labels if label.lower() == lowered]
+    if len(matches) != 1:
+        raise ValueError(f"invalid or ambiguous model label: {text!r}")
+    return matches[0]
 
 
 def live_prompted_predictions(
     inputs: dict[str, Any], provider_name: str | None = None
-) -> dict[str, Any] | None:
-    """Collect a prompted baseline from Gemini or NVIDIA. Returns None if no key."""
+) -> dict[str, Any]:
+    """Collect an explicitly requested prompted baseline; missing credentials fail."""
     import httpx
 
     from .providers import PROVIDERS
 
+    if provider_name is not None and provider_name not in {"gemini", "nvidia"}:
+        raise ValueError("baseline provider must be gemini or nvidia")
     order = [provider_name] if provider_name else ["gemini", "nvidia"]
     chosen = None
     for name in order:
@@ -277,7 +277,7 @@ def live_prompted_predictions(
             chosen = spec
             break
     if chosen is None:
-        return None
+        raise ValueError("live baseline requires Gemini or NVIDIA credentials")
     labels = list(inputs["labels"])
     prompt_text = LIVE_BASELINE_PROMPT + " Allowed: " + ", ".join(sorted(labels))
     rows = []
@@ -321,7 +321,7 @@ def keyword_stub_predictions(inputs: dict[str, Any]) -> dict[str, Any]:
         "predictions": rows,
         "provenance": {
             "provider": "course-substitute-heuristic",
-            "model": "keyword-stub-v1",
+            "model": "keyword-baseline-v2",
             "prompt_sha256": hashlib.sha256(KEYWORD_STUB_PROMPT.encode()).hexdigest(),
         },
     }
@@ -341,8 +341,7 @@ def close_month5_gates(per_family: int = 10, live: bool = False) -> dict[str, An
     samples = classifier_rows(12)
     learned = train_classifier(samples)
     blinded = prepare_inputs(samples, learned)
-    live_baseline = live_prompted_predictions(blinded) if live else None
-    baseline = live_baseline or keyword_stub_predictions(blinded)
+    baseline = live_prompted_predictions(blinded) if live else keyword_stub_predictions(blinded)
     compared = compare_baseline(learned, baseline)
     clusters = cluster_agreement(corpus)
     matched = match_failure(fresh, others, limit=5)
@@ -359,13 +358,12 @@ def close_month5_gates(per_family: int = 10, live: bool = False) -> dict[str, An
         "majority_baseline_macro_f1": learned["majority_baseline_macro_f1"],
         "heuristic_baseline": compared,
         "baseline_source": baseline["provenance"]["model"],
-        "human_evaluation": (
-            "Course team reviewed the three synthetic families and confirmed "
-            "neighbors stay inside the same symptom family."
-        ),
+        "human_evaluation": "not performed",
+        "course_approval": "pending",
         "qualification": (
-            "Substitute local fleet (ADR-0015). Not the original 672-tool / "
-            "10-provider production gate. Baseline is Gemini/NVIDIA when a key "
-            "is configured, otherwise keyword-stub-v1."
+            "Synthetic substitute proposal (ADR-0015), pending course approval. "
+            "Does not satisfy the original real-fleet or human-review gates. "
+            "Offline keyword comparison is not a prompted-LLM baseline. "
+            "Live baseline requires explicit opt-in and credentials."
         ),
     }
