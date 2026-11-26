@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 _PATTERN = re.compile(r"^\s*(first\s+)?([A-Za-z_][\w.]*)\s*(==|!=|>=|<=|>|<|contains)\s*(.+?)\s*$")
 _TOOL_ERROR = re.compile(r"^(?:every\s+)?tool(?:[\s-]error|\s+error)$", re.IGNORECASE)
+_AGENT_ERROR = re.compile(r"^(?:every\s+)?agent[\s-]error$", re.IGNORECASE)
 _RETRY = re.compile(r"^(?:every\s+)?retr(?:y|ies)$", re.IGNORECASE)
 _CONTEXT = re.compile(
     r"^first\s+(?:time\s+)?(?:context|tokens)\s*>\s*(\d+)\s*(?:tokens)?$",
@@ -70,6 +71,9 @@ def _context_tokens(row: dict[str, Any]) -> int | None:
 
 def _preset(cassette: Cassette, expression: str) -> list[dict[str, Any]] | None:
     text = expression.strip()
+    if _AGENT_ERROR.fullmatch(text):
+        failure = cassette.metadata.get("script_error")
+        return [{"kind": "agent-outcome", "error": failure}] if failure else []
     rows = _rows(cassette)
     if _TOOL_ERROR.fullmatch(text):
         return [row for row in rows if _is_tool_error(row)]
@@ -95,7 +99,7 @@ def query(cassette: Cassette, expression: str) -> list[dict[str, Any]]:
     if not match:
         raise ValueError(
             "query syntax: [first] field.path OP JSON_VALUE, "
-            "'every tool error', 'every retry', or 'first context > N tokens'"
+            "'every tool error', 'agent error', 'every retry', or 'first context > N tokens'"
         )
     first, path, op, literal = match.groups()
     try:

@@ -43,6 +43,27 @@ class ProductServer(ThreadingHTTPServer):
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS product_verification (run_id TEXT PRIMARY KEY, passed INTEGER NOT NULL, replays INTEGER NOT NULL, checked_at REAL NOT NULL)"
             )
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS product_job_history "
+                "(id TEXT PRIMARY KEY, created REAL NOT NULL, data TEXT NOT NULL)"
+            )
+            for (data,) in conn.execute(
+                "SELECT data FROM product_job_history ORDER BY created, id"
+            ):
+                job = json.loads(data)
+                self.jobs[job["id"]] = job
+
+    def save_job(self, job: dict[str, Any]) -> None:
+        """Persist terminal job evidence and retain the 100 most recent jobs."""
+        with sqlite3.connect(self.db) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO product_job_history VALUES (?, ?, ?)",
+                (job["id"], job["created"], json.dumps(job)),
+            )
+            conn.execute(
+                "DELETE FROM product_job_history WHERE id IN ("
+                "SELECT id FROM product_job_history ORDER BY created DESC, id DESC LIMIT -1 OFFSET 100)"
+            )
 
     def source(self, value: str) -> Path:
         candidate = (self.root / value).resolve()
@@ -134,6 +155,8 @@ class ProductServer(ThreadingHTTPServer):
             finally:
                 with self.lock:
                     self.processes.pop(job_id, None)
+                    finished = dict(self.jobs[job_id])
+                self.save_job(finished)
 
         threading.Thread(target=task, daemon=True).start()
         return job_id

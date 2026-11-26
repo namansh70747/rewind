@@ -316,17 +316,19 @@ def diagnose(
             first = row
         if first_decision is None and row["decision_difference"]:
             first_decision = row
-    if first is None and output_changed:
-        first = {
+    outcome_difference = None
+    if output_changed:
+        outcome_difference = {
             "a": None,
             "b": None,
             "label": "final-output-drift",
             "category": "agent-logic-drift",
-            "summary": "Boundary values match but final outcomes differ; inspect agent logic.",
+            "summary": "The recorded final outcomes differ.",
             "left": outcome_a,
             "right": outcome_b,
             "raw_diff": json_diff(outcome_a, outcome_b),
         }
+    first = first or outcome_difference
     primary = first_decision or first
     prior = None
     if primary in rows and rows.index(primary) > 0:
@@ -349,6 +351,7 @@ def diagnose(
         },
         "upstream_context": prior,
         "output_changed": output_changed,
+        "outcome_difference": outcome_difference,
         "interpretation": "Observed differences and weak candidate labels, not proven root cause. Inspect raw evidence and task/code provenance.",
         "human_review": "required for root-cause agreement",
     }

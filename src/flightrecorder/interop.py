@@ -18,31 +18,42 @@ if TYPE_CHECKING:
 
 def perfetto(cassette: Cassette) -> dict[str, Any]:
     validate(cassette)
-    return {
-        "displayTimeUnit": "ms",
-        "traceEvents": [
+    events = [
+        {
+            "name": b.key,
+            "cat": b.kind,
+            "ph": "X",
+            "dur": 1,
+            "ts": b.seq,
+            "pid": 1,
+            "tid": 1,
+            "args": {
+                "sequence": b.seq,
+                "request": b.request,
+                "response": b.response,
+                "chain_hash": b.chain_hash,
+                "time_basis": "ordinal (not wall time)",
+                "counterfactual": bool(cassette.metadata.get("counterfactual")),
+                "parent_fingerprint": cassette.metadata.get("parent_fingerprint", ""),
+                "fork_at": cassette.metadata.get("fork_at"),
+            },
+        }
+        for b in cassette.boundaries
+    ]
+    if failure := cassette.metadata.get("script_error"):
+        events.append(
             {
-                "name": b.key,
-                "cat": b.kind,
-                "ph": "X",
-                "dur": 1,
-                "ts": b.seq,
+                "name": "Agent failed",
+                "cat": "agent-outcome",
+                "ph": "i",
+                "s": "t",
+                "ts": len(cassette.boundaries),
                 "pid": 1,
                 "tid": 1,
-                "args": {
-                    "sequence": b.seq,
-                    "request": b.request,
-                    "response": b.response,
-                    "chain_hash": b.chain_hash,
-                    "time_basis": "ordinal (not wall time)",
-                    "counterfactual": bool(cassette.metadata.get("counterfactual")),
-                    "parent_fingerprint": cassette.metadata.get("parent_fingerprint", ""),
-                    "fork_at": cassette.metadata.get("fork_at"),
-                },
+                "args": {"error": failure, "time_basis": "ordinal (not wall time)"},
             }
-            for b in cassette.boundaries
-        ],
-    }
+        )
+    return {"displayTimeUnit": "ms", "traceEvents": events}
 
 
 def otlp(cassette: Cassette) -> dict[str, Any]:
@@ -88,6 +99,24 @@ def otlp(cassette: Cassette) -> dict[str, Any]:
                     for key, value in attributes.items()
                 ],
                 "status": {"code": 0},
+            }
+        )
+    if failure := cassette.metadata.get("script_error"):
+        seq = len(cassette.boundaries)
+        start = 1_000_000_000 + seq * 1000
+        spans.append(
+            {
+                "traceId": trace,
+                "spanId": f"{seq + 1:016x}",
+                "name": "Agent failed",
+                "kind": 1,
+                "startTimeUnixNano": str(start),
+                "endTimeUnixNano": str(start + 1),
+                "attributes": [
+                    {"key": "rewind.kind", "value": {"stringValue": "agent-outcome"}},
+                    {"key": "rewind.time_basis", "value": {"stringValue": "ordinal"}},
+                ],
+                "status": {"code": 2, "message": failure},
             }
         )
     return {

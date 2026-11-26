@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .boundary import Cassette
 
 Messages = list[dict[str, str]]
 
@@ -85,7 +88,7 @@ GROQ = Provider(
 XAI = Provider(
     name="xai",
     url="https://api.x.ai/v1/chat/completions",
-    default_model="grok-4",
+    default_model="grok-4.20-0309-non-reasoning",
     key_env="XAI_API_KEY",
 )
 
@@ -98,3 +101,27 @@ def configured_secrets() -> tuple[str, ...]:
     import os
 
     return tuple(value for provider in PROVIDERS.values() if (value := os.getenv(provider.key_env)))
+
+
+def hosted_model(cassette: Cassette) -> tuple[str, str] | None:
+    """Identify a single hosted provider/model from successful recorded responses."""
+    hosts = {provider.url: provider.name for provider in PROVIDERS.values()}
+    models = set()
+    for boundary in cassette.boundaries:
+        request, response = boundary.request, boundary.response
+        if (
+            boundary.kind != "http"
+            or not isinstance(request, dict)
+            or not isinstance(response, dict)
+        ):
+            continue
+        url = request.get("url")
+        provider = hosts.get(url) if isinstance(url, str) else None
+        status, body = response.get("status"), response.get("body")
+        if provider is None or type(status) is not int or not 200 <= status < 300:
+            continue
+        payload = body.get("json") if isinstance(body, dict) else None
+        model = payload.get("model") if isinstance(payload, dict) else None
+        if isinstance(model, str) and model:
+            models.add((provider, model))
+    return models.pop() if len(models) == 1 else None

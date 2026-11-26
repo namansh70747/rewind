@@ -57,6 +57,9 @@ class SnapshotIndex:
                 "replayed_events": at - start,
                 "observed": observed,
                 "agent_snapshot": state,
+                "script_error": self.cassette.metadata.get("script_error")
+                if at == len(self.cassette.boundaries) - 1
+                else None,
                 "final_output": self.cassette.final_output
                 if at == len(self.cassette.boundaries) - 1
                 else None,

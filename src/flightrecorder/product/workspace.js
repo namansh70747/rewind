@@ -800,7 +800,7 @@ function drawJobs() {
   const selected = jobs.find((job) => job.id === selectedVerification) || jobs.find((job) => job.type === "verify");
   if (selected) drawJobResult(result, selected);
   else blank(result, "No verification result", "Select a trusted recording and start verification.");
-  if (jobs.length === 0) blank(target, "No jobs in this session", "Activity appears after a capture or verification starts.");
+  if (jobs.length === 0) blank(target, "No recent jobs", "Activity appears after a capture or verification starts.");
   for (const job of jobs.slice(0, 30)) {
     const row = el("div", undefined, "job");
     const line = el("div", undefined, "job-line");
@@ -877,7 +877,8 @@ function showComparison(report) {
   if (primary && report.interpretation) summary.append(el("small", report.interpretation));
   $("comparison").replaceChildren(summary);
   alignment = report.alignment.slice();
-  if (primary && primary.a === null && primary.b === null) alignment.push(primary);
+  const outcome = report.outcome_difference || (primary?.a === null && primary?.b === null ? primary : null);
+  if (outcome) alignment.push(outcome);
   $("compare-result").hidden = false;
   for (const [index, row] of alignment.entries()) {
     const item = button(undefined, () => selectDifference(index), "alignment-row");

@@ -105,6 +105,17 @@ def logical(boundary: Boundary) -> tuple[str, str, Any, Any, str]:
                     choices.append(item)
                 data["choices"] = choices
                 response["body"] = {**body, "json": data}
+            elif key in {"/api/generate", "/api/chat"} and "model" in data and "done" in data:
+                # Ollama clocks differ on every live run. Keep them in raw evidence.
+                for field in (
+                    "created_at",
+                    "total_duration",
+                    "load_duration",
+                    "prompt_eval_duration",
+                    "eval_duration",
+                ):
+                    data.pop(field, None)
+                response["body"] = {**body, "json": data}
     return kind, key, request, response, phase
 
 

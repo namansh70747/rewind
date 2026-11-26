@@ -346,6 +346,14 @@ class RunStore:
             "SELECT kind, key, req_hash, resp_hash, chain_hash FROM boundary WHERE run_id=? AND seq=?",
             (run_id, at),
         ).fetchone()
+        is_last = at == maximum[0] - 1
+        script_error = None
+        if is_last:
+            metadata = self.conn.execute(
+                "SELECT data FROM run_metadata WHERE run_id = ?", (run_id,)
+            ).fetchone()
+            if metadata:
+                script_error = json.loads(metadata[0]).get("script_error")
         return {
             "schema_version": 1,
             "boundary": {
@@ -356,7 +364,8 @@ class RunStore:
                 "response": self._get_blob(boundary[3]),
                 "chain_hash": boundary[4],
             },
-            "final_output": maximum[1] if at == maximum[0] - 1 else None,
+            "final_output": maximum[1] if is_last else None,
+            "script_error": script_error,
             "at": at,
             "checkpoint": seq,
             "replayed_events": at - seq,

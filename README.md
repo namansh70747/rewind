@@ -98,6 +98,24 @@ fr record --provider groq --model YOUR_MODEL
 Live recording incurs the provider's usual charges. Offline demo/replay needs no key.
 SOCKS proxy support is included in the runtime dependencies.
 
+For the hosted release-check walkthrough, write a manifest and capture the actual
+Git and provider interactions from a repository checkout:
+
+```sh
+mkdir -p .rewind
+python -c 'import json, subprocess; print(json.dumps({"revision": subprocess.check_output(["git", "rev-parse", "HEAD^"], text=True).strip()}))' > .rewind/release.json
+REWIND_CLOUD_PROVIDER=groq fr record-script examples/cloud_release_check.py
+REWIND_CLOUD_PROVIDER=groq fr verify-script RUN_ID examples/cloud_release_check.py --n 10
+```
+
+The stale revision intentionally fails after the hosted request. To capture a
+passing check, use `HEAD` in the manifest command. The model receives a fixed
+release-explanation prompt. Git revisions and manifest data stay local. Use the
+same `REWIND_CLOUD_PROVIDER` and `REWIND_CLOUD_MODEL` settings for offline replay.
+Choose `gemini`, `nvidia`, or `xai` to use a different account. In the browser,
+launch `fr serve` from the repo and choose `examples/cloud_release_check.py`.
+
+
 ## Python API
 
 ```python

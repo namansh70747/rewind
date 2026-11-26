@@ -13,6 +13,7 @@ from .boundary import Cassette, Divergence
 from .capture import capture, replay_run
 from .offline import NetworkBlocked
 from .provenance import check_source, provenance
+from .providers import hosted_model
 from .redaction import redact_text
 from .replay import VerifyResult
 
@@ -65,6 +66,8 @@ def record_script(path: Path, *, concurrent: bool = False, sources: bool = False
         "source_name": path.name,
         "capture_scope": "httpx + decorated tools + optional sources + redacted stdout",
     }
+    if identity := hosted_model(cap.cassette):
+        cap.cassette.metadata["product_provider"], cap.cassette.metadata["product_model"] = identity
     if failure is not None:
         cap.cassette.metadata["script_error"] = failure
     return cap.cassette

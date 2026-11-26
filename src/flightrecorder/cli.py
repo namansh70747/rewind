@@ -602,6 +602,7 @@ def record_script_command(
     from .redaction import RedactionRules, redaction_rules
     from .scripts import record_script
 
+    _load_dotenv()
     rules = (
         RedactionRules.from_json(json.loads(redaction_config.read_text()))
         if redaction_config
