@@ -422,7 +422,7 @@ def main() -> None:
             "  Google OAuth: OFF - set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET in .env", flush=True
         )
     for account in accounts:
-        print(f"  {account['role']} login: {account['email']} / {account['password']}", flush=True)
+        print(f"  {account['role']} login: {account['email']}", flush=True)
     print("Press Ctrl+C to stop.", flush=True)
     try:
         server.serve_forever()

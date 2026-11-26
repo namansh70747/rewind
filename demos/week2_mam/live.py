@@ -85,7 +85,11 @@ def _install_hybrid_transport(
         url = str(request.url)
         host = request.url.host or ""
         events.append({"event": "http", "host": host, "url": url[:120]})
-        is_llm = "integrate.api.nvidia" in url or "openai.com" in url or "anthropic.com" in url
+        is_llm = host in {
+            "integrate.api.nvidia.com",
+            "api.openai.com",
+            "api.anthropic.com",
+        }
         if is_llm or url.startswith(LLM_URL[:32]):
             if use_live_llm:
                 return _ORIG_HANDLE(self, request)
