@@ -273,7 +273,7 @@ class Handler(BaseHTTPRequestHandler):
                             "Socket guard is not an OS sandbox",
                             "Redaction is pattern based and incomplete",
                         ],
-                        "month2": "Free-provider live evidence pending; original OpenAI and Anthropic gate remains separate.",
+                        "month2": "Live qualification is tracked separately for Groq, Gemini, NVIDIA and xAI.",
                     }
                 )
             else:
