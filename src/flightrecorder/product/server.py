@@ -60,6 +60,15 @@ class ProductServer(ThreadingHTTPServer):
                 "CREATE TABLE IF NOT EXISTS product_job_history "
                 "(id TEXT PRIMARY KEY, created REAL NOT NULL, data TEXT NOT NULL)"
             )
+            if self.google_client_id:
+                conn.execute(
+                    "CREATE TABLE IF NOT EXISTS product_google_account ("
+                    "id INTEGER PRIMARY KEY CHECK (id = 1), subject TEXT NOT NULL)"
+                )
+                account = conn.execute(
+                    "SELECT subject FROM product_google_account WHERE id = 1"
+                ).fetchone()
+                self.google_subject = account[0] if account else None
             for (data,) in conn.execute(
                 "SELECT data FROM product_job_history ORDER BY created, id"
             ):
@@ -350,12 +359,23 @@ class Handler(BaseHTTPRequestHandler):
             with self.server.lock:
                 if self.server.google_subject not in {None, subject}:
                     raise ValueError("This workspace is linked to another account")
-                self.server.google_subject = subject
+                if self.server.google_subject is None:
+                    with closing(sqlite3.connect(self.server.db)) as conn, conn:
+                        conn.execute(
+                            "INSERT OR IGNORE INTO product_google_account VALUES (1, ?)",
+                            (subject,),
+                        )
+                        registered = conn.execute(
+                            "SELECT subject FROM product_google_account WHERE id = 1"
+                        ).fetchone()
+                    if not registered or registered[0] != subject:
+                        raise ValueError("This workspace is linked to another account")
+                    self.server.google_subject = subject
                 self.server.sessions = {
                     key: expiry for key, expiry in self.server.sessions.items() if expiry > now
                 }
                 self.server.sessions[session] = now + 28800
-        except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
+        except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError, sqlite3.Error) as exc:
             print(
                 "Google sign-in callback rejected:", type(exc).__name__, file=sys.stderr, flush=True
             )
