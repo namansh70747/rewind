@@ -63,7 +63,7 @@ _orig_httpx2_async_init: Any = None
 
 
 def _load_httpx2() -> Any:
-    """OpenAI 3, Anthropic 2, and MCP 2 build clients from ``httpx2``, not ``httpx``."""
+    """MCP 2 and some legacy agents use the httpx2 transport."""
     global _httpx2, _orig_httpx2_init, _orig_httpx2_async_init
     if _httpx2 is not None:
         return _httpx2

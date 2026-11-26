@@ -22,7 +22,7 @@ from rich.table import Table
 
 from .commands import register
 from .example_agent import make_example_run
-from .providers import PROVIDERS
+from .providers import PROVIDERS, REPLAY_PROVIDERS, configured_secrets
 from .store import DEFAULT_DB, RunStore
 
 if TYPE_CHECKING:
@@ -81,7 +81,7 @@ def _summarize_request(request: Any) -> str:
 
 @app.command()
 def record(
-    provider: Annotated[str, typer.Option(help="openai | nvidia | anthropic | gemini")] = "openai",
+    provider: Annotated[str, typer.Option(help="groq | gemini | nvidia | xai")] = "groq",
     model: Annotated[str | None, typer.Option(help="override the provider's default model")] = None,
     db: Annotated[str, typer.Option(help="path to the run store")] = DEFAULT_DB,
     concurrent: Annotated[
@@ -117,12 +117,16 @@ def record(
     # Import here so a missing key errors cleanly above without needing httpx first.
     import httpx
 
+    from .redaction import RedactionRules, redaction_rules
     from .replay import record as do_record
 
     try:
-        cassette = do_record(run, httpx.HTTPTransport(), provider=prov.name, model=resolved)
+        with redaction_rules(RedactionRules(literals=(api_key,))):
+            cassette = do_record(run, httpx.HTTPTransport(), provider=prov.name, model=resolved)
     except httpx.HTTPError as exc:
-        console.print(f"[red]recording failed: {exc}[/]")
+        console.print(
+            f"[red]recording failed: {type(exc).__name__}. Check the provider and model.[/]"
+        )
         raise typer.Exit(1) from exc
 
     store = RunStore(db)
@@ -198,13 +202,13 @@ def verify(
         console.print(str(result), markup=False)
         raise typer.Exit(0 if result.passed else 1)
 
-    if cassette.provider not in PROVIDERS:
+    if cassette.provider not in REPLAY_PROVIDERS:
         console.print(
             f"[red]run {run_id} was recorded with unknown provider "
             f"'{cassette.provider}' — cannot rebuild the agent to replay it.[/]"
         )
         raise typer.Exit(2)
-    prov = PROVIDERS[cassette.provider]
+    prov = REPLAY_PROVIDERS[cassette.provider]
     run = make_example_run(prov, cassette.model or None, api_key="replay-needs-no-key")
     console.print(f"replaying run [bold]{run_id}[/] {n}x offline (network kill-switch on) ...")
     result = do_verify(cassette, run, n=n)
@@ -595,7 +599,7 @@ def record_script_command(
         if redaction_config
         else RedactionRules()
     )
-    with redaction_rules(rules):
+    with redaction_rules(RedactionRules(rules.extra_keys, rules.literals + configured_secrets())):
         cassette = record_script(source, concurrent=concurrent, sources=sources)
     store = RunStore(db)
     try:
@@ -628,7 +632,12 @@ def verify_script_command(
             if redaction_config
             else RedactionRules()
         )
-        with redaction_rules(rules), stream_playback_timing(timing_scale):
+        with (
+            redaction_rules(
+                RedactionRules(rules.extra_keys, rules.literals + configured_secrets())
+            ),
+            stream_playback_timing(timing_scale),
+        ):
             result = verify_script(_load_run(run_id, db), source, n)
     except ValueError as exc:
         raise typer.BadParameter(str(exc)) from exc
@@ -648,6 +657,7 @@ def serve_product(
     port: Annotated[int, typer.Option(min=1, max=65535)] = 8766,
 ) -> None:
     """Start the local-only Rewind product workspace."""
+    _load_dotenv()
     from .product.server import ProductServer
 
     server = ProductServer(("127.0.0.1", port), workspace, db)

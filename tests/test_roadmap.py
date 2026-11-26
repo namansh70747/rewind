@@ -250,84 +250,19 @@ def test_two_mcp_servers_replay_without_transport() -> None:
     replay.assert_fully_consumed()
 
 
-def test_openai_sdk_record_replay(monkeypatch: pytest.MonkeyPatch) -> None:
-    openai = pytest.importorskip("openai")
+def test_httpx2_transport_capture_and_replay(monkeypatch: pytest.MonkeyPatch) -> None:
+    httpx2 = pytest.importorskip("httpx2")
     calls = []
 
-    def serve(self: httpx.HTTPTransport, request: httpx.Request) -> httpx.Response:
+    def serve(*args: object) -> object:
         calls.append(1)
-        return httpx.Response(
-            200,
-            json={
-                "id": "chatcmpl-test",
-                "object": "chat.completion",
-                "created": 1,
-                "model": "test",
-                "choices": [
-                    {
-                        "index": 0,
-                        "message": {"role": "assistant", "content": "42"},
-                        "finish_reason": "stop",
-                    }
-                ],
-            },
-        )
+        return httpx2.Response(200, json={"answer": "42"})
 
-    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", serve)
-    httpx2 = pytest.importorskip("httpx2")
     monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", serve)
 
     def agent() -> None:
-        with openai.OpenAI(api_key="fixture-only", max_retries=0) as client:
-            assert (
-                client.chat.completions.create(
-                    model="test", messages=[{"role": "user", "content": "answer"}]
-                )
-                .choices[0]
-                .message.content
-                == "42"
-            )
-
-    with capture() as cap:
-        agent()
-    assert cap.cassette and verify_run(cap.cassette, agent, n=3).passed
-    assert len(calls) == 1
-
-
-def test_anthropic_sdk_record_replay(monkeypatch: pytest.MonkeyPatch) -> None:
-    anthropic = pytest.importorskip("anthropic")
-    calls = []
-
-    def serve(self: httpx.HTTPTransport, request: httpx.Request) -> httpx.Response:
-        calls.append(1)
-        return httpx.Response(
-            200,
-            json={
-                "id": "msg_test",
-                "type": "message",
-                "role": "assistant",
-                "model": "test",
-                "content": [{"type": "text", "text": "42"}],
-                "stop_reason": "end_turn",
-                "stop_sequence": None,
-                "usage": {"input_tokens": 1, "output_tokens": 1},
-            },
-        )
-
-    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", serve)
-    httpx2 = pytest.importorskip("httpx2")
-    monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", serve)
-
-    def agent() -> None:
-        with anthropic.Anthropic(api_key="fixture-only", max_retries=0) as client:
-            assert (
-                client.messages.create(
-                    model="test", max_tokens=20, messages=[{"role": "user", "content": "answer"}]
-                )
-                .content[0]
-                .text
-                == "42"
-            )
+        with httpx2.Client() as client:
+            assert client.get("https://fixture.invalid/data").json() == {"answer": "42"}
 
     with capture() as cap:
         agent()

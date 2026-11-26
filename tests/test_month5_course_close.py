@@ -23,13 +23,13 @@ def test_course_close_reports_honest_baseline_and_pending_review() -> None:
     assert all(item["run_id"].startswith("tool-error") for item in report["neighbors"])
 
 
-def test_live_gemini_baseline_uses_allowed_labels(
+def test_live_xai_baseline_uses_allowed_labels(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     pytest.importorskip("sklearn")
     from flightrecorder.month5 import live_prompted_predictions
 
-    monkeypatch.setenv("GEMINI_API_KEY", "fixture-only")
+    monkeypatch.setenv("XAI_API_KEY", "fixture-only")
     monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
 
     def serve(self, request):  # type: ignore[no-untyped-def]
@@ -56,7 +56,7 @@ def test_live_gemini_baseline_uses_allowed_labels(
     }
     result = live_prompted_predictions(inputs)
     assert result is not None
-    assert result["provenance"]["provider"] == "gemini"
+    assert result["provenance"]["provider"] == "xai"
     assert result["predictions"][0]["label"] == "transport-timeout"
 
 
@@ -86,7 +86,7 @@ def test_live_label_rejects_invalid_or_ambiguous_answers(answer: str) -> None:
 def test_live_baseline_requires_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
     from flightrecorder.month5 import live_prompted_predictions
 
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
     monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
     with pytest.raises(ValueError, match="credential"):
         live_prompted_predictions({"labels": ["tool-error"], "inputs": []})

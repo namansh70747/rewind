@@ -98,7 +98,7 @@ def test_fixture_runtime_exception_is_an_explicit_failure(tmp_path: Path) -> Non
     assert "broken agent" in result["fixtures"][0]["detail"]
 
 
-@pytest.mark.parametrize("provider", ["openai", "anthropic", "nvidia", "gemini"])
+@pytest.mark.parametrize("provider", ["groq", "xai", "nvidia", "gemini"])
 def test_live_corpus_agent_records_five_steps_and_replays_offline(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, provider: str
 ) -> None:
@@ -106,8 +106,8 @@ def test_live_corpus_agent_records_five_steps_and_replays_offline(
 
     monkeypatch.setenv("NVIDIA_API_KEY", "fixture-only")
     monkeypatch.setenv("GEMINI_API_KEY", "fixture-only")
-    monkeypatch.setenv("OPENAI_API_KEY", "fixture-only")
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "fixture-only")
+    monkeypatch.setenv("GROQ_API_KEY", "fixture-only")
+    monkeypatch.setenv("XAI_API_KEY", "fixture-only")
     calls = []
 
     def serve(self: httpx.HTTPTransport, request: httpx.Request) -> httpx.Response:
@@ -125,17 +125,6 @@ def test_live_corpus_agent_records_five_steps_and_replays_offline(
                 }
             ],
         }
-        if provider == "anthropic":
-            body = {
-                "id": "msg_test",
-                "type": "message",
-                "role": "assistant",
-                "model": "test",
-                "content": [{"type": "text", "text": "OK"}],
-                "stop_reason": "end_turn",
-                "stop_sequence": None,
-                "usage": {"input_tokens": 1, "output_tokens": 1},
-            }
         return httpx.Response(200, json=body)
 
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", serve)

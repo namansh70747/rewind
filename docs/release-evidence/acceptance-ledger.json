@@ -1,0 +1,1532 @@
+{
+  "source_commit": "c69c590be94d0876d536a9ee0e3fb4ac6cc1f39e",
+  "requirements": [
+    {
+      "id": "W01.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 16,
+      "requirement": "**E1:** Build a *throwaway* recorder for a 5–10-step OpenAI agent (one tool) at the `httpx` transport layer. Run **Spike A**: record once, replay 50× in playback mode with a boundary-hash divergence check.",
+      "owner": "E1",
+      "procedure": "Capture real Groq workload and independently check 50 offline replays",
+      "evidence": [],
+      "status": "blocked",
+      "revised_provider_scope": "Groq, Gemini, NVIDIA and xAI per ADR-0016. Historical provider evidence is not transferable.",
+      "blocker": "Rotated credentials and approved provider call/spend limits required."
+    },
+    {
+      "id": "W01.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 17,
+      "requirement": "**E2:** Stand up the dev loop — `uv` env, CI green on the skeleton, the `fr` CLI shell, a throwaway agent fixture, and a scripted way to run/re-run spikes.",
+      "owner": "E2",
+      "procedure": "Capture real Groq workload and independently check 50 offline replays",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W01.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 18,
+      "requirement": "**E3:** Start the **test corpus** — collect 10–15 diverse real agent runs (varied tools, lengths, providers) as spike inputs and future regression fixtures.",
+      "owner": "E3",
+      "procedure": "Capture real Groq workload and independently check 50 offline replays",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W01.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 19,
+      "requirement": "**Exit criterion:** Spike A result recorded — **PASS = 50/50 byte-identical replays, zero false ✓** from the oracle. (Reference: [`risks-and-spikes.md`](./risks-and-spikes.md) Spike A.)",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Capture real Groq workload and independently check 50 offline replays",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W02.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 22,
+      "requirement": "**E1:** Run **Spike B** (inject un-captured `time`/`random`/`uuid4`/dict-order → replay must *fail loud*), **Spike D** (concurrent `asyncio.gather` tool calls), **Spike E** (refactor survival).",
+      "owner": "E1",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W02.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 23,
+      "requirement": "**E2:** Run **Spike F** (redaction recall on 20 seed secrets + per-run storage footprint); sketch the timeline-UI approach (Textual + Perfetto export vs web).",
+      "owner": "E2",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W02.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 24,
+      "requirement": "**E3:** Run **Spike C** (local-model determinism CPU vs GPU — *measure*, to justify banning re-execution from the replay path).",
+      "owner": "E3",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W02.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 25,
+      "requirement": "**Exit criterion:** all spikes have a written pass/fail verdict; a **go / pivot decision** is recorded as an ADR. If A+B failed → pivot to \"faithful recorder + trace viewer\" and re-baseline the roadmap.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W03.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 28,
+      "requirement": "**E1:** Real (non-throwaway) capture: `httpx` transport interceptor for OpenAI chat; determinism shims (`time-machine` for clock; recorded `uuid4`/RNG seeds); a `@fr.tool` decorator; write to SQLite(WAL) + a content-addressed blob dir.",
+      "owner": "E1",
+      "procedure": "Exercise installed capture/show and store restart",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W03.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 29,
+      "requirement": "**E2:** `fr record -- python agent.py` wraps a run; `fr show <run>` prints the decision timeline (Rich tree). Package/CLI plumbing.",
+      "owner": "E2",
+      "procedure": "Exercise installed capture/show and store restart",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W03.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 30,
+      "requirement": "**E3:** Define the **faithfulness metric** and the CI harness that will run the corpus through record→replay→verify each week.",
+      "owner": "E3",
+      "procedure": "Exercise installed capture/show and store restart",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W03.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 31,
+      "requirement": "**Exit criterion:** `fr record` produces a persisted recording for the fixture agent; `fr show` renders its boundaries.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Exercise installed capture/show and store restart",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W04.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 34,
+      "requirement": "**E1:** The playback engine (`REEXEC_REPLAY`) serves recorded values by ordinal key; the **network kill-switch** raises on any un-served outbound call; `fr verify` re-runs and asserts the replayed boundary sequence matches. Draft the **log-format ADR**.",
+      "owner": "E1",
+      "procedure": "Verify installed replay with services off",
+      "evidence": [
+        {
+          "path": "docs/release-evidence/local-workspace-smoke.json",
+          "scope": "intermediate wheel, supporting evidence only"
+        }
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "W04.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 35,
+      "requirement": "**E2:** `fr verify <run>` UX (clear ✓/✗, first-divergence message); wire the round-trip into CI as the canary test.",
+      "owner": "E2",
+      "procedure": "Verify installed replay with services off",
+      "evidence": [
+        {
+          "path": "docs/release-evidence/local-workspace-smoke.json",
+          "scope": "intermediate wheel, supporting evidence only"
+        }
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "W04.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 36,
+      "requirement": "**E3:** Run the corpus through the skeleton; report faithfulness % and any silent-divergence findings.",
+      "owner": "E3",
+      "procedure": "Verify installed replay with services off",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W04.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 37,
+      "requirement": "**Exit criterion (M1 gate):** ⭐ `fr verify <run>` proves the fixture run **replays bit-exact with zero API calls**, and `fr show <run>` prints the timeline — green in CI.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Verify installed replay with services off",
+      "evidence": [
+        {
+          "path": "docs/release-evidence/local-workspace-smoke.json",
+          "scope": "intermediate wheel, supporting evidence only"
+        }
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "W05.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 46,
+      "requirement": "**E1:** Implement the boundary **hash-chain** (`h_i = H(h_{i-1} ∥ canon(req_i) ∥ canon(resp_i))`, BLAKE3 + canonical JSON — see [`algorithms-and-math.md`](./algorithms-and-math.md) §1); replay recomputes it and hard-fails at the first mismatch, naming the exact boundary.",
+      "owner": "E1",
+      "procedure": "Check exact mismatch and provider registry",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W05.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 47,
+      "requirement": "**E2:** Surface \"replay verified ✓/✗\" as a first-class CLI/UI output; a `--strict` flag.",
+      "owner": "E2",
+      "procedure": "Check exact mismatch and provider registry",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W05.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 48,
+      "requirement": "**E3:** Add adversarial divergence cases to the corpus (deliberately un-captured sources) to prove the oracle fires.",
+      "owner": "E3",
+      "procedure": "Check exact mismatch and provider registry",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W05.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 49,
+      "requirement": "**Exit criterion:** any injected divergence is caught and localized to the exact boundary; **no silent divergence** in the corpus.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Check exact mismatch and provider registry",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W06.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 52,
+      "requirement": "**E1:** Record raw SSE frames verbatim (chunk bytes + order + inter-chunk timing); replay reconstructs the async iterator; the *reassembled* message is the canonical boundary and its hash must match.",
+      "owner": "E1",
+      "procedure": "Compare live stream events with separate parser",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W06.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 53,
+      "requirement": "**E2:** Timeline renders streamed tool-call assembly; `fr show` handles partial/streamed decisions.",
+      "owner": "E2",
+      "procedure": "Compare live stream events with separate parser",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W06.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 54,
+      "requirement": "**E3:** Add streamed + tool-calling runs to the corpus (Spike G).",
+      "owner": "E3",
+      "procedure": "Compare live stream events with separate parser",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W06.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 55,
+      "requirement": "**Exit criterion:** a streamed tool-calling run replays byte-identical (reassembled) with zero API calls.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Compare live stream events with separate parser",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W07.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 58,
+      "requirement": "**E1:** Anthropic via the same `httpx` transport; formalize boundary matching with `occurrence_index` so loops/retries (incl. recorded failures) replay correctly ([`algorithms-and-math.md`](./algorithms-and-math.md) §2); capture env/config reads.",
+      "owner": "E1",
+      "procedure": "Run all four live corpora and independently count calls",
+      "evidence": [],
+      "status": "blocked",
+      "revised_provider_scope": "Groq, Gemini, NVIDIA and xAI per ADR-0016. Historical provider evidence is not transferable.",
+      "blocker": "Rotated credentials and approved provider call/spend limits required."
+    },
+    {
+      "id": "W07.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 59,
+      "requirement": "**E2:** Provider-agnostic timeline; `fr` works unchanged across OpenAI/Anthropic.",
+      "owner": "E2",
+      "procedure": "Run all four live corpora and independently count calls",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W07.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 60,
+      "requirement": "**E3:** Add multi-provider + retry-heavy runs to the corpus; track faithfulness per provider.",
+      "owner": "E3",
+      "procedure": "Run all four live corpora and independently count calls",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W07.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 61,
+      "requirement": "**Exit criterion:** an unmodified OpenAI *and* an Anthropic agent both record & replay bit-exact; a retry loop replays its recorded failures in order.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Run all four live corpora and independently count calls",
+      "evidence": [],
+      "status": "blocked",
+      "revised_provider_scope": "Groq, Gemini, NVIDIA and xAI per ADR-0016. Historical provider evidence is not transferable.",
+      "blocker": "Rotated credentials and approved provider call/spend limits required."
+    },
+    {
+      "id": "W08.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 64,
+      "requirement": "**E1:** BLAKE3 content-addressing + `zstd` compression + cross-run dedup + ref-counted GC ([`algorithms-and-math.md`](./algorithms-and-math.md) §4). **Freeze the recording log format via ADR.** 🔒",
+      "owner": "E1",
+      "procedure": "Export/import real bundles and approve format",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W08.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 65,
+      "requirement": "**E2:** `fr` bundle export/import (a recording is a portable, shareable artifact — the \"recording-as-a-URL\" idea from replay.io).",
+      "owner": "E2",
+      "procedure": "Export/import real bundles and approve format",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W08.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 66,
+      "requirement": "**E3:** Measure storage footprint/run after dedup+compression against the Spike-F budget.",
+      "owner": "E3",
+      "procedure": "Export/import real bundles and approve format",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W08.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 67,
+      "requirement": "**Exit criterion (🔒):** log-format ADR merged; identical payloads stored once; a recording round-trips export→import and still verifies.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Export/import real bundles and approve format",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W09.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 70,
+      "requirement": "**E1:** Redaction-on-write (secrets/PII scrubbed *before* storage; deterministic secret placeholders so replay still works); a **boundary-coverage audit** that lists any outbound I/O observed but not served on replay.",
+      "owner": "E1",
+      "procedure": "Scan DB/WAL and every export, audit omitted I/O",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W09.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 71,
+      "requirement": "**E2:** `fr doctor` / coverage report surfacing un-instrumented I/O; redaction config.",
+      "owner": "E2",
+      "procedure": "Scan DB/WAL and every export, audit omitted I/O",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W09.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 72,
+      "requirement": "**E3:** Secret-scan the stored corpus (target: 0 leaks); publish the Month-2 faithfulness report.",
+      "owner": "E3",
+      "procedure": "Scan DB/WAL and every export, audit omitted I/O",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W09.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 73,
+      "requirement": "**Exit criterion (M2 gate):** any unmodified OpenAI/Anthropic agent records → replays bit-exact → verifies, with the coverage audit clean and **0 secrets** in stored recordings.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Scan DB/WAL and every export, audit omitted I/O",
+      "evidence": [],
+      "status": "blocked",
+      "revised_provider_scope": "Groq, Gemini, NVIDIA and xAI per ADR-0016. Historical provider evidence is not transferable.",
+      "blocker": "Rotated credentials and approved provider call/spend limits required."
+    },
+    {
+      "id": "W10.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 84,
+      "requirement": "**E1:** Reconstruct agent state at step N via replay-to-nearest-snapshot-then-forward; periodic snapshots at the √N-optimal interval, COW/incremental deltas into the CAS ([`algorithms-and-math.md`](./algorithms-and-math.md) §5); schema'd state serialization.",
+      "owner": "E1",
+      "procedure": "Compare state with sequential fold",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W10.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 85,
+      "requirement": "**E2:** `fr show <run> --at N` renders state at any step; groundwork for the scrubber.",
+      "owner": "E2",
+      "procedure": "Compare state with sequential fold",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W10.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 86,
+      "requirement": "**E3:** Benchmark replay-to-N latency vs snapshot interval on the corpus; tune `k`.",
+      "owner": "E3",
+      "procedure": "Compare state with sequential fold",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W10.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 87,
+      "requirement": "**Exit criterion:** jump to any step of a long run in bounded time with exact reconstructed state.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Compare state with sequential fold",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W11.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 90,
+      "requirement": "**E1:** Stable state-inspection API behind the UI; expose the hash-chain per step.",
+      "owner": "E1",
+      "procedure": "Inspect real run across Mac viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W11.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 91,
+      "requirement": "**E2:** ⭐ Textual TUI scrubber (step forward/back, inspect prompt/response/tool I/O at each boundary) **and** a Perfetto-loadable trace export as the zero-build waterfall.",
+      "owner": "E2",
+      "procedure": "Inspect real run across Mac viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W11.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 92,
+      "requirement": "**E3:** Usability pass on real corpus runs; feed missing fields back into the (now-frozen) schema via ADR if truly needed.",
+      "owner": "E3",
+      "procedure": "Inspect real run across Mac viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W11.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 93,
+      "requirement": "**Exit criterion:** you can scrub a real recorded run's decision timeline and inspect any step, in the terminal and in Perfetto.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Inspect real run across Mac viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W12.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 96,
+      "requirement": "**E1:** `FORK(at, X)` — deterministic playback to N, inject a mutated boundary value, switch to **live** continuation saved as a *quarantined* forked run; a **side-effect policy engine** (tools classified read-only vs mutating; **mutating tools mocked by default** in fork mode; per-tool opt-in to go live).",
+      "owner": "E1",
+      "procedure": "Validate one real fork with external oracle",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W12.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 97,
+      "requirement": "**E2:** `fr fork <run> --at N` UX; forked runs visually quarantined; a tool-classification manifest editor.",
+      "owner": "E2",
+      "procedure": "Validate one real fork with external oracle",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W12.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 98,
+      "requirement": "**E3:** Eval-over-forks scaffolding (a fork is a controlled experiment: one variable changed).",
+      "owner": "E3",
+      "procedure": "Validate one real fork with external oracle",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W12.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 99,
+      "requirement": "**Exit criterion:** scrub to step N, change a tool result, replay forward with dangerous tools mocked — no real side effect fires; the fork is saved as its own replayable run. *(Fork is labeled best-effort exploration, not \"faithful.\")*",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Validate one real fork with external oracle",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W13.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 102,
+      "requirement": "**E1:** Ensure capture works under a LangGraph event loop (async completion-order recording).",
+      "owner": "E1",
+      "procedure": "Compare real graph producer counts and trace viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W13.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 103,
+      "requirement": "**E2:** LangGraph adapter v1 (checkpointer/callback) so Rewind records the threads LangGraph already checkpoints; OTel/OpenInference **export** (recordings are also valid traces) and **ingest** of existing traces.",
+      "owner": "E2",
+      "procedure": "Compare real graph producer counts and trace viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W13.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 104,
+      "requirement": "**E3:** Compare a LangGraph \"time travel\" resume (re-runs live) vs a Rewind replay (bit-exact) as a positioning artifact.",
+      "owner": "E3",
+      "procedure": "Compare real graph producer counts and trace viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W13.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 105,
+      "requirement": "**Exit criterion (M3 gate):** a LangGraph agent records/replays/forks through Rewind; a recording opens in an OTel viewer (Jaeger/Phoenix) unchanged.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Compare real graph producer counts and trace viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W14.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 117,
+      "requirement": "**E1:** Expose the per-step hash-chain for two aligned runs; binary-search the first differing `h_i` in O(log N) ([`algorithms-and-math.md`](./algorithms-and-math.md) §1).",
+      "owner": "E1",
+      "procedure": "Check aligned mismatches and benchmark search",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W14.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 118,
+      "requirement": "**E2:** `fr bisect <pass> <fail>` CLI; first-divergence output.",
+      "owner": "E2",
+      "procedure": "Check aligned mismatches and benchmark search",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W14.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 119,
+      "requirement": "**E3:** Build labeled pass/fail pairs (flip one recorded tool result) as bisect ground truth.",
+      "owner": "E3",
+      "procedure": "Check aligned mismatches and benchmark search",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W14.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 120,
+      "requirement": "**Exit criterion:** for step-aligned pairs, `fr bisect` names the injected divergence step.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Check aligned mismatches and benchmark search",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W15.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 123,
+      "requirement": "**E1/E3:** Needleman–Wunsch/Smith–Waterman with a **semantic cost** (embedding cosine + structured tool-call diff) for runs that added/removed steps ([`algorithms-and-math.md`](./algorithms-and-math.md) §3; Biopython + RapidFuzz).",
+      "owner": "E1/E3",
+      "procedure": "Review real unequal pairs and embedding results",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W15.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 124,
+      "requirement": "**E2:** Side-by-side aligned timeline in the UI.",
+      "owner": "E2",
+      "procedure": "Review real unequal pairs and embedding results",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W15.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 125,
+      "requirement": "**Exit criterion:** bisect localizes the first real divergence even when the two runs differ in length.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Review real unequal pairs and embedding results",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W16.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 128,
+      "requirement": "**E3:** Classify each divergence (`arg-hallucination`, `tool-choice`, `sampling-flake`, `tool-result-drift`, `retrieval-drift`, `loop`, `cost-blowup`, `truncation`…); this label doubles as a weak ML label.",
+      "owner": "E3",
+      "procedure": "Blind review actual divergence labels",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W16.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 129,
+      "requirement": "**E2:** ⭐ Side-by-side diff view naming the divergence in plain English, with the raw diff always shown.",
+      "owner": "E2",
+      "procedure": "Blind review actual divergence labels",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W16.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 130,
+      "requirement": "**E1:** Distinguish same-input→different-output (decision diverged) vs different-input→different-output (walk back).",
+      "owner": "E1",
+      "procedure": "Blind review actual divergence labels",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W16.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 131,
+      "requirement": "**Exit criterion:** on a real failing/passing pair, Rewind shows the first diverging decision + a named cause a human agrees with.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Blind review actual divergence labels",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W17.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 134,
+      "requirement": "**E1/E2:** Capture at the MCP JSON-RPC transport (record `tools/call` request/response frames) so *any* MCP server is recordable; abstract session semantics behind an adapter (insulate against MCP spec churn).",
+      "owner": "E1/E2",
+      "procedure": "Stop two actual MCP servers before replay",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W17.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 135,
+      "requirement": "**E3:** Add multi-server MCP runs to the corpus.",
+      "owner": "E3",
+      "procedure": "Stop two actual MCP servers before replay",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W17.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 136,
+      "requirement": "**Exit criterion:** an agent driving multiple MCP servers records & replays bit-exact via the adapter.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Stop two actual MCP servers before replay",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W18.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 139,
+      "requirement": "**E1:** Serialized-timeline replay + recorded completion-order for `asyncio.gather` fan-out ([`algorithms-and-math.md`](./algorithms-and-math.md) §2); document sequential-vs-concurrent guarantees.",
+      "owner": "E1",
+      "procedure": "Verify async ordering and source drift",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W18.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 140,
+      "requirement": "**E2:** Stabilize the CLI surface; error messages for code-drift (\"recorded @ SHA X, replaying @ Y\").",
+      "owner": "E2",
+      "procedure": "Verify async ordering and source drift",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W18.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 141,
+      "requirement": "**E3:** Month-4 faithfulness + bisect-accuracy report.",
+      "owner": "E3",
+      "procedure": "Verify async ordering and source drift",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W18.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 142,
+      "requirement": "**Exit criterion (M4 gate):** given a passing and a failing run of the same task, Rewind pinpoints and names the first diverging decision; concurrent-tool agents replay within the documented guarantee.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Verify async ordering and source drift",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W19.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 151,
+      "requirement": "**E3:** Feature extraction per run (steps, tool histogram, retries, tokens, cost, finish reasons, divergence class) + trajectory/error embeddings (`sentence-transformers` bge-small) → **LanceDB**.",
+      "owner": "E3",
+      "procedure": "Review real index neighbors",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W19.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 152,
+      "requirement": "**E1:** Stable \"run features\" export from the log.",
+      "owner": "E1",
+      "procedure": "Review real index neighbors",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W19.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 153,
+      "requirement": "**E2:** `fr similar <run>` (nearest failures) surfaced in the UI.",
+      "owner": "E2",
+      "procedure": "Review real index neighbors",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W19.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 154,
+      "requirement": "**Exit criterion:** \"find runs like this failure\" returns sensible neighbors on the corpus.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Review real index neighbors",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W20.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 157,
+      "requirement": "**E3:** HDBSCAN over embeddings + UMAP 2-D map ([`algorithms-and-math.md`](./algorithms-and-math.md) §6); Ollama summarizes each cluster to seed a taxonomy.",
+      "owner": "E3",
+      "procedure": "Blind review clusters and referenced summaries",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W20.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 158,
+      "requirement": "**E2:** A failure-map view + cluster drill-down in the timeline UI.",
+      "owner": "E2",
+      "procedure": "Blind review clusters and referenced summaries",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W20.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 159,
+      "requirement": "**Exit criterion:** failure clusters are coherent (a human agrees with the groupings) on the corpus.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Blind review clusters and referenced summaries",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W21.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 162,
+      "requirement": "**E3:** Heuristic labeling functions (Snorkel-style, but hand-written — snorkel is unmaintained) → a scikit-learn root-cause classifier with a real train/val/test split + per-mode F1; the **eval harness** runs a change against recorded runs as deterministic zero-cost fixtures.",
+      "owner": "E3",
+      "procedure": "Freeze holdout and score Grok baseline independently",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W21.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 163,
+      "requirement": "**E2:** `fr eval` (replay-as-fixture) integrated as a pytest-style CI gate (the DeepEval ergonomic).",
+      "owner": "E2",
+      "procedure": "Freeze holdout and score Grok baseline independently",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W21.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 164,
+      "requirement": "**Exit criterion:** the classifier beats a prompted-LLM baseline on held-out labels; `fr eval` gates a prompt/model change deterministically.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Freeze holdout and score Grok baseline independently",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W22.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 167,
+      "requirement": "**E1/E2:** Point Rewind at the author's real 672-tool / 10-provider MCP fleet; a query DSL over the timeline (\"every tool error\", \"first time context > N tokens\" — the WinDbg-TTD idea).",
+      "owner": "E1/E2",
+      "procedure": "Dogfood authorized real fleet and validate queries",
+      "evidence": [],
+      "status": "blocked",
+      "blocker": "Authorized fleet workspace or reviewed corpus not supplied."
+    },
+    {
+      "id": "W22.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 168,
+      "requirement": "**E3:** \"New failure → nearest known cluster + likely root cause\" on real production runs.",
+      "owner": "E3",
+      "procedure": "Dogfood authorized real fleet and validate queries",
+      "evidence": [],
+      "status": "blocked",
+      "blocker": "Authorized fleet workspace or reviewed corpus not supplied."
+    },
+    {
+      "id": "W22.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 169,
+      "requirement": "**Exit criterion (M5 gate):** across hundreds of real fleet runs, Rewind clusters failure modes and, for a fresh failure, surfaces \"this matches cluster X\" with a plausible cause.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Dogfood authorized real fleet and validate queries",
+      "evidence": [],
+      "status": "blocked",
+      "blocker": "Authorized fleet workspace or reviewed corpus not supplied."
+    },
+    {
+      "id": "W23.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 178,
+      "requirement": "**E1:** Capture-overhead pass (async batched export, ensure the recorder doesn't perturb the agent — R12); confirm storage footprint within budget.",
+      "owner": "E1",
+      "procedure": "Measure representative overhead and clean installs",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W23.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 179,
+      "requirement": "**E2:** Packaging: `pip install rewind`, enable the `fr` console script, cross-platform smoke.",
+      "owner": "E2",
+      "procedure": "Measure representative overhead and clean installs",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W23.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 180,
+      "requirement": "**E3:** Final faithfulness/perf benchmark report.",
+      "owner": "E3",
+      "procedure": "Measure representative overhead and clean installs",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W23.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 181,
+      "requirement": "**Exit criterion:** capture overhead measured and acceptable; `pip install rewind && fr --help` works on a clean machine.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Measure representative overhead and clean installs",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W24.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 184,
+      "requirement": "**E2:** ⭐ Record the end-to-end demo: **a real failing agent run → open the exact recording at the first diverging decision → fork \"what if this tool returned X?\" → watch it recover.** mkdocs site live; quickstart + 3 worked examples.",
+      "owner": "E2",
+      "procedure": "Reproduce real recovery on clean install with newcomer",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W24.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 185,
+      "requirement": "**E1:** \"Getting started\" recorder API docs; supported-patterns matrix (sequential vs concurrent, which providers).",
+      "owner": "E1",
+      "procedure": "Reproduce real recovery on clean install with newcomer",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W24.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 186,
+      "requirement": "**E3:** A public sample gallery of `.rewind` bundles (the OpenAI-Evals \"shared registry\" idea).",
+      "owner": "E3",
+      "procedure": "Reproduce real recovery on clean install with newcomer",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W24.4",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 187,
+      "requirement": "**Exit criterion:** a newcomer can install Rewind and reproduce the killer demo from the docs alone.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Reproduce real recovery on clean install with newcomer",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W25.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 190,
+      "requirement": "**E3:** *If and only if* the core is solid and labeled data exists: QLoRA fine-tune a small local model on bisect explanations to auto-narrate root cause ([`algorithms-and-math.md`](./algorithms-and-math.md) §6e/f). **Otherwise cut it** and harden replay/bisect instead.",
+      "owner": "E3",
+      "procedure": "Recheck severe defects and LoRA scope cut",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W25.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 191,
+      "requirement": "**E1/E2:** Burn down the top bugs from dogfooding; polish error messages and the code-drift story.",
+      "owner": "E1/E2",
+      "procedure": "Recheck severe defects and LoRA scope cut",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W25.3",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 192,
+      "requirement": "**Exit criterion:** either a working \"paste a failing run → plain-English root cause\" narrator, **or** a documented decision to cut it plus a more robust core.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Recheck severe defects and LoRA scope cut",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W26.1",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 195,
+      "requirement": "**All:** Cut `v0.1.0` (tag, CHANGELOG, release notes); run the full demo end-to-end on a clean environment; retro; write the post-6-month backlog (concurrency v2, hosted sharing, more frameworks, production hardening).",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "W26.2",
+      "source": "docs/plan/roadmap-6-months.md",
+      "line": 196,
+      "requirement": "**Exit criterion (final gate):** `v0.1.0` is tagged and installable; the North-Star demo runs clean; the [`milestones-and-exit-criteria.md`](./milestones-and-exit-criteria.md) final Definition of Done is met.",
+      "owner": "Maintainer / all tracks",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M0.1",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 13,
+      "requirement": "**Bit-exact playback** (Spike A) | 50/50 replays of a real OpenAI agent are byte-identical; divergence oracle gives no false ✓",
+      "owner": "Maintainer",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "blocked",
+      "revised_provider_scope": "Groq, Gemini, NVIDIA and xAI per ADR-0016. Historical provider evidence is not transferable.",
+      "blocker": "Rotated credentials and approved provider call/spend limits required."
+    },
+    {
+      "id": "M0.2",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 14,
+      "requirement": "**Loud divergence** (Spike B) | Injected un-captured `time`/`random`/`uuid4` cause replay to **fail and localize**, never diverge silently",
+      "owner": "Maintainer",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M0.3",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 15,
+      "requirement": "Spikes C–F have written verdicts | Local-model determinism measured; concurrency, refactor-survival, redaction, and footprint assessed",
+      "owner": "Maintainer",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M0.4",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 16,
+      "requirement": "A **go / pivot decision** is recorded as an ADR | If M0.1/M0.2 fail → pivot to \"faithful recorder + trace viewer\" and re-baseline",
+      "owner": "Maintainer",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M1.1",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 26,
+      "requirement": "`fr record -- python agent.py` produces a persisted recording for a real single-tool agent",
+      "owner": "Maintainer",
+      "procedure": "Verify installed replay with services off",
+      "evidence": [
+        {
+          "path": "docs/release-evidence/local-workspace-smoke.json",
+          "scope": "intermediate wheel, supporting evidence only"
+        }
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "M1.2",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 27,
+      "requirement": "`fr verify <run>` **replays it bit-exact with the network kill-switch on — zero outbound calls**",
+      "owner": "Maintainer",
+      "procedure": "Verify installed replay with services off",
+      "evidence": [
+        {
+          "path": "docs/release-evidence/local-workspace-smoke.json",
+          "scope": "intermediate wheel, supporting evidence only"
+        }
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "M1.3",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 28,
+      "requirement": "`fr show <run>` renders the decision timeline",
+      "owner": "Maintainer",
+      "procedure": "Verify installed replay with services off",
+      "evidence": [
+        {
+          "path": "docs/release-evidence/local-workspace-smoke.json",
+          "scope": "intermediate wheel, supporting evidence only"
+        }
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "M1.4",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 29,
+      "requirement": "The record→replay→verify round-trip is the CI **canary test** and is green",
+      "owner": "Maintainer",
+      "procedure": "Verify installed replay with services off",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M2.1",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 39,
+      "requirement": "Any **unmodified OpenAI *and* Anthropic** agent records → replays bit-exact → verifies",
+      "owner": "Maintainer",
+      "procedure": "Scan DB/WAL and every export, audit omitted I/O",
+      "evidence": [],
+      "status": "blocked",
+      "revised_provider_scope": "Groq, Gemini, NVIDIA and xAI per ADR-0016. Historical provider evidence is not transferable.",
+      "blocker": "Rotated credentials and approved provider call/spend limits required."
+    },
+    {
+      "id": "M2.2",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 40,
+      "requirement": "**Streaming (SSE)** tool-calling runs replay byte-identical (reassembled)",
+      "owner": "Maintainer",
+      "procedure": "Scan DB/WAL and every export, audit omitted I/O",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M2.3",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 41,
+      "requirement": "Loops/retries replay recorded failures **in order** (`occurrence_index`)",
+      "owner": "Maintainer",
+      "procedure": "Scan DB/WAL and every export, audit omitted I/O",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M2.4",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 42,
+      "requirement": "🔒 **Log format frozen via ADR**; content-addressed storage dedups; recordings export/import & still verify",
+      "owner": "Maintainer",
+      "procedure": "Scan DB/WAL and every export, audit omitted I/O",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M2.5",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 43,
+      "requirement": "**Redaction pre-storage**: 0 secrets in the stored corpus; boundary-coverage audit is clean",
+      "owner": "Maintainer",
+      "procedure": "Scan DB/WAL and every export, audit omitted I/O",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M3.1",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 53,
+      "requirement": "Scrub to **any step N** of a long run and inspect exact reconstructed state (replay-to-N + snapshots)",
+      "owner": "Maintainer",
+      "procedure": "Compare real graph producer counts and trace viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M3.2",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 54,
+      "requirement": "Time-travel UI v1: Textual scrubber **and** Perfetto trace export",
+      "owner": "Maintainer",
+      "procedure": "Compare real graph producer counts and trace viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M3.3",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 55,
+      "requirement": "**Counterfactual fork**: change a tool result at step N, replay forward with **mutating tools mocked by default**; no real side effect fires; fork saved as a quarantined run",
+      "owner": "Maintainer",
+      "procedure": "Compare real graph producer counts and trace viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M3.4",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 56,
+      "requirement": "A **LangGraph** agent records/replays/forks; a recording opens unchanged in an OTel viewer",
+      "owner": "Maintainer",
+      "procedure": "Compare real graph producer counts and trace viewers",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M4.1",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 66,
+      "requirement": "Given a **passing and a failing** run of the same task, `fr bisect` pinpoints the **first diverging decision** (hash-chain for aligned; alignment for insert/delete)",
+      "owner": "Maintainer",
+      "procedure": "Verify async ordering and source drift",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M4.2",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 67,
+      "requirement": "The divergence is **named** in plain English (taxonomy) with the raw diff shown; a human agrees on a real pair",
+      "owner": "Maintainer",
+      "procedure": "Verify async ordering and source drift",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M4.3",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 68,
+      "requirement": "An agent driving **multiple MCP servers** records & replays bit-exact via the adapter",
+      "owner": "Maintainer",
+      "procedure": "Verify async ordering and source drift",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M4.4",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 69,
+      "requirement": "Concurrent-tool (`asyncio.gather`) agents replay within the documented sequential/concurrent guarantee",
+      "owner": "Maintainer",
+      "procedure": "Verify async ordering and source drift",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M5.1",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 79,
+      "requirement": "Failure **clustering** (embeddings + HDBSCAN) is coherent on the corpus; `fr similar` returns sensible neighbors",
+      "owner": "Maintainer",
+      "procedure": "Dogfood authorized real fleet and validate queries",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M5.2",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 80,
+      "requirement": "Root-cause classifier (weak-supervision labels) **beats a prompted-LLM baseline** on held-out labels",
+      "owner": "Maintainer",
+      "procedure": "Dogfood authorized real fleet and validate queries",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M5.3",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 81,
+      "requirement": "`fr eval` runs replays as **deterministic zero-cost fixtures** and gates a prompt/model change",
+      "owner": "Maintainer",
+      "procedure": "Dogfood authorized real fleet and validate queries",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M5.4",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 82,
+      "requirement": "Dogfooded on the **real 672-tool MCP fleet**: a fresh failure surfaces \"matches cluster X + likely cause\"",
+      "owner": "Maintainer",
+      "procedure": "Dogfood authorized real fleet and validate queries",
+      "evidence": [],
+      "status": "blocked",
+      "blocker": "Authorized fleet workspace or reviewed corpus not supplied."
+    },
+    {
+      "id": "M6.1",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 92,
+      "requirement": "`pip install rewind && fr --help` works on a clean machine; `v0.1.0` tagged with CHANGELOG/release notes",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M6.2",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 93,
+      "requirement": "Capture overhead measured & acceptable (recorder doesn't perturb the agent)",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M6.3",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 94,
+      "requirement": "The **killer demo** is reproducible from the docs by a newcomer",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M6.4",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 95,
+      "requirement": "Either a working **LoRA failure-explainer** *or* a documented decision to cut it plus a hardened core",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "M6.5",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 96,
+      "requirement": "The **final Definition of Done** (below) is met",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "DOD.1",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 104,
+      "requirement": "**Faithful, vendor-neutral, zero-API replay.** A developer records any unmodified OpenAI/Anthropic (and LangGraph, and MCP-fleet) Python agent and replays it **bit-for-bit offline with the network unplugged**, and Rewind **proves** the replay was faithful (divergence oracle ✓).",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "blocked",
+      "revised_provider_scope": "Groq, Gemini, NVIDIA and xAI per ADR-0016. Historical provider evidence is not transferable.",
+      "blocker": "Rotated credentials and approved provider call/spend limits required."
+    },
+    {
+      "id": "DOD.2",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 105,
+      "requirement": "**Time-travel.** They scrub the decision timeline and inspect exact state at any step, in the terminal and in Perfetto.",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "DOD.3",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 106,
+      "requirement": "**Counterfactual fork.** They ask \"what if this tool returned X?\" and get an answer, with dangerous tools mocked by default — clearly labeled best-effort, never conflated with faithful replay.",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "DOD.4",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 107,
+      "requirement": "**Auto-bisect.** Given a passing and a failing run, Rewind names the first diverging decision.",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "DOD.5",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 108,
+      "requirement": "**Interop.** Recordings are valid OTel/OpenInference traces; existing traces can be ingested.",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "DOD.6",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 109,
+      "requirement": "**Installable & documented.** `pip install rewind`, a docs site, a quickstart, worked examples, and a public gallery of `.rewind` bundles.",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "DOD.7",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 110,
+      "requirement": "*(Stretch, cuttable)* ML failure clustering on a real fleet and/or a LoRA failure-explainer.",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "KPI.1",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 132,
+      "requirement": "Faithfulness (corpus replays byte-identical) | 100% on supported patterns; **any silent divergence = P0 bug**",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "KPI.2",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 133,
+      "requirement": "Zero-API proof | 0 outbound calls on replay, asserted in CI",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [
+        {
+          "path": "docs/release-evidence/local-workspace-smoke.json",
+          "scope": "intermediate wheel, supporting evidence only"
+        }
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "KPI.3",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 134,
+      "requirement": "E2E canary (record→replay→verify→timeline) | green every week from W4",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "KPI.4",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 135,
+      "requirement": "Nondeterminism sources interposed | grows to full coverage by M2",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "KPI.5",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 136,
+      "requirement": "Providers / frameworks supported | OpenAI + Anthropic (M2), LangGraph (M3), MCP fleet (M4)",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "blocked",
+      "revised_provider_scope": "Groq, Gemini, NVIDIA and xAI per ADR-0016. Historical provider evidence is not transferable.",
+      "blocker": "Rotated credentials and approved provider call/spend limits required."
+    },
+    {
+      "id": "KPI.6",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 137,
+      "requirement": "Bisect accuracy on labeled pairs | first-divergence correct ≥ target on the corpus",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "KPI.7",
+      "source": "docs/plan/milestones-and-exit-criteria.md",
+      "line": 138,
+      "requirement": "Secrets leaked to storage | **0**",
+      "owner": "Maintainer",
+      "procedure": "Qualify candidate, rollback and provenance",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "SPIKE.A",
+      "source": "docs/plan/risks-and-spikes.md",
+      "line": 74,
+      "requirement": "Spike A — \"Is playback actually bit-exact?\" (R2 / R3 — the go/no-go). RUN FIRST.",
+      "owner": "Maintainer",
+      "procedure": "Capture real Groq workload and independently check 50 offline replays",
+      "evidence": [],
+      "status": "blocked",
+      "revised_provider_scope": "Groq, Gemini, NVIDIA and xAI per ADR-0016. Historical provider evidence is not transferable.",
+      "blocker": "Rotated credentials and approved provider call/spend limits required."
+    },
+    {
+      "id": "SPIKE.B",
+      "source": "docs/plan/risks-and-spikes.md",
+      "line": 79,
+      "requirement": "Spike B — \"Does replay survive un-interposed nondeterminism?\" (R2 / R18)",
+      "owner": "Maintainer",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "SPIKE.C",
+      "source": "docs/plan/risks-and-spikes.md",
+      "line": 84,
+      "requirement": "Spike C — \"Local-model determinism, CPU vs GPU\" (R15)",
+      "owner": "Maintainer",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "SPIKE.D",
+      "source": "docs/plan/risks-and-spikes.md",
+      "line": 88,
+      "requirement": "Spike D — \"Concurrent tool-call replay\" (R5)",
+      "owner": "Maintainer",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "SPIKE.E",
+      "source": "docs/plan/risks-and-spikes.md",
+      "line": 93,
+      "requirement": "Spike E — \"Refactor survival\" (R4)",
+      "owner": "Maintainer",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "SPIKE.F",
+      "source": "docs/plan/risks-and-spikes.md",
+      "line": 98,
+      "requirement": "Spike F — \"Redaction recall + storage footprint\" (R6 / R8)",
+      "owner": "Maintainer",
+      "procedure": "Run and review Spikes B–F",
+      "evidence": [],
+      "status": "pending"
+    },
+    {
+      "id": "SPIKE.G",
+      "source": "docs/plan/risks-and-spikes.md",
+      "line": 103,
+      "requirement": "Spike G (optional) — \"SSE fidelity\" (R13)",
+      "owner": "Maintainer",
+      "procedure": "Compare live stream events with separate parser",
+      "evidence": [],
+      "status": "pending"
+    }
+  ]
+}

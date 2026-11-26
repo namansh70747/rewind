@@ -265,19 +265,12 @@ def live_prompted_predictions(
 
     from .providers import PROVIDERS
 
-    if provider_name is not None and provider_name not in {"gemini", "nvidia"}:
-        raise ValueError("baseline provider must be gemini or nvidia")
-    order = [provider_name] if provider_name else ["gemini", "nvidia"]
-    chosen = None
-    for name in order:
-        if not name or name not in PROVIDERS:
-            continue
-        spec = PROVIDERS[name]
-        if os.environ.get(spec.key_env):
-            chosen = spec
-            break
-    if chosen is None:
-        raise ValueError("live baseline requires Gemini or NVIDIA credentials")
+    if provider_name not in (None, "xai"):
+        raise ValueError("the live baseline uses xai")
+    chosen = PROVIDERS["xai"]
+    key = os.environ.get(chosen.key_env)
+    if not key:
+        raise ValueError("live baseline requires xAI credentials")
     labels = list(inputs["labels"])
     prompt_text = LIVE_BASELINE_PROMPT + " Allowed: " + ", ".join(sorted(labels))
     rows = []
@@ -285,7 +278,7 @@ def live_prompted_predictions(
         for item in inputs["inputs"]:
             response = client.post(
                 chosen.url,
-                headers=chosen.headers(os.environ.get(chosen.key_env, "")),
+                headers=chosen.headers(key),
                 json=chosen.body(
                     chosen.default_model,
                     [{"role": "user", "content": prompt_text + "\n" + str(item["text"])}],

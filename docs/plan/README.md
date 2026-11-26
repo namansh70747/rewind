@@ -1,5 +1,7 @@
 # Rewind — The 6-Month Build Plan
 
+The active hosted provider scope is defined in [ADR 0016](../adr/0016-active-provider-scope.md). The planning documents retain the original wording for traceability. Use the [acceptance ledger](../release-evidence/acceptance-ledger.json) for revised gates and current status.
+
 > This directory is the **operating plan** for building Rewind from an empty repo to a working, demoable, vendor-neutral flight recorder & time-travel debugger for AI agents — in six months, with three engineers, for **$0** in tooling.
 
 It is written to be **precise and executable**: every month has a milestone gate, every week has per-person targets and an exit criterion, every hard part has a named open-source building block and the math behind it, and every serious risk has a mitigation and a *kill/pivot* criterion. It is grounded in deep research of the prior art (Mozilla `rr`, Pernosco, LangGraph, Temporal, DBOS, Langfuse, VCR.py, and 2025–26 academic work) — see [`competitive-landscape.md`](./competitive-landscape.md).

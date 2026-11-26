@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 GATES = {
-    "real_provider_replay": "Live OpenAI/Anthropic corpus and 50 replay checks",
+    "real_provider_replay": "Live Groq, Gemini, NVIDIA and xAI corpora and 50 replay checks",
     "spike_decision": "Reviewed spikes and go/pivot ADR",
     "corpus_redaction": "Reviewed real corpus secret scan and coverage audit",
     "format_approval": "Merged recording-format ADR and compatibility evidence",

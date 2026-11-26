@@ -41,7 +41,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-integrations = ["mcp>=2.3.0,<3", "openai>=3.44.0,<4", "anthropic>=2.4.0,<3", "langgraph>=1.0", "opentelemetry-proto>=1.25"]
+integrations = ["mcp>=2.3.0,<3", "langgraph>=1.0", "opentelemetry-proto>=1.25"]
 tui = ["textual>=0.50"]
 ml = ["numpy>=1.26,<2.4", "scikit-learn>=1.9.1"]
 embeddings = ["numpy>=1.26,<2.4", "scikit-learn>=1.9.1", "sentence-transformers>=3", "lancedb>=0.41.0", "umap-learn>=0.5.12"]

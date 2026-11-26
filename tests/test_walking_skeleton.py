@@ -19,7 +19,7 @@ from typer.testing import CliRunner
 from flightrecorder import RunStore, record, verify
 from flightrecorder.cli import app
 from flightrecorder.example_agent import Run, make_example_run
-from flightrecorder.providers import OPENAI
+from flightrecorder.providers import GROQ
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -42,8 +42,8 @@ def _mock_transport() -> httpx.MockTransport:
 
 
 def _record_example(tmp_path: Path) -> tuple[RunStore, str, Run]:
-    run = make_example_run(OPENAI, api_key="test-key")
-    cassette = record(run, _mock_transport(), provider="openai", model="gpt-4o-mini")
+    run = make_example_run(GROQ, api_key="test-key")
+    cassette = record(run, _mock_transport(), provider="groq", model=GROQ.default_model)
     store = RunStore(tmp_path / "runs.db")
     run_id = store.save(cassette)
     return store, run_id, run
@@ -103,15 +103,15 @@ def test_cli_show_verify_runs(tmp_path: Path) -> None:
 def test_cli_record_wiring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # Lock the `fr record` entrypoint (console script + wiring) without a key or network:
     # stub the CLI's live transport with the mock and provide a dummy key.
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
     monkeypatch.setattr(httpx, "HTTPTransport", lambda *a, **k: _mock_transport())
     db = str(tmp_path / "runs.db")
 
-    result = CliRunner().invoke(app, ["record", "--provider", "openai", "--db", db])
+    result = CliRunner().invoke(app, ["record", "--provider", "groq", "--db", db])
     assert result.exit_code == 0, result.output
 
     store = RunStore(db)
     runs = store.list_runs()
     store.close()
     assert len(runs) == 1
-    assert runs[0].provider == "openai"
+    assert runs[0].provider == "groq"

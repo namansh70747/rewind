@@ -16,6 +16,7 @@ jobs:
       - run: uv sync --frozen --extra dev --extra docs --extra integrations --extra tui --extra ml
       - run: uv run ruff check . && uv run ruff format --check . && uv run mypy
       - run: uv run pytest
+      - run: uv run python scripts/check_acceptance_ledger.py
       - run: uv run mkdocs build --strict
       - run: uv run fr demo --n 50
       - run: uv build
@@ -26,7 +27,9 @@ jobs:
       # Manual candidate builds stop here; only reviewed tags may publish.
       - name: Require recorded release evidence
         if: startsWith(github.ref, 'refs/tags/v')
-        run: uv run fr release-check docs/release-evidence/checklist.json
+        run: |
+          uv run python scripts/check_acceptance_ledger.py --require-closed
+          uv run fr release-check docs/release-evidence/checklist.json
       - name: Require release commit on main and matching package version
         if: startsWith(github.ref, 'refs/tags/v')
         env:

@@ -15,7 +15,7 @@ import httpx
 
 from .boundary import Session
 from .interceptors import RecordingTransport
-from .providers import OPENAI, Messages, Provider
+from .providers import GROQ, Messages, Provider
 
 #: A run is a callable that, given a Session and an inner transport (or None for replay),
 #: drives the agent and returns its final output string.
@@ -84,9 +84,7 @@ def _run_agent(
     )
 
 
-def make_example_run(
-    provider: Provider = OPENAI, model: str | None = None, api_key: str = ""
-) -> Run:
+def make_example_run(provider: Provider = GROQ, model: str | None = None, api_key: str = "") -> Run:
     """Bind the example agent to a provider/model; the returned callable is recorded/replayed."""
     resolved = model or provider.default_model
 

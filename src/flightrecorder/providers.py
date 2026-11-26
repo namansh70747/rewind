@@ -1,9 +1,4 @@
-"""LLM provider shaping — the only thing that differs between vendors.
-
-Because capture is at the transport layer (ADR-0007), Rewind is provider-neutral: it just
-needs to know how to shape a request and parse a response. OpenAI, NVIDIA (OpenAI-compatible
-catalog) and Anthropic are supported out of the box.
-"""
+"""Provider request shaping and the active hosted-provider registry."""
 
 from __future__ import annotations
 
@@ -21,6 +16,16 @@ class Provider:
     key_env: str
     #: "openai" wire format (chat/completions + Bearer) or "anthropic" (messages + x-api-key)
     dialect: str = "openai"
+    catalogue: str | None = None
+
+    @property
+    def catalog_url(self) -> str:
+        return self.catalogue or self.url.removesuffix("/chat/completions") + "/models"
+
+    def catalog_headers(self, api_key: str) -> dict[str, str]:
+        if self.name == "gemini":
+            return {"x-goog-api-key": api_key}
+        return self.headers(api_key)
 
     def headers(self, api_key: str) -> dict[str, str]:
         if self.dialect == "anthropic":
@@ -68,6 +73,28 @@ GEMINI = Provider(
     url="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
     default_model="gemini-3.5-flash-lite",
     key_env="GEMINI_API_KEY",
+    catalogue="https://generativelanguage.googleapis.com/v1beta/models",
 )
 
-PROVIDERS: dict[str, Provider] = {p.name: p for p in (OPENAI, NVIDIA, ANTHROPIC, GEMINI)}
+GROQ = Provider(
+    name="groq",
+    url="https://api.groq.com/openai/v1/chat/completions",
+    default_model="openai/gpt-oss-20b",
+    key_env="GROQ_API_KEY",
+)
+XAI = Provider(
+    name="xai",
+    url="https://api.x.ai/v1/chat/completions",
+    default_model="grok-4",
+    key_env="XAI_API_KEY",
+)
+
+PROVIDERS: dict[str, Provider] = {p.name: p for p in (GROQ, GEMINI, NVIDIA, XAI)}
+# Historical built-in recordings still require their original request shape during replay.
+REPLAY_PROVIDERS: dict[str, Provider] = {**PROVIDERS, "openai": OPENAI, "anthropic": ANTHROPIC}
+
+
+def configured_secrets() -> tuple[str, ...]:
+    import os
+
+    return tuple(value for provider in PROVIDERS.values() if (value := os.getenv(provider.key_env)))

@@ -3,7 +3,7 @@
   "gates": {
     "real_provider_replay": {
       "status": "blocked",
-      "reason": "Live OpenAI/Anthropic corpus and 50 replay checks \u2014 authoritative evidence/approval not supplied"
+      "reason": "Live Groq, Gemini, NVIDIA and xAI corpora and 50 replay checks \u2014 authoritative evidence/approval not supplied"
     },
     "spike_decision": {
       "status": "blocked",

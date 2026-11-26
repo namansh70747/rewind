@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
 from dataclasses import asdict
 from pathlib import Path
 
+from flightrecorder.providers import configured_secrets
 from flightrecorder.redaction import RedactionRules, redaction_rules
 from flightrecorder.scripts import record_script, verify_script
 from flightrecorder.store import RunStore
@@ -18,18 +18,7 @@ def main() -> None:
     store = RunStore(request["db"])
     try:
         source = Path(request["source"])
-        keys = tuple(
-            value
-            for name in (
-                "NVIDIA_API_KEY",
-                "GEMINI_API_KEY",
-                "GROQ_API_KEY",
-                "OPENAI_API_KEY",
-                "ANTHROPIC_API_KEY",
-            )
-            if (value := os.environ.get(name))
-        )
-        with redaction_rules(RedactionRules(literals=keys)):
+        with redaction_rules(RedactionRules(literals=configured_secrets())):
             if request["action"] == "capture":
                 cassette = record_script(source)
                 cassette.metadata["product_source"] = str(source)

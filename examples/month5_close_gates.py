@@ -1,6 +1,6 @@
 """Close leftover Month 5 gates with synthetic fixtures; approval remains pending.
 
-Writes docs/validation/month5/course-close.json. OpenAI/Anthropic are not used.
+Writes docs/validation/month5/course-close.json.
 """
 
 from __future__ import annotations
@@ -14,9 +14,7 @@ from flightrecorder.month5 import close_month5_gates
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--live", action="store_true", help="Opt in to billed Gemini/NVIDIA baseline calls"
-    )
+    parser.add_argument("--live", action="store_true", help="Opt in to billed xAI baseline calls")
     args = parser.parse_args()
     report = close_month5_gates(10, live=args.live)
     out = Path("docs/validation/month5/course-close.json")

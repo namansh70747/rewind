@@ -1,0 +1,30 @@
+{
+  "type": "installed-app smoke with real local inference",
+  "source_base": "c69c590be94d0876d536a9ee0e3fb4ac6cc1f39e",
+  "wheel_sha256": "2df9b7afae25802d3a11ba54a0e1b7d5142e33bccea0479d4171f690c74a65ef",
+  "wheel_scope": "intermediate local provider-migration checkout",
+  "model": "Ollama qwen2.5:0.5b",
+  "workspace_run_id": "1e9b004d5009",
+  "bundle_sha256": "e9c63c7c56ee123115fd7002c5800663838e6ea9496134fd417f381dea194bbf",
+  "fingerprint": "a418d2deb35fff9234b7cc3112510d0085234f4f2f2d74e79ddeef388a324279",
+  "boundaries": ["tool: git_revision", "http: local Ollama inference"],
+  "application_oracle": {
+    "expected": "exact Git HEAD hash from the copied acceptance task",
+    "observed": "recorded stdout matched git rev-parse HEAD"
+  },
+  "mac_browser": {
+    "capture": "completed",
+    "replays_passed": 50,
+    "distinct_outputs": 1,
+    "distinct_fingerprints": 1,
+    "isolation": "native Python replay guard"
+  },
+  "linux_replay": {
+    "replays_passed": 50,
+    "distinct_outputs": 1,
+    "distinct_fingerprints": 1,
+    "network": "Docker network none; no IPv4 routes",
+    "isolation": "read-only root and inputs, unprivileged user, no host sockets, scratch tmpfs"
+  },
+  "qualification": "The local task succeeded originally. Hosted inference, LangGraph/MCP failure recovery, reviewer acceptance and release qualification require separate evidence."
+}

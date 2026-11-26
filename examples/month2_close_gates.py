@@ -1,12 +1,13 @@
-"""Record the course Month 2 live corpus with NVIDIA and/or Gemini only.
+"""Record the course Month 2 live corpus with configured hosted providers.
 
 Each configured key records two controlled agents (six model calls) and 50
 offline replays. Recordings stay under .rewind/month2-corpus/; the summary JSON
-is copied to docs/validation/month2/course-close.json.
+stays in the requested private output directory. This is a controlled smoke corpus.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import subprocess
@@ -14,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from flightrecorder.providers import GEMINI, NVIDIA
+from flightrecorder.providers import PROVIDERS
 from flightrecorder.redaction import redact_text
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,6 +31,8 @@ def _run(provider: str, model: str, output: Path) -> dict[str, Any]:
             model,
             "--runs",
             "2",
+            "--max-model-calls",
+            "6",
             "--replays",
             "50",
             "--output",
@@ -54,23 +57,35 @@ def _run(provider: str, model: str, output: Path) -> dict[str, Any]:
 
 def main() -> None:
     evidence: dict[str, Any] = {"schema": "rewind.month2-course-close.v1", "providers": {}}
-    dest = ROOT / ".rewind" / "month2-corpus"
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--max-model-calls", type=int, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    missing = [
+        provider.key_env for provider in PROVIDERS.values() if not os.getenv(provider.key_env)
+    ]
+    if missing:
+        parser.error("missing credentials: " + ", ".join(missing))
+    if args.max_model_calls < 6 * len(PROVIDERS):
+        parser.error("configured call cap is below the requested smoke corpus")
+    dest = args.output.resolve()
+    if dest.exists() and any(dest.iterdir()):
+        parser.error("choose an empty output directory")
     dest.mkdir(parents=True, exist_ok=True)
-    published = ROOT / "docs" / "validation" / "month2"
-    published.mkdir(parents=True, exist_ok=True)
-    if os.environ.get(NVIDIA.key_env):
-        evidence["providers"]["nvidia"] = _run("nvidia", NVIDIA.default_model, dest / "nvidia")
-    if os.environ.get(GEMINI.key_env):
-        evidence["providers"]["gemini"] = _run("gemini", GEMINI.default_model, dest / "gemini")
+    for provider in PROVIDERS.values():
+        if os.environ.get(provider.key_env):
+            evidence["providers"][provider.name] = _run(
+                provider.name, provider.default_model, dest / provider.name
+            )
     if not evidence["providers"]:
         evidence["passed"] = False
-        evidence["detail"] = "configure NVIDIA_API_KEY and/or GEMINI_API_KEY locally"
+        evidence["detail"] = "configure provider credentials locally"
     else:
         evidence["passed"] = all(
             bool(row.get("passed")) and row.get("exit_code") == 0
             for row in evidence["providers"].values()
         )
-    out = published / "course-close.json"
+    out = dest / "course-close.json"
     out.write_text(json.dumps(evidence, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(evidence, indent=2))
     raise SystemExit(0 if evidence.get("passed") else 1)

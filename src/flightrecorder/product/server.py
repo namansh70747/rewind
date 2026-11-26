@@ -24,6 +24,7 @@ import httpx
 from flightrecorder.diagnosis import diagnose
 from flightrecorder.integrity import validate
 from flightrecorder.portable import MAX_BYTES, envelope, import_run
+from flightrecorder.providers import PROVIDERS
 from flightrecorder.store import RunStore
 
 
@@ -248,12 +249,12 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(
                     {
                         "providers": [
-                            {"name": n, "configured": bool(os.getenv(k)), "model": m}
-                            for n, k, m in [
-                                ("NVIDIA", "NVIDIA_API_KEY", "nvidia/nemotron-3-super-120b-a12b"),
-                                ("Gemini", "GEMINI_API_KEY", "gemini-2.5-flash"),
-                                ("Groq", "GROQ_API_KEY", "openai/gpt-oss-20b"),
-                            ]
+                            {
+                                "name": p.name,
+                                "configured": bool(os.getenv(p.key_env)),
+                                "model": p.default_model,
+                            }
+                            for p in PROVIDERS.values()
                         ],
                         "notice": "Configured indicates environment presence only; live access and quota are not verified.",
                     }
@@ -364,26 +365,13 @@ class Handler(BaseHTTPRequestHandler):
                         self.server.processes[job_id].terminate()
                 self._json({"status": "cancelled"})
             elif path == "/api/v1/provider-check":
-                provider = body.get("provider")
-                if provider == "nvidia":
-                    key, url, headers = (
-                        os.getenv("NVIDIA_API_KEY", ""),
-                        "https://integrate.api.nvidia.com/v1/models",
-                        {},
-                    )
-                    headers = {"Authorization": f"Bearer {key}"}
-                elif provider == "gemini":
-                    key, url = (
-                        os.getenv("GEMINI_API_KEY", ""),
-                        "https://generativelanguage.googleapis.com/v1beta/models",
-                    )
-                    headers = {"x-goog-api-key": key}
-                elif provider == "groq":
-                    key = os.getenv("GROQ_API_KEY", "")
-                    url = "https://api.groq.com/openai/v1/models"
-                    headers = {"Authorization": f"Bearer {key}"}
-                else:
+                provider_id = body.get("provider")
+                provider = PROVIDERS.get(provider_id) if isinstance(provider_id, str) else None
+                if provider is None:
                     raise ValueError("Unknown provider.")
+                key = os.getenv(provider.key_env, "")
+                url = provider.catalog_url
+                headers = provider.catalog_headers(key)
                 if not key:
                     raise ValueError("Provider key is not configured in the server environment.")
                 try:
