@@ -137,3 +137,17 @@ def test_async_thread_wakeup_preserves_offline_guard() -> None:
         with socket.socket() as sock, pytest.raises(NetworkBlocked):
             sock.connect(("127.0.0.1", 9))
         assert audit.blocked_operations == ["connect"]
+
+
+def test_local_socketpair_wakeup_does_not_disable_offline_guard() -> None:
+    with offline_guard() as audit:
+        left, right = socket.socketpair()
+        try:
+            left.send(b'x')
+            assert right.recv(1) == b'x'
+            with pytest.raises(NetworkBlocked):
+                socket.socket().connect(('127.0.0.1', 9))
+        finally:
+            left.close()
+            right.close()
+    assert audit.blocked_operations == ['connect']

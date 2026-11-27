@@ -55,9 +55,8 @@ def main() -> None:
     message = choice["message"].get("content")
     if not isinstance(message, str) or not message.strip():
         reason = choice.get("finish_reason") or "unknown"
-        print(f"{provider_id}/{model}: release note unavailable (finish reason: {reason}).")
-    else:
-        print(f"{provider_id}/{model}: {message.strip()}")
+        raise ValueError(f"Hosted model returned no visible release note (finish reason: {reason}).")
+    print(f"{provider_id}/{model}: {message.strip()}")
 
     manifest = read_release_manifest()
     if manifest["revision"] != revision:

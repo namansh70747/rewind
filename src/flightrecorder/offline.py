@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import socket
-import sys
 from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -45,11 +44,11 @@ def _blocked(*args: Any, **kwargs: Any) -> Any:
 
 
 def _local_socketpair(
-    family: socket.AddressFamily = socket.AF_INET,
+    family: socket.AddressFamily = getattr(socket, "AF_UNIX", socket.AF_INET),
     type: socket.SocketKind = socket.SOCK_STREAM,
     proto: int = 0,
 ) -> tuple[socket.socket, socket.socket]:
-    """Windows implements asyncio's local wake-up pipe with a TCP socket pair."""
+    """Allow only the two endpoints of a locally created socket pair."""
     token = _building_pair.set(True)
     try:
         pair = _SOCKETPAIR_ORIGINAL(family, type, proto)
@@ -124,8 +123,7 @@ def offline_guard(audit: NetworkAudit | None = None) -> Iterator[NetworkAudit]:
             if not _active:
                 stack = ExitStack()
                 try:
-                    if sys.platform == "win32":
-                        stack.enter_context(patch.object(socket, "socketpair", _local_socketpair))
+                    stack.enter_context(patch.object(socket, "socketpair", _local_socketpair))
                     for name in _SOCKET_ORIGINALS:
                         stack.enter_context(patch.object(socket.socket, name, _make_blocker(name)))
                     stack.enter_context(

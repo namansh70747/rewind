@@ -60,18 +60,11 @@ def run_advisor(city: str = "Mumbai") -> str:
                 "messages": [{"role": "user", "content": prompt}],
             },
         )
-        if answer_resp.status_code in {404, 410}:
-            recommendation = (
-                "Carry an umbrella." if precip > 0 else "No rain is currently reported."
-            )
-            advice = f"NVIDIA model unavailable. Weather-only advice: {recommendation}"
-        else:
-            answer_resp.raise_for_status()
-            content = answer_resp.json()["choices"][0]["message"].get("content")
-            if isinstance(content, str) and content.strip():
-                advice = content.strip()
-            else:
-                advice = "NVIDIA returned no visible advice. See the weather readings above."
+        answer_resp.raise_for_status()
+        content = answer_resp.json()["choices"][0]["message"].get("content")
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError("NVIDIA returned no visible weather advice")
+        advice = content.strip()
 
     print(f"{place['name']}, {place.get('country', '')} — {temp}C, precip {precip} mm")
     print(advice)
