@@ -12,7 +12,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from importlib.resources import files
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlencode, urlsplit
 from uuid import UUID, uuid4
 
@@ -33,6 +33,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from werkzeug.wrappers import Response as BaseResponse
+
+    from flightrecorder.product.demo import Demo
 
 app = Flask(__name__, static_folder=None)
 app.logger.setLevel(logging.INFO)
@@ -193,6 +195,8 @@ def health() -> tuple[Response, int]:
             )
     except (ValueError, psycopg.Error):
         ready = False
+    demo = cast("Demo | None", app.config.get("REWIND_DEMO"))
+    ready = ready and (demo is None or demo.thread.is_alive())
     return jsonify(build=build, ready=ready), 200 if ready else 503
 
 
@@ -209,8 +213,19 @@ def home() -> Response:
                 mimetype="text/html",
             )
     html = RESOURCE.joinpath("index.html").read_text(encoding="utf-8")
+    mode = ""
+    if app.config.get("REWIND_DEMO"):
+        mode = ' data-demo="true"'
+        html = html.replace(
+            "The selected script runs on this machine. It can access files, network services, "
+            "and provider accounts with your permissions.",
+            "The selected script runs on the demo host. Only approved scripts are available.",
+        ).replace(
+            "Manage appearance and review what Rewind stores locally.",
+            "Manage appearance and review your demo workspace.",
+        )
     return Response(
-        html.replace("<body", '<body data-hosted="true"', 1)
+        html.replace("<body", '<body data-hosted="true"' + mode, 1)
         .replace("__REWIND_TOKEN__", account[2])
         .replace("__REWIND_SIGN_OUT__", "")
         .replace("Local workspace", "Hosted workspace")
@@ -460,6 +475,7 @@ def evidence_api(operation: str) -> Response | tuple[Response, int]:
         if not account:
             return jsonify(error="Sign in to continue."), 401
         subject, _, csrf = account
+        demo = cast("Demo | None", app.config.get("REWIND_DEMO"))
         if request.method == "GET":
             if operation == "session":
                 return jsonify(token=csrf)
@@ -473,20 +489,25 @@ def evidence_api(operation: str) -> Response | tuple[Response, int]:
                        LIMIT 51 OFFSET %s""",
                     (subject, (page - 1) * 50),
                 ).fetchall()
+                visible = rows[:50]
+                linked = demo.links(db, subject, [row[0] for row in visible]) if demo else set()
                 return jsonify(
                     runs=[
                         {
                             **summary,
                             "id": identifier.hex,
                             "created_at": created.isoformat(),
-                            "demo": demo,
+                            "demo": shared,
+                            "has_source": identifier in linked,
                         }
-                        for identifier, summary, created, demo in rows[:50]
+                        for identifier, summary, created, shared in visible
                     ],
                     more=len(rows) > 50,
                 )
             if operation.startswith("runs/") and (row := recording(db, subject, operation[5:])):
                 return jsonify(run=asdict(parse_envelope(row[0])))
+            if demo and (response := demo.get(db, subject, operation)) is not None:
+                return response
         elif (
             request.headers.get("Origin") != config.origin
             or request.headers.get("X-Rewind-Token") != csrf
@@ -527,4 +548,12 @@ def evidence_api(operation: str) -> Response | tuple[Response, int]:
                             error="Comparison evidence is too large. Compare locally."
                         ), 413
                     return result
+        elif demo and operation in {
+            "capture",
+            "verify",
+            "cancel",
+            "provider-check",
+            "corpus-audit",
+        }:
+            return demo.post(db, subject, operation, request.get_json())
     return jsonify(error="Recording or route not found."), 404

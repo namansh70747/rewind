@@ -561,3 +561,5 @@ mark{background:var(--accent-bg);color:var(--accent);border-radius:2px}
 [data-hosted] label:has(#show-samples) { display: none; }
 [data-hosted] [hidden] { display: none !important; }
 [data-hosted] .local-only { display: none; }
+[data-demo] .read-only-notice { display: none; }
+[data-hosted]:not([data-demo]) .execution-only { display: none; }

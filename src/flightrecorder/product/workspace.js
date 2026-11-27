@@ -275,8 +275,8 @@ function drawOverview() {
     mark.append(icon("disc"));
     const copy = el("div");
     const action = el("a", "Capture your first run", "text-link");
-    action.href = hosted ? "#recordings" : "#capture";
-    if (hosted) action.textContent = "Open recordings";
+    action.href = hosted && !demoExecution ? "#recordings" : "#capture";
+    if (hosted && !demoExecution) action.textContent = "Open recordings";
     copy.append(
       el("strong", "No recordings yet"),
       el("p", "Captured requests, responses, and replay results will appear here."),
@@ -465,8 +465,13 @@ function drawSelectors() {
 }
 
 const hosted = document.body.dataset.hosted === "true";
+const demoExecution = document.body.dataset.demo === "true";
 let libraryPage = 1;
-if (hosted) {
+if (demoExecution) {
+  $("replays").max = "10";
+  $("verify-source").closest("details").hidden = true;
+}
+if (hosted && !demoExecution) {
   delete pageNames.capture;
   delete pageNames.verification;
   delete pageNames.providers;
@@ -478,8 +483,9 @@ async function refresh({quiet = false} = {}) {
   const request = ++refreshRequest;
   try {
     if (!quiet) clearError();
+    let library;
     if (hosted) {
-      const library = await api("runs?page=" + libraryPage);
+      library = await api("runs?page=" + libraryPage);
       if (request !== refreshRequest) return;
       runs = library.runs;
       for (const panel of ["library", "compare"]) {
@@ -487,27 +493,29 @@ async function refresh({quiet = false} = {}) {
         $("hosted-" + panel + "-next").disabled = !library.more;
         $("hosted-" + panel + "-page").textContent = "Page " + libraryPage;
       }
-      drawOverview();
-      drawLibrary();
-      drawSelectors();
-      if (!selectedId && page === "recordings" && runs.length) await openRun(runs[0].id);
-      return;
+      if (!demoExecution) {
+        drawOverview();
+        drawLibrary();
+        drawSelectors();
+        if (!selectedId && page === "recordings" && runs.length) await openRun(runs[0].id);
+        return;
+      }
     }
     const {jobs: jobData} = await api("jobs");
-    const [library, scripts, readiness, coverage] = await Promise.all([
-      api("runs" + ($("show-samples").checked ? "?samples=1" : "")),
+    const [currentLibrary, scripts, readiness, coverage] = await Promise.all([
+      library || api("runs" + ($("show-samples").checked ? "?samples=1" : "")),
       api("scripts"), api("providers"), api("coverage"),
     ]);
     if (request !== refreshRequest) return;
     jobs = jobData;
-    runs = library.runs;
+    runs = currentLibrary.runs;
     providers = readiness.providers;
-    if (fillSelect("script", scripts.scripts.map((script) => ({label: script, value: script})), "No Python scripts found")) $("trust").checked = false;
-    if (fillSelect("verify-source", [{value: "", label: "Use recorded source"}, ...scripts.scripts.map((script) => ({label: script, value: script}))], "Use recorded source")) $("verify-source-trust").checked = false;
+    if (fillSelect("script", scripts.scripts.map((script) => typeof script === "string" ? {label: script, value: script} : script), "No Python scripts found")) $("trust").checked = false;
+    if (fillSelect("verify-source", [{value: "", label: "Use recorded source"}, ...scripts.scripts.map((script) => typeof script === "string" ? {label: script, value: script} : script)], "Use recorded source")) $("verify-source-trust").checked = false;
     $("workspace-path").textContent = scripts.root;
     $("settings-path").textContent = scripts.root;
     $("stat-storage").textContent = sizeLabel(coverage.storage_bytes);
-    $("settings-storage").textContent = "SQLite file: " + sizeLabel(coverage.storage_bytes);
+    $("settings-storage").textContent = demoExecution ? "PostgreSQL demo workspace" : "SQLite file: " + sizeLabel(coverage.storage_bytes);
     $("provider-notice").textContent = readiness.notice;
     drawCoverage(coverage);
     drawProviders();
@@ -607,7 +615,7 @@ function showRunTab(tab) {
   if (tab === "verification") {
     target.append(el("p", summary ? verificationText(summary) : "No stored verification"));
     if (run.metadata.counterfactual) target.append(el("p", "What-if forks can be inspected and compared. Ordinary verification applies to the original recording.", "notice"));
-    else if (run.metadata.product_source) target.append(button("Open verification", () => goVerify(selectedId)));
+    else if (run.metadata.product_source || (demoExecution && summary?.has_source)) target.append(button("Open verification", () => goVerify(selectedId)));
     else target.append(el("p", "Inspection only. No trusted workspace script is linked.", "notice"));
     return;
   }
@@ -873,7 +881,7 @@ $("capture-form").onsubmit = (event) => {
 };
 $("verify-form").onsubmit = (event) => {
   event.preventDefault();
-  const source = $("verify-source").value;
+  const source = demoExecution ? "" : $("verify-source").value;
   submitJob("verify", {
     run_id: $("verify-run").value, replays: Number($("replays").value),
     ...(source ? {source, trusted: $("verify-source-trust").checked} : {}),
@@ -985,7 +993,7 @@ function drawJobs() {
   }
 }
 let polling = false;
-if (!hosted) setInterval(async () => {
+if (!hosted || demoExecution) setInterval(async () => {
   if (polling || document.hidden) return;
   polling = true;
   try {
@@ -1021,6 +1029,7 @@ $("swap").onclick = () => {
 };
 $("compare-form").onsubmit = async (event) => {
   event.preventDefault();
+  if (!$("compare-left").value || !$("compare-right").value) return;
   clearComparison();
   clearError();
   const request = compareRequest;
@@ -1165,6 +1174,7 @@ function drawProviders() {
     head.append(el("span", providerMarks[provider.name] || "◇", "provider-mark"), el("h2", providerNames[provider.name] || provider.name));
     const body = el("div", undefined, "panel-body");
     body.append(el("span", provider.model, "mono"), el("p", checked?.message || "Catalogue check verifies account reachability."));
+    if (provider.inference) body.append(el("p", provider.inference));
     const actions = el("div", undefined, "actions");
     const check = button("Check catalogue", async () => {
       clearError();
