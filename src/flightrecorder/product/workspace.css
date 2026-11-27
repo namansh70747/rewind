@@ -46,22 +46,8 @@ small,.faint{color:var(--faint)}
 .brand{display:flex;align-items:center;gap:12px;font-size:23px;font-weight:760;line-height:1.12;letter-spacing:-.055em}
 .sidebar .brand{margin-left:7px}
 .brand small,.local-card small{display:block;color:var(--muted);margin-top:5px;font-size:10px;font-weight:550;letter-spacing:.03em}
-.brand-mark {
-  width: 38px;
-  aspect-ratio: 1;
-  position: relative;
-  overflow: hidden;
-  flex: none;
-  display: block;
-  clip-path: polygon(50% 0, 93% 20%, 100% 34%, 100% 63%, 92% 78%, 50% 100%, 28% 98%, 4% 82%, 0 68%, 0 34%, 7% 18%, 35% 1%);
-}
-.brand-mark img {
-  position: absolute;
-  width: 218%;
-  max-width: none;
-  left: -93%;
-  top: -64%;
-}
+.brand-mark {width:38px;aspect-ratio:1;display:block;flex:none}
+.brand-mark img {display:block;width:100%;height:100%}
 #navigation{display:grid;gap:5px}
 #navigation a,.sidebar-foot>a{display:flex;align-items:center;gap:11px;padding:11px 12px;color:var(--muted);border:1px solid transparent;border-radius:9px;font-weight:620}
 #navigation a:hover,.sidebar-foot>a:hover{background:var(--hover);color:var(--ink)}
@@ -560,3 +546,12 @@ mark{background:var(--accent-bg);color:var(--accent);border-radius:2px}
   .compare-layout .two-col{grid-template-columns:minmax(0,1fr)}
   .compare-evidence-controls .segmented{max-width:100%}
 }
+.auth-screen{min-height:100dvh;display:grid;place-items:center;padding:20px;background:radial-gradient(ellipse at 50% 36%,#302050 0%,var(--bg) 60%)}
+.auth-card{width:min(100%,440px);padding:clamp(22px,6vw,36px);display:grid;gap:15px}
+.auth-card h1{font-size:2.2rem;margin-top:7px}
+.auth-card form{display:grid;gap:9px;margin-top:6px}
+.auth-card input{background:var(--input);border:1px solid var(--line);padding:11px;border-radius:9px}
+.auth-card .btn{margin-top:4px;min-height:42px}
+
+.verify-source{grid-column:1/-1;color:var(--muted)}
+.verify-source .field,.verify-source .check{margin-top:8px}

@@ -33,6 +33,15 @@ def test_product_capture_verify_and_import(tmp_path: Path, monkeypatch: pytest.M
     headers = {"X-Rewind-Token": server.token, "Origin": url}
     try:
         with httpx.Client(base_url=url, timeout=10, trust_env=False) as client:
+            session = client.get("/api/v1/session")
+            assert session.json() == {"token": server.token}
+            stale = client.post(
+                "/api/v1/compare",
+                headers={**headers, "X-Rewind-Token": "previous-session-token"},
+                json={"left": "bad", "right": "bad"},
+            )
+            assert stale.status_code == 409
+            assert stale.json()["code"] == "stale_token"
             assert (
                 client.post(
                     "/api/v1/capture", json={"source": "agent.py", "trusted": True}
@@ -70,8 +79,20 @@ def test_product_capture_verify_and_import(tmp_path: Path, monkeypatch: pytest.M
                 client.get("/api/v1/runs/" + run_id).json()["run"]["final_output"]
                 == "hello <redacted:custom> <redacted:custom>\n"
             )
-            response = client.post(
+            original = source.read_bytes()
+            source.write_text("print('updated source')", encoding="utf-8")
+            changed = client.post(
                 "/api/v1/verify", headers=headers, json={"run_id": run_id, "replays": 3}
+            )
+            assert changed.status_code == 409
+            assert changed.json()["code"] == "source_changed"
+            source.with_name("archived.py").write_bytes(original)
+            alternative = {"run_id": run_id, "replays": 3, "source": "archived.py"}
+            assert (
+                client.post("/api/v1/verify", headers=headers, json=alternative).status_code == 400
+            )
+            response = client.post(
+                "/api/v1/verify", headers=headers, json={**alternative, "trusted": True}
             )
             assert response.status_code == 202
             job_id = response.json()["job_id"]
@@ -88,6 +109,20 @@ def test_product_capture_verify_and_import(tmp_path: Path, monkeypatch: pytest.M
             assert "private-test-key-123" not in str(exported)
             assert "private-groq-key-456" not in str(exported)
             assert "product_source" not in exported["run"]["metadata"]
+            from flightrecorder.store import RunStore
+
+            store = RunStore(tmp_path / "runs.db")
+            try:
+                fork = store.load(run_id)
+                fork.metadata["counterfactual"] = True
+                fork_id = store.save(fork)
+            finally:
+                store.close()
+            fork_verification = client.post(
+                "/api/v1/verify", headers=headers, json={"run_id": fork_id}
+            )
+            assert fork_verification.status_code == 400
+            assert "what-if forks" in fork_verification.json()["error"]
             imported = client.post(
                 "/api/v1/import", headers=headers, json={"recording": exported}
             ).json()["run_id"]

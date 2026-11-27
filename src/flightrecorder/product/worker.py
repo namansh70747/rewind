@@ -14,7 +14,7 @@ from flightrecorder.store import RunStore
 
 
 def main() -> None:
-    request = json.load(sys.stdin)
+    request = json.load(sys.stdin.buffer)
     store = RunStore(request["db"])
     try:
         source = Path(request["source"])

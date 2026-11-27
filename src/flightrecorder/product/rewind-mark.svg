@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <defs>
+    <linearGradient id="ribbon" x1="0" y1="1" x2="1" y2="0" gradientUnits="objectBoundingBox">
+      <stop stop-color="#4467ed"/>
+      <stop offset=".6" stop-color="#8773f3"/>
+      <stop offset="1" stop-color="#b58afa"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#ribbon)" fill-rule="evenodd" d="M16 3c3-1.8 6.6-1.8 9.6 0l13 7.5a12 12 0 0 1 6 10.4v6.2a12 12 0 0 1-6 10.4l-13 7.5a9.6 9.6 0 0 1-9.6 0L8 40.4a12 12 0 0 1-6-10.4V18a12 12 0 0 1 6-10.4L16 3Zm-1 12v18a2.4 2.4 0 0 0 3.6 2.1l15.6-9a2.4 2.4 0 0 0 0-4.2l-15.6-9A2.4 2.4 0 0 0 15 15Z"/>
+  <path fill="#273e9d" fill-opacity=".5" d="M15 8v33.5l-7-4A9 9 0 0 1 4 30V18a10 10 0 0 1 5-8.7L15 6Z"/>
+</svg>

@@ -2,6 +2,7 @@
 
 import json
 import os
+import ssl
 import subprocess
 from pathlib import Path
 
@@ -43,7 +44,9 @@ def main() -> None:
     if provider_id == "groq" and model in {"openai/gpt-oss-20b", "openai/gpt-oss-120b"}:
         payload["reasoning_effort"] = "low"
     revision = git_head()
-    with httpx.Client(timeout=30, trust_env=False, follow_redirects=False) as client:
+    with httpx.Client(
+        timeout=30, trust_env=False, follow_redirects=False, verify=ssl.create_default_context()
+    ) as client:
         response = client.post(
             provider.url, headers=provider.headers(os.getenv(provider.key_env, "")), json=payload
         )
@@ -51,14 +54,9 @@ def main() -> None:
     choice = response.json()["choices"][0]
     message = choice["message"].get("content")
     if not isinstance(message, str) or not message.strip():
-        if choice.get("finish_reason") == "length":
-            raise ValueError(
-                "Hosted model reached the completion token limit before producing a visible "
-                "release note. Increase the completion limit or choose a different model."
-            )
+        reason = choice.get("finish_reason") or "unknown"
         raise ValueError(
-            "Hosted model returned no visible release note "
-            f"(finish reason: {choice.get('finish_reason') or 'unknown'})."
+            f"Hosted model returned no visible release note (finish reason: {reason})."
         )
     print(f"{provider_id}/{model}: {message.strip()}")
 

@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 import hmac
 import json
 import os
 import secrets
 import sqlite3
+import ssl
 import subprocess
 import sys
 import threading
 import time
 import urllib.parse
+from contextlib import closing
 from dataclasses import asdict
+from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import files
 from pathlib import Path
@@ -25,6 +30,7 @@ from flightrecorder.boundary import Divergence
 from flightrecorder.diagnosis import diagnose
 from flightrecorder.integrity import validate
 from flightrecorder.portable import MAX_BYTES, envelope, import_run
+from flightrecorder.provenance import check_source, digest
 from flightrecorder.providers import PROVIDERS
 from flightrecorder.store import RunStore, RunSummary
 
@@ -35,11 +41,18 @@ class ProductServer(ThreadingHTTPServer):
         self.root = root.resolve()
         self.db = db.resolve()
         self.token = secrets.token_urlsafe(32)
+        self.google_client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+        self.google_client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "")
+        if bool(self.google_client_id) != bool(self.google_client_secret):
+            raise ValueError("Google sign-in requires both OAuth client credentials.")
+        self.google_pending: dict[str, tuple[float, str, str]] = {}
+        self.google_subject: str | None = None
+        self.sessions: dict[str, float] = {}
         self.jobs: dict[str, dict[str, Any]] = {}
         self.processes: dict[str, subprocess.Popen[str]] = {}
         self.lock = threading.Lock()
         self.db.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS product_verification (run_id TEXT PRIMARY KEY, passed INTEGER NOT NULL, replays INTEGER NOT NULL, checked_at REAL NOT NULL)"
             )
@@ -47,6 +60,15 @@ class ProductServer(ThreadingHTTPServer):
                 "CREATE TABLE IF NOT EXISTS product_job_history "
                 "(id TEXT PRIMARY KEY, created REAL NOT NULL, data TEXT NOT NULL)"
             )
+            if self.google_client_id:
+                conn.execute(
+                    "CREATE TABLE IF NOT EXISTS product_google_account ("
+                    "id INTEGER PRIMARY KEY CHECK (id = 1), subject TEXT NOT NULL)"
+                )
+                account = conn.execute(
+                    "SELECT subject FROM product_google_account WHERE id = 1"
+                ).fetchone()
+                self.google_subject = account[0] if account else None
             for (data,) in conn.execute(
                 "SELECT data FROM product_job_history ORDER BY created, id"
             ):
@@ -55,7 +77,7 @@ class ProductServer(ThreadingHTTPServer):
 
     def save_job(self, job: dict[str, Any]) -> None:
         """Persist terminal job evidence and retain the 100 most recent jobs."""
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute(
                 "INSERT OR REPLACE INTO product_job_history VALUES (?, ?, ?)",
                 (job["id"], job["created"], json.dumps(job)),
@@ -85,7 +107,7 @@ class ProductServer(ThreadingHTTPServer):
                 "type": action,
                 "status": "queued",
                 "created": time.time(),
-                "script": str(source.relative_to(self.root)),
+                "script": source.relative_to(self.root).as_posix(),
                 "recording_id": run_id or None,
                 "requested_replays": replays if action == "verify" else None,
             }
@@ -106,22 +128,44 @@ class ProductServer(ThreadingHTTPServer):
                         [sys.executable, "-m", "flightrecorder.product.worker"],
                         stdin=subprocess.PIPE,
                         stdout=subprocess.PIPE,
-                        stderr=subprocess.DEVNULL,
-                        text=True,
+                        stderr=subprocess.PIPE,
+                        encoding="utf-8",
+                        errors="replace",
                         cwd=self.root,
+                        env={
+                            key: value
+                            for key, value in os.environ.items()
+                            if key
+                            not in {
+                                "GOOGLE_CLIENT_ID",
+                                "GOOGLE_CLIENT_SECRET",
+                                "REWIND_GOOGLE_EMAIL",
+                            }
+                        },
                     )
                     self.processes[job_id] = process
                     self.jobs[job_id]["status"] = "running"
-                output, _ = process.communicate(json.dumps(request), timeout=600)
+                output, stderr = process.communicate(json.dumps(request), timeout=600)
                 with self.lock:
                     if self.jobs[job_id]["status"] == "cancelled":
                         return
                     try:
                         result = json.loads(output.strip().splitlines()[-1])
+                        if not isinstance(result, dict) or type(result.get("ok")) is not bool:
+                            raise ValueError("Invalid worker result")
                     except (ValueError, IndexError):
+                        missing_module = (
+                            "No module named 'flightrecorder'" in stderr
+                            or "No module named flightrecorder" in stderr
+                            or "No module named flightrecorder.product.worker" in stderr
+                        )
                         result = {
                             "ok": False,
-                            "error": "Worker failed. Check the trusted script and environment.",
+                            "error": (
+                                "Rewind is missing from the worker's Python environment. Install Rewind in that environment and restart the workspace."
+                                if missing_module
+                                else f"Worker exited without a recording result (exit code {process.returncode}). Check the workspace Python dependencies and retry."
+                            ),
                         }
                     if (
                         action == "verify"
@@ -129,7 +173,7 @@ class ProductServer(ThreadingHTTPServer):
                         and isinstance(result.get("result"), dict)
                     ):
                         verified = result["result"]
-                        with sqlite3.connect(self.db) as conn:
+                        with closing(sqlite3.connect(self.db)) as conn, conn:
                             conn.execute(
                                 "INSERT OR REPLACE INTO product_verification VALUES (?, ?, ?, ?)",
                                 (
@@ -146,12 +190,16 @@ class ProductServer(ThreadingHTTPServer):
                 process.kill()
                 process.communicate()
                 with self.lock:
-                    self.jobs[job_id].update(
-                        status="failed", error="Job exceeded the 10-minute limit."
-                    )
+                    if self.jobs[job_id]["status"] != "cancelled":
+                        self.jobs[job_id].update(
+                            status="failed", error="Job exceeded the 10-minute limit."
+                        )
             except Exception:
                 with self.lock:
-                    self.jobs[job_id].update(status="failed", error="Could not start job.")
+                    if self.jobs[job_id]["status"] != "cancelled":
+                        self.jobs[job_id].update(
+                            status="failed", error="Could not run the workspace job."
+                        )
             finally:
                 with self.lock:
                     self.processes.pop(job_id, None)
@@ -194,17 +242,168 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             store.close()
 
+    def _cookie(self, name: str) -> str:
+        try:
+            cookie = SimpleCookie(self.headers.get("Cookie", "")).get(name)
+        except CookieError:
+            return ""
+        return cookie.value if cookie else ""
+
+    def _signed_in(self) -> bool:
+        if not self.server.google_client_id:
+            return True
+        with self.server.lock:
+            return self.server.sessions.get(self._cookie("rewind_session"), 0) > time.monotonic()
+
+    def _redirect(self, target: str, *cookies: str) -> None:
+        self.send_response(303)
+        self.send_header("Location", target)
+        for cookie in cookies:
+            self.send_header("Set-Cookie", cookie)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _google(self, query: str, *, callback: bool) -> None:
+        if not self.server.google_client_id:
+            self.send_error(404)
+            return
+        redirect = f"http://127.0.0.1:{self.server.server_port}/auth/google/callback"
+        if not callback:
+            state, verifier, nonce = (secrets.token_urlsafe(32) for _ in range(3))
+            now = time.monotonic()
+            with self.server.lock:
+                self.server.google_pending = {
+                    key: data for key, data in self.server.google_pending.items() if data[0] > now
+                }
+                self.server.google_pending[state] = (now + 600, verifier, nonce)
+            challenge = (
+                base64.urlsafe_b64encode(hashlib.sha256(verifier.encode()).digest())
+                .decode()
+                .rstrip("=")
+            )
+            params = urllib.parse.urlencode(
+                {
+                    "client_id": self.server.google_client_id,
+                    "redirect_uri": redirect,
+                    "scope": "openid email",
+                    "response_type": "code",
+                    "prompt": "select_account",
+                    "state": state,
+                    "nonce": nonce,
+                    "code_challenge": challenge,
+                    "code_challenge_method": "S256",
+                }
+            )
+            self._redirect(
+                "https://accounts.google.com/o/oauth2/v2/auth?" + params,
+                f"rewind_google_state={state}; Path=/auth/google; HttpOnly; SameSite=Lax; Max-Age=600",
+            )
+            return
+        values = urllib.parse.parse_qs(query)
+        state, code = (values.get(key, [""])[0] for key in ("state", "code"))
+        clear_state = "rewind_google_state=; Path=/auth/google; HttpOnly; SameSite=Lax; Max-Age=0"
+        with self.server.lock:
+            pending = (
+                self.server.google_pending.pop(state, None)
+                if state == self._cookie("rewind_google_state")
+                else None
+            )
+        if not pending or pending[0] <= time.monotonic() or not code:
+            self._redirect("/?sign-in=failed", clear_state)
+            return
+        _, verifier, nonce = pending
+        try:
+            with httpx.Client(timeout=15, verify=ssl.create_default_context()) as client:
+                tokens = client.post(
+                    "https://oauth2.googleapis.com/token",
+                    data={
+                        "client_id": self.server.google_client_id,
+                        "client_secret": self.server.google_client_secret,
+                        "redirect_uri": redirect,
+                        "code": code,
+                        "code_verifier": verifier,
+                        "grant_type": "authorization_code",
+                    },
+                )
+                tokens.raise_for_status()
+                identity = client.get(
+                    "https://oauth2.googleapis.com/tokeninfo",
+                    params={"id_token": tokens.json()["id_token"]},
+                )
+                identity.raise_for_status()
+                claims = identity.json()
+            # Tokeninfo validates the token with Google. Read the nonce from that same
+            # validated token because the tokeninfo response can omit optional claims.
+            payload = tokens.json()["id_token"].split(".")[1]
+            token_claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+            subject = claims["sub"]
+            if (
+                not isinstance(subject, str)
+                or not subject
+                or (
+                    os.getenv("REWIND_GOOGLE_EMAIL")
+                    and str(claims.get("email", "")).casefold()
+                    != os.environ["REWIND_GOOGLE_EMAIL"].casefold()
+                )
+                or claims.get("aud") != self.server.google_client_id
+                or claims.get("iss") not in {"accounts.google.com", "https://accounts.google.com"}
+                or token_claims.get("nonce") != nonce
+                or int(claims.get("exp", 0)) <= time.time()
+                or str(claims.get("email_verified")).lower() != "true"
+            ):
+                raise ValueError("Invalid Google identity")
+            session = secrets.token_urlsafe(32)
+            now = time.monotonic()
+            with self.server.lock:
+                if self.server.google_subject not in {None, subject}:
+                    raise ValueError("This workspace is linked to another account")
+                if self.server.google_subject is None:
+                    with closing(sqlite3.connect(self.server.db)) as conn, conn:
+                        conn.execute(
+                            "INSERT OR IGNORE INTO product_google_account VALUES (1, ?)",
+                            (subject,),
+                        )
+                        registered = conn.execute(
+                            "SELECT subject FROM product_google_account WHERE id = 1"
+                        ).fetchone()
+                    if not registered or registered[0] != subject:
+                        raise ValueError("This workspace is linked to another account")
+                    self.server.google_subject = subject
+                self.server.sessions = {
+                    key: expiry for key, expiry in self.server.sessions.items() if expiry > now
+                }
+                self.server.sessions[session] = now + 28800
+        except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError, sqlite3.Error) as exc:
+            print(
+                "Google sign-in callback rejected:", type(exc).__name__, file=sys.stderr, flush=True
+            )
+            self._redirect("/?sign-in=failed", clear_state)
+            return
+        self._redirect(
+            "/",
+            clear_state,
+            f"rewind_session={session}; Path=/; HttpOnly; SameSite=Lax; Max-Age=28800",
+        )
+
     def do_GET(self) -> None:
         if not self._host_ok():
             self.send_error(403)
             return
         route = urllib.parse.urlsplit(self.path)
+        if route.path in {"/auth/google", "/auth/google/callback"}:
+            self._google(route.query, callback=route.path.endswith("/callback"))
+            return
         assets = {
             "/": ("index.html", "text/html"),
             "/workspace.css": ("workspace.css", "text/css"),
             "/workspace.js": ("workspace.js", "text/javascript"),
+            "/rewind-mark.svg": ("rewind-mark.svg", "image/svg+xml"),
             "/rewind-mark.png": ("rewind-mark.png", "image/png"),
         }
+        if route.path == "/" and not self._signed_in():
+            assets["/"] = ("sign-in.html", "text/html")
         if asset := assets.get(route.path):
             filename, mime_type = asset
             resource = files("flightrecorder.product").joinpath(filename)
@@ -212,6 +411,16 @@ class Handler(BaseHTTPRequestHandler):
                 payload = (
                     resource.read_text(encoding="utf-8")
                     .replace("__REWIND_TOKEN__", self.server.token)
+                    .replace(
+                        "__REWIND_SIGN_OUT__", "" if self.server.google_client_id else "hidden"
+                    )
+                    .encode()
+                )
+            elif filename == "sign-in.html":
+                failed = urllib.parse.parse_qs(route.query).get("sign-in") == ["failed"]
+                payload = (
+                    resource.read_text(encoding="utf-8")
+                    .replace("__REWIND_SIGN_IN_ERROR__", "" if failed else "hidden")
                     .encode()
                 )
             else:
@@ -224,7 +433,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header(
                 "Content-Security-Policy",
                 "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; "
-                "img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+                "img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
             )
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
@@ -232,9 +441,14 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(payload)
             return
+        if not self._signed_in():
+            self._json({"error": "Sign in required"}, 401)
+            return
         try:
             path = route.path
-            if path == "/api/v1/runs":
+            if path == "/api/v1/session":
+                self._json({"token": self.server.token})
+            elif path == "/api/v1/runs":
                 store = RunStore(self.server.db)
                 try:
                     include_samples = urllib.parse.parse_qs(route.query).get("samples") == ["1"]
@@ -290,7 +504,7 @@ class Handler(BaseHTTPRequestHandler):
                         if name.endswith(".py"):
                             file = Path(current, name)
                             if file.resolve().is_relative_to(self.server.root):
-                                paths.append(str(file.relative_to(self.server.root)))
+                                paths.append(file.relative_to(self.server.root).as_posix())
                     if len(paths) >= 1000:
                         break
                 self._json({"root": str(self.server.root), "scripts": sorted(paths)[:1000]})
@@ -317,9 +531,9 @@ class Handler(BaseHTTPRequestHandler):
                         "supported": [
                             "New httpx clients",
                             "Decorated tools",
-                            "Selected time, random and UUID shims when enabled",
                         ],
                         "limitations": [
+                            "Browser capture leaves time, random and UUID shims off",
                             "No arbitrary subprocess or native network interception",
                             "No general filesystem capture",
                             "Socket guard is not an OS sandbox",
@@ -337,11 +551,22 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"error": str(exc)}, 400)
 
     def do_POST(self) -> None:
+        path = urllib.parse.urlsplit(self.path).path
+        if path == "/auth/sign-out":
+            expected = f"http://127.0.0.1:{self.server.server_port}"
+            if not self._host_ok() or self.headers.get("Origin") != expected:
+                self._json({"error": "Unauthorized request"}, 403)
+                return
+            with self.server.lock:
+                self.server.sessions.pop(self._cookie("rewind_session"), None)
+            self._redirect("/", "rewind_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0")
+            return
+        if not self._signed_in():
+            self._json({"error": "Sign in required"}, 401)
+            return
         origin = self.headers.get("Origin")
-        if (
-            not self._host_ok()
-            or (origin and origin != f"http://127.0.0.1:{self.server.server_port}")
-            or not hmac.compare_digest(self.headers.get("X-Rewind-Token", ""), self.server.token)
+        if not self._host_ok() or (
+            origin and origin != f"http://127.0.0.1:{self.server.server_port}"
         ):
             self._json({"error": "Unauthorized request"}, 403)
             return
@@ -349,7 +574,21 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             if not 0 < length <= MAX_BYTES:
                 raise ValueError("Invalid request size.")
-            body = json.loads(self.rfile.read(length))
+            raw_body = self.rfile.read(length)
+            supplied_token = self.headers.get("X-Rewind-Token", "")
+            if not supplied_token:
+                self._json({"error": "Unauthorized request"}, 403)
+                return
+            if not hmac.compare_digest(supplied_token, self.server.token):
+                self._json(
+                    {
+                        "error": "Workspace changed. Refresh the page and try again.",
+                        "code": "stale_token",
+                    },
+                    409,
+                )
+                return
+            body = json.loads(raw_body)
             if not isinstance(body, dict):
                 raise ValueError("Expected a JSON object.")
             path = urllib.parse.urlsplit(self.path).path
@@ -360,6 +599,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"job_id": job}, 202)
             elif path == "/api/v1/verify":
                 run = self._load(body.get("run_id", ""))
+                if run.metadata.get("counterfactual"):
+                    raise ValueError(
+                        "Ordinary replay is unavailable for what-if forks. Inspect or compare the fork instead."
+                    )
                 source = run.metadata.get("product_source")
                 if not isinstance(source, str):
                     raise ValueError(
@@ -368,9 +611,30 @@ class Handler(BaseHTTPRequestHandler):
                 replays = body.get("replays", 10)
                 if type(replays) is not int or not 1 <= replays <= 100:
                     raise ValueError("Replay count must be between 1 and 100.")
-                job = self.server.launch(
-                    "verify", self.server.source(source), body["run_id"], replays
-                )
+                alternative = body.get("source")
+                if alternative is not None and (
+                    not isinstance(alternative, str) or body.get("trusted") is not True
+                ):
+                    raise ValueError("Confirm that you trust the alternative Python script.")
+                script = self.server.source(alternative if alternative is not None else source)
+                if alternative is None and digest(script) != run.metadata.get("source_sha256"):
+                    candidate = script.with_name(f"{script.stem}_legacy.py")
+                    if candidate.is_file():
+                        legacy = self.server.source(str(candidate))
+                        if digest(legacy) == run.metadata.get("source_sha256"):
+                            script = legacy
+                try:
+                    check_source(run.metadata, script)
+                except ValueError:
+                    self._json(
+                        {
+                            "error": "The script changed since capture. Choose the matching trusted source, or capture a new run with the current script.",
+                            "code": "source_changed",
+                        },
+                        409,
+                    )
+                    return
+                job = self.server.launch("verify", script, body["run_id"], replays)
                 self._json({"job_id": job}, 202)
             elif path == "/api/v1/compare":
                 self._json(
