@@ -31,14 +31,16 @@ def test_hosted_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
     assert client.get("/api/v1/runs").status_code == 503
 
 
-def test_hosted_workspace(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("open_signup", [False, True])
+def test_hosted_workspace(monkeypatch: pytest.MonkeyPatch, open_signup: bool) -> None:
     database = os.getenv("REWIND_TEST_DATABASE")
     if not database:
         pytest.skip("Set REWIND_TEST_DATABASE to an empty disposable PostgreSQL database")
     for key, value in {
         "DATABASE_URL": database,
         "REWIND_PUBLIC_ORIGIN": ORIGIN,
-        "REWIND_ALLOWED_EMAILS": "one@example.test,two@example.test",
+        "REWIND_ALLOWED_EMAILS": "" if open_signup else "one@example.test,two@example.test",
+        "REWIND_OPEN_SIGNUP": "1" if open_signup else "0",
         "GOOGLE_CLIENT_ID": "test.apps.googleusercontent.com",
         "GOOGLE_CLIENT_SECRET": "test",
         "REWIND_BUILD_ID": "test-candidate",
@@ -105,7 +107,9 @@ def test_hosted_workspace(monkeypatch: pytest.MonkeyPatch) -> None:
         query_string={"state": cancelled["state"][0], "error": "access_denied"},
     )
     assert response.location == "/?problem=cancelled"
-    assert finish(visitor, start(visitor, "signup"), "outsider") == "/?problem=invite"
+    assert finish(visitor, start(visitor, "signup"), "outsider") == (
+        "/" if open_signup else "/?problem=invite"
+    )
     assert finish(left, start(left, "signin"), "one") == "/?problem=signup"
     params = start(left, "signup")
     assert finish(right, params, "one") == "/?problem=expired"

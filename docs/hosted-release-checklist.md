@@ -2,8 +2,8 @@
 
 ## Staging configuration
 
-- Create a staging Vercel project and a separate managed PostgreSQL database. Use a stable HTTPS staging domain and a pooled runtime database URL. Configure REWIND_PUBLIC_ORIGIN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, DATABASE_URL and REWIND_ALLOWED_EMAILS in the staging project.
-- In Google Cloud, configure a Web application OAuth client with the stable origin plus /auth/google/callback. Add both invited accounts as test users where required. For the demo use a separate OAuth client, Vercel environment and database.
+- Create a staging Vercel project and a separate managed PostgreSQL database. Use a stable HTTPS staging domain and a pooled runtime database URL. Configure REWIND_PUBLIC_ORIGIN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, DATABASE_URL and either REWIND_OPEN_SIGNUP=1 or REWIND_ALLOWED_EMAILS in the staging project.
+- In Google Cloud, configure a Web application OAuth client with the stable origin plus /auth/google/callback. For public sign-up, use an External Google audience in Production. For an invite-only test deployment, add both invited accounts as test users where required. For the demo use a separate OAuth client, Vercel environment and database.
 - Install from the exact candidate with uv sync --locked. Run scripts/manage_hosted.py migrate once with the migration database credentials. Grant runtime access to the resulting tables. Publish only reviewed evidence with scripts/manage_hosted.py publish-demo PATH. Keep bundles and credential files outside the deployment package.
 - Record the candidate Git SHA, previous compatible deployment, database backup, and the evidence for a restore tested on a separate copy.
 

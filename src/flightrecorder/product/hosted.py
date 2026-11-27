@@ -61,6 +61,10 @@ class Config:
     secret: str
     database: str
     invites: frozenset[str]
+    open_signup: bool
+
+    def allows(self, email: str) -> bool:
+        return self.open_signup or email.casefold() in self.invites
 
 
 def configuration() -> Config:
@@ -71,6 +75,7 @@ def configuration() -> Config:
         for value in os.getenv("REWIND_ALLOWED_EMAILS", "").split(",")
         if value.strip()
     )
+    open_signup = os.getenv("REWIND_OPEN_SIGNUP", "0")
     client = os.getenv("GOOGLE_CLIENT_ID", "")
     secret = os.getenv("GOOGLE_CLIENT_SECRET", "")
     database = os.getenv("DATABASE_URL", "")
@@ -81,11 +86,12 @@ def configuration() -> Config:
         or not client.endswith(".apps.googleusercontent.com")
         or not secret.strip()
         or not database.startswith(("postgresql://", "postgres://"))
-        or not invites
+        or open_signup not in {"0", "1"}
+        or (open_signup == "0" and not invites)
         or not all(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email) for email in invites)
     ):
         raise ValueError("Hosted configuration is incomplete")
-    return Config(origin, client, secret, database, invites)
+    return Config(origin, client, secret, database, invites, open_signup == "1")
 
 
 @contextmanager
@@ -174,7 +180,7 @@ def identity(
            WHERE s.token_hash = %s AND s.expires > now()""",
         (digest(token),),
     ).fetchone()
-    return (row[0], row[1], row[2]) if row and row[1].casefold() in config.invites else None
+    return (row[0], row[1], row[2]) if row and config.allows(row[1]) else None
 
 
 @app.get("/health")
@@ -208,7 +214,7 @@ def home() -> Response:
         .replace("__REWIND_TOKEN__", account[2])
         .replace("__REWIND_SIGN_OUT__", "")
         .replace("Local workspace", "Hosted workspace")
-        .replace("SQLite on this device", "Invite-only workspace")
+        .replace("SQLite on this device", "Google sign-in required")
         .replace('method="post" ><button type="submit"', 'method="post"><button type="submit"')
         .replace(
             'action="/auth/sign-out" method="post">',
@@ -318,7 +324,7 @@ def oauth_callback() -> BaseResponse:
         subject = claims["sub"]
         if not isinstance(subject, str) or not subject:
             return oauth_problem("google")
-        if claims.get("email_verified") is not True or email not in config.invites:
+        if claims.get("email_verified") is not True or not config.allows(email):
             return oauth_problem("invite")
     except Exception:
         return oauth_problem("google")
