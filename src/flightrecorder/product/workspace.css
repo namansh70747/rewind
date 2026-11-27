@@ -555,3 +555,9 @@ mark{background:var(--accent-bg);color:var(--accent);border-radius:2px}
 
 .verify-source{grid-column:1/-1;color:var(--muted)}
 .verify-source .field,.verify-source .check{margin-top:8px}
+.hosted-only { display: none; }
+[data-hosted] .hosted-only { display: block; }
+[data-hosted] #source-filter,
+[data-hosted] label:has(#show-samples) { display: none; }
+[data-hosted] [hidden] { display: none !important; }
+[data-hosted] .local-only { display: none; }

@@ -38,6 +38,9 @@ dependencies = [
     "httpx[socks]>=0.28.1",   # transport-layer capture (ADR-0007); OpenAI/Anthropic/NVIDIA ride httpx
     "typer>=0.27.2",   # the `fr` CLI
     "rich>=15.0.0",      # timeline rendering
+    "flask>=3.1,<4",
+    "psycopg[binary]>=3.2,<4",
+    "google-auth[requests]>=2.40,<3",
 ]
 
 [project.optional-dependencies]

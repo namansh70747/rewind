@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="rewind-token" content="__REWIND_TOKEN__">
   <title>Rewind · Agent Flight Recorder</title>
-  <link rel="stylesheet" href="/workspace.css">
+  <link rel="icon" href="/rewind-mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/workspace.css">
   <script src="/workspace.js" defer></script>
 </head>
 <body>
@@ -40,6 +41,10 @@
         <div id="alert" class="notice danger" role="alert" hidden><span id="alert-text"></span><button class="icon-btn" id="dismiss" aria-label="Dismiss message">×</button></div>
         <div id="notice" class="toast" role="status" hidden></div>
 
+        <aside class="hosted-only notice"><strong>Run locally</strong>
+          <p>Use <code>fr serve --workspace .</code> to capture trusted scripts and verify recordings offline. Use <code>fr fork --help</code> for what-if runs, then import a reviewed bundle here.</p>
+        </aside>
+
         <section class="screen" id="page-overview" aria-labelledby="overview-title">
           <div class="hero overview-hero">
             <div class="hero-content"><div class="kicker"><span></span> AGENT FLIGHT RECORDER</div><h1 id="overview-title">Every <em>decision,</em> within reach.</h1><p>Capture agent execution, replay it offline, and trace what changed.</p>
@@ -56,7 +61,7 @@
             <article class="stat"><span class="stat-icon"><i class="icon" data-icon="disc"></i></span><div><span>Stored recordings</span><strong id="stat-runs">—</strong></div></article>
             <article class="stat"><span class="stat-icon cyan"><i class="icon" data-icon="layers"></i></span><div><span>Captured boundaries</span><strong id="stat-boundaries">—</strong></div></article>
             <article class="stat"><span class="stat-icon mint"><i class="icon" data-icon="shield"></i></span><div><span>Replay matched</span><strong id="stat-verified">—</strong></div></article>
-            <article class="stat"><span class="stat-icon amber"><i class="icon" data-icon="database"></i></span><div><span>SQLite file size</span><strong id="stat-storage">—</strong></div></article>
+            <article class="stat local-only"><span class="stat-icon amber"><i class="icon" data-icon="database"></i></span><div><span>SQLite file size</span><strong id="stat-storage">—</strong></div></article>
           </div>
           <div class="overview-grid">
             <section class="panel workflow-card">
@@ -70,7 +75,7 @@
             <section class="panel"><div class="panel-head"><h2>Recent recordings</h2><a class="text-link" href="#recordings">View library <i class="icon" data-icon="arrow-right"></i></a></div><div id="recent" class="panel-body compact"></div></section>
             <section class="panel"><div class="panel-head"><h2>Execution activity</h2><span class="pill">Last 7 days</span></div><div id="chart" class="panel-body chart"></div></section>
             <section class="panel"><div class="panel-head"><h2>Replay verification</h2><a class="text-link" href="#verification">Verification <i class="icon" data-icon="arrow-right"></i></a></div><div id="distribution" class="panel-body"></div></section>
-            <section class="panel"><div class="panel-head"><h2>Provider readiness</h2><a class="text-link" href="#providers">Providers <i class="icon" data-icon="arrow-right"></i></a></div><div id="provider-overview" class="panel-body compact"></div></section>
+            <section class="panel local-only"><div class="panel-head"><h2>Provider readiness</h2><a class="text-link" href="#providers">Providers <i class="icon" data-icon="arrow-right"></i></a></div><div id="provider-overview" class="panel-body compact"></div></section>
           </div>
         </section>
 
@@ -78,7 +83,7 @@
           <header class="page-heading"><div><div class="crumb">Workspace / Recordings</div><h1 id="recordings-title">Recordings</h1><p>Inspect captured steps, agent outcomes, and replay evidence.</p></div><div class="actions"><button class="btn" id="toggle-library" aria-controls="library" aria-expanded="true"><i class="icon" data-icon="menu"></i> Library</button><button class="btn" id="import-trigger"><i class="icon" data-icon="upload"></i> Import bundle</button><input id="import-file" type="file" accept=".json,application/json" hidden><button class="btn primary" id="export" disabled><i class="icon" data-icon="download"></i> Export bundle</button></div></header>
           <div class="investigation" id="investigation">
             <section class="panel library" id="library"><div class="panel-head"><h2>Library <span class="pill" id="library-count">0</span></h2><button class="icon-btn" id="refresh" aria-label="Refresh recordings" title="Refresh recordings"><i class="icon" data-icon="refresh"></i></button></div>
-              <div class="library-controls"><label class="input-wrap"><i class="icon" data-icon="search"></i><input id="filter-runs" type="search" placeholder="Find a recording…" aria-label="Search recordings"></label><div class="segmented" id="filters" aria-label="Filter recordings"><button data-filter="all" aria-pressed="true">All</button><button data-filter="failed" aria-pressed="false">Failed</button><button data-filter="verified" aria-pressed="false">Matched</button></div><label class="field">Source<select id="source-filter"><option value="all">Any source</option><option value="linked">Trusted script linked</option><option value="unlinked">Inspection only</option></select></label><label class="check"><input type="checkbox" id="show-samples"> Show simulated samples</label></div>
+              <div class="hosted-only"><button class="btn" id="hosted-library-prev">Previous</button> <span id="hosted-library-page"></span> <button class="btn" id="hosted-library-next">Next</button></div><div class="library-controls"><label class="input-wrap"><i class="icon" data-icon="search"></i><input id="filter-runs" type="search" placeholder="Find a recording…" aria-label="Search recordings"></label><div class="segmented" id="filters" aria-label="Filter recordings"><button data-filter="all" aria-pressed="true">All</button><button data-filter="failed" aria-pressed="false">Failed</button><button data-filter="verified" aria-pressed="false">Matched</button></div><label class="field">Source<select id="source-filter"><option value="all">Any source</option><option value="linked">Trusted script linked</option><option value="unlinked">Inspection only</option></select></label><label class="check"><input type="checkbox" id="show-samples"> Show simulated samples</label></div>
               <div id="run-list" class="run-list"></div><button id="more-runs" class="btn library-more" hidden>Show more</button>
               <div id="library-resize" class="resize-handle right" role="separator" tabindex="0" aria-label="Resize recording library" aria-controls="library" aria-orientation="vertical"></div>
             </section>
@@ -126,6 +131,7 @@
         <section class="screen" id="page-compare" aria-labelledby="compare-title" hidden>
           <header class="page-heading"><div><div class="crumb">Workspace / Compare</div><h1 id="compare-title">Compare executions</h1><p>Locate the earliest recorded difference and inspect the evidence on both sides.</p></div><div class="page-art" aria-hidden="true"><canvas class="signal-art"></canvas><span class="page-symbol"><i class="icon" data-icon="compare"></i></span></div></header>
           <form class="panel compare-form" id="compare-form"><label class="field">Baseline<select id="compare-left" required></select></label><button class="icon-btn" id="swap" type="button" aria-label="Swap baseline and candidate"><i class="icon" data-icon="compare"></i></button><label class="field">Candidate<select id="compare-right" required></select></label><button class="btn primary" id="compare">Compare runs</button></form>
+          <div class="hosted-only"><button class="btn" id="hosted-compare-prev">Previous page</button> <span id="hosted-compare-page"></span> <button class="btn" id="hosted-compare-next">Next page</button></div>
           <div id="comparison" role="status"></div>
           <div id="compare-result" class="compare-layout" hidden><section class="panel"><div class="panel-head"><h2>Aligned steps</h2><div class="actions"><button class="btn" id="previous-diff">Previous difference</button><button class="btn" id="next-diff">Next difference</button></div></div><div class="compare-lanes" id="compare-lanes"></div><div id="compare-alignment" class="compare-alignment"></div><div class="compare-evidence-controls" id="compare-evidence-controls" hidden><h3 id="compare-evidence-title">Selected difference</h3><div class="segmented" id="compare-evidence-tabs" role="group" aria-label="Comparison evidence">
             <button type="button" data-compare-evidence="response" aria-pressed="true">Response</button><button type="button" data-compare-evidence="request" aria-pressed="false">Request</button><button type="button" data-compare-evidence="raw" aria-pressed="false">Raw</button>

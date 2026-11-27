@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "functions": {"api/index.py": {"excludeFiles": "{tests/**,demos/**,examples/**,docs/**,**/*.db,**/*.sqlite*,**/.env*,.rewind/**}"}},
+  "rewrites": [
+    {"source": "/", "destination": "/api/index"},
+    {"source": "/auth/:path*", "destination": "/api/index"},
+    {"source": "/api/v1/:path*", "destination": "/api/index"},
+    {"source": "/health", "destination": "/api/index"},
+    {"source": "/workspace.js", "destination": "/api/index"},
+    {"source": "/workspace.css", "destination": "/api/index"},
+    {"source": "/rewind-mark.svg", "destination": "/api/index"},
+    {"source": "/rewind-mark.png", "destination": "/api/index"}
+  ]
+}

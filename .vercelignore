@@ -1,0 +1,11 @@
+**/.env*
+**/*.db
+**/*.db-*
+**/*.sqlite*
+**/.rewind/
+**/.venv/
+tests/
+demos/
+examples/
+docs/
+outputs/

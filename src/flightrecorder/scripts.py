@@ -78,6 +78,8 @@ def verify_script(cassette: Cassette, path: Path, n: int = 10) -> VerifyResult:
         raise ValueError("number of replays must be at least 1")
     if cassette.provider != "script":
         raise ValueError("recording is not a script")
+    if cassette.metadata.get("counterfactual"):
+        raise ValueError("What-if forks cannot be verified as original recordings")
     check_source(cassette.metadata, path)
     outputs: set[str] = set()
     hashes: set[str] = set()

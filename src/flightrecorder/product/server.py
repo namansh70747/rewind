@@ -650,6 +650,20 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(audit_corpus(self.server.db))
             elif path == "/api/v1/export":
                 cassette = self._load(body.get("run_id", ""))
+                store = RunStore(self.server.db)
+                try:
+                    check = store.conn.execute(
+                        "SELECT passed, replays, checked_at FROM product_verification WHERE run_id = ?",
+                        (body.get("run_id", ""),),
+                    ).fetchone()
+                finally:
+                    store.close()
+                if check is not None:
+                    cassette.metadata["verification"] = {
+                        "passed": bool(check[0]),
+                        "replays": check[1],
+                        "checked_at": str(check[2]),
+                    }
                 self._json(envelope(cassette))
             elif path == "/api/v1/import":
                 import tempfile

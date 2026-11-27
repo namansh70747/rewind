@@ -239,7 +239,7 @@ document.addEventListener("keydown", (event) => {
 
 const runName = (run) => run.display_model || run.model || run.display_provider || run.provider || run.id;
 const verificationText = (run) => (
-  run.verification ? (run.verification.passed ? "Replay matched " + run.verification.replays + "×" : "Replay diverged") : "Not verified"
+  run.verification ? (run.verification.passed ? (run.script_failed ? "Failure reproduced " : "Replay matched ") + run.verification.replays + "×" : "Replay diverged") : "Not verified"
 );
 function dateLabel(value) {
   const date = new Date(typeof value === "number" ? value * 1000 : value);
@@ -275,7 +275,8 @@ function drawOverview() {
     mark.append(icon("disc"));
     const copy = el("div");
     const action = el("a", "Capture your first run", "text-link");
-    action.href = "#capture";
+    action.href = hosted ? "#recordings" : "#capture";
+    if (hosted) action.textContent = "Open recordings";
     copy.append(
       el("strong", "No recordings yet"),
       el("p", "Captured requests, responses, and replay results will appear here."),
@@ -446,19 +447,52 @@ enableResize("evidence-resize", "inspector", "--evidence-width", true);
 
 function drawSelectors() {
   const items = runs.map((run) => ({value: run.id, label: runName(run) + " · " + run.id}));
-  const leftChanged = fillSelect("compare-left", items, "No recordings available");
-  const rightChanged = fillSelect("compare-right", items, "No recordings available");
+  const choices = [...items];
+  if (hosted) {
+    for (const id of ["compare-left", "compare-right"]) {
+      const option = $(id).selectedOptions[0];
+      if (option?.value && !choices.some(({value}) => value === option.value)) {
+        choices.push({value: option.value, label: option.textContent});
+      }
+    }
+  }
+  const leftChanged = fillSelect("compare-left", choices, "No recordings available");
+  const rightChanged = fillSelect("compare-right", choices, "No recordings available");
   if (rightChanged && items.length > 1 && $("compare-left").value === $("compare-right").value) $("compare-right").selectedIndex = 1;
   if (leftChanged || rightChanged) clearComparison();
   fillSelect("verify-run", items.filter((item, i) => runs[i].has_source && !runs[i].counterfactual), "No trusted recording available");
   syncForms();
 }
 
+const hosted = document.body.dataset.hosted === "true";
+let libraryPage = 1;
+if (hosted) {
+  delete pageNames.capture;
+  delete pageNames.verification;
+  delete pageNames.providers;
+  delete pageNames.settings;
+  document.querySelectorAll('[href="#capture"],[href="#verification"],[href="#providers"],[href="#settings"]').forEach((link) => link.hidden = true);
+}
 let refreshRequest = 0;
 async function refresh({quiet = false} = {}) {
   const request = ++refreshRequest;
   try {
     if (!quiet) clearError();
+    if (hosted) {
+      const library = await api("runs?page=" + libraryPage);
+      if (request !== refreshRequest) return;
+      runs = library.runs;
+      for (const panel of ["library", "compare"]) {
+        $("hosted-" + panel + "-prev").disabled = libraryPage === 1;
+        $("hosted-" + panel + "-next").disabled = !library.more;
+        $("hosted-" + panel + "-page").textContent = "Page " + libraryPage;
+      }
+      drawOverview();
+      drawLibrary();
+      drawSelectors();
+      if (!selectedId && page === "recordings" && runs.length) await openRun(runs[0].id);
+      return;
+    }
     const {jobs: jobData} = await api("jobs");
     const [library, scripts, readiness, coverage] = await Promise.all([
       api("runs" + ($("show-samples").checked ? "?samples=1" : "")),
@@ -487,6 +521,12 @@ async function refresh({quiet = false} = {}) {
     if (request === refreshRequest) error(problem);
   } finally {
     if (request === refreshRequest) $("loading").hidden = true;
+  }
+}
+if (hosted) {
+  for (const panel of ["library", "compare"]) {
+    $("hosted-" + panel + "-prev").onclick = () => { libraryPage--; refresh(); };
+    $("hosted-" + panel + "-next").onclick = () => { libraryPage++; refresh(); };
   }
 }
 $("refresh").onclick = () => refresh();
@@ -776,7 +816,11 @@ $("import-file").onchange = async ({target}) => {
   $("import-trigger").disabled = true;
   try {
     if (file.size > 32 * 1024 * 1024) throw new Error("The bundle exceeds the 32 MiB import limit.");
+    if (hosted && file.size > 1500000) {
+      throw new Error("This bundle exceeds the hosted limit. Open it in local Rewind.");
+    }
     const {run_id} = await api("import", {recording: JSON.parse(await file.text())});
+    if (hosted) libraryPage = 1;
     await refresh();
     await openRun(run_id);
     notify("Bundle imported for inspection.");
@@ -941,7 +985,7 @@ function drawJobs() {
   }
 }
 let polling = false;
-setInterval(async () => {
+if (!hosted) setInterval(async () => {
   if (polling || document.hidden) return;
   polling = true;
   try {

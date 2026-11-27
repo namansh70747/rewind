@@ -33,7 +33,10 @@ def export_run(cassette: Cassette, path: Path) -> None:
 def import_run(path: Path) -> Cassette:
     if path.stat().st_size > MAX_BYTES:
         raise ValueError("recording exceeds 32 MiB import limit")
-    obj = json.loads(path.read_text(encoding="utf-8"))
+    return parse_envelope(json.loads(path.read_text(encoding="utf-8")))
+
+
+def parse_envelope(obj: Any) -> Cassette:
     try:
         if obj["format"] not in {FORMAT, "rewind.cassette.v1"}:
             raise ValueError("unsupported recording format")
