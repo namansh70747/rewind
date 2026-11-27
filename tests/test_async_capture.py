@@ -143,11 +143,11 @@ def test_local_socketpair_wakeup_does_not_disable_offline_guard() -> None:
     with offline_guard() as audit:
         left, right = socket.socketpair()
         try:
-            left.send(b'x')
-            assert right.recv(1) == b'x'
+            left.send(b"x")
+            assert right.recv(1) == b"x"
             with pytest.raises(NetworkBlocked):
-                socket.socket().connect(('127.0.0.1', 9))
+                socket.socket().connect(("127.0.0.1", 9))
         finally:
             left.close()
             right.close()
-    assert audit.blocked_operations == ['connect']
+    assert audit.blocked_operations == ["connect"]

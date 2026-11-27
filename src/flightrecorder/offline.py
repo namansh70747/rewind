@@ -32,6 +32,7 @@ _SOCKET_ORIGINALS = {
 }
 _DNS_ORIGINAL = socket.getaddrinfo
 _SOCKETPAIR_ORIGINAL = socket.socketpair
+_SOCKETPAIR_FAMILY = getattr(socket, "AF_UNIX", socket.AF_INET)
 _building_pair: ContextVar[bool] = ContextVar("rewind_building_socketpair", default=False)
 _local_pairs: WeakValueDictionary[int, socket.socket] = WeakValueDictionary()
 _lock = RLock()
@@ -44,7 +45,7 @@ def _blocked(*args: Any, **kwargs: Any) -> Any:
 
 
 def _local_socketpair(
-    family: socket.AddressFamily = getattr(socket, "AF_UNIX", socket.AF_INET),
+    family: socket.AddressFamily = _SOCKETPAIR_FAMILY,
     type: socket.SocketKind = socket.SOCK_STREAM,
     proto: int = 0,
 ) -> tuple[socket.socket, socket.socket]:
