@@ -48,7 +48,7 @@ embeddings = ["numpy>=1.26,<2.4", "scikit-learn>=1.9.1", "sentence-transformers>
 dev = [
     "ruff>=0.16.6",
     "mypy>=2.3.1",
-    "types-protobuf>=5",
+    "types-protobuf>=7.35.1.20261122",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "pre-commit>=4.6.2",
