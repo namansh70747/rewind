@@ -46,7 +46,7 @@ tui = ["textual>=0.50"]
 ml = ["numpy>=1.26,<2.4", "scikit-learn>=1.9.1"]
 embeddings = ["numpy>=1.26,<2.4", "scikit-learn>=1.9.1", "sentence-transformers>=3", "lancedb>=0.41.0", "umap-learn>=0.5.12"]
 dev = [
-    "ruff>=0.16.6",
+    "ruff>=0.17.6",
     "mypy>=2.3.1",
     "types-protobuf>=5",
     "pytest>=9.1.1",
